@@ -1,0 +1,1 @@
+{% extends 'generic/object_edit.html' %}{% load form_helpers %}{% block title %}Export {{ object }}{% endblock %}{% block form %}{% include 'htmx/form.html' %}{% endblock %}{% block buttons %}<a href="{{ return_url }}" class="btn btn-outline-secondary me-2">Cancel</a><button type="submit" class="btn btn-primary"><i class="mdi mdi-export"></i> Export</button>{% endblock %}

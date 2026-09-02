@@ -1,0 +1,9 @@
+name: netbox-certificates-plugin
+package_name: netbox-certificates-plugin
+module_name: netbox_certificates
+version: 0.4.11
+description: X.509 certificate, private-key, CSR, bundle, certificate-authority, relationship, and expiration management for NetBox
+repository: https://github.com/Fokkert/netbox-certificates-plugin
+license: Apache-2.0
+netbox_min_version: 4.5.9
+netbox_max_version: 4.5.10

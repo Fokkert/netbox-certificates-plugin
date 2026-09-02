@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#182433">
+  <div style="max-width:780px;margin:0 auto;padding:32px 18px">
+    <div style="background:#ffffff;border:1px solid #dfe3e8;border-radius:14px;overflow:hidden;box-shadow:0 4px 18px rgba(24,36,51,.06)">
+      <div style="padding:24px 28px;background:#182433;color:#ffffff">
+        <div style="font-size:21px;font-weight:700">NetBox Certificates</div>
+        <div style="font-size:13px;opacity:.82;margin-top:4px">{% if test %}Expiration alert configuration test{% else %}Certificate expiration report{% endif %}</div>
+      </div>
+
+      {% if test %}
+        <div style="padding:30px 28px">
+          <div style="display:inline-block;padding:5px 10px;border-radius:999px;background:#d1e7dd;color:#0f5132;font-size:12px;font-weight:700;margin-bottom:16px">SMTP TEST SUCCESSFUL</div>
+          <div style="font-size:20px;font-weight:700;margin-bottom:8px">Email delivery is working</div>
+          <div style="font-size:14px;line-height:1.6;color:#475467">The configured SMTP server accepted this test message from NetBox Certificates.</div>
+          <div style="margin-top:22px;padding-top:18px;border-top:1px solid #eaecf0;font-size:12px;color:#667085">Generated {{ generated_at }}</div>
+        </div>
+      {% else %}
+        <div style="padding:24px 28px 10px">
+          <div style="font-size:20px;font-weight:700;margin-bottom:6px">Expiration summary</div>
+          <div style="font-size:14px;color:#667085;line-height:1.5;margin-bottom:18px">{{ report_count }} certificate{{ report_count|pluralize }} reached an expiration alert condition in this scan.</div>
+          <table role="presentation" style="width:100%;border-collapse:separate;border-spacing:8px 0;margin:0 -8px 8px">
+            <tr>
+              <td style="width:33.3%;padding:14px;border:1px solid #eaecf0;border-radius:10px;background:#f9fafb"><div style="font-size:24px;font-weight:700">{{ report_count }}</div><div style="font-size:11px;text-transform:uppercase;color:#667085;letter-spacing:.05em">Total</div></td>
+              <td style="width:33.3%;padding:14px;border:1px solid #fecaca;border-radius:10px;background:#fff7f7"><div style="font-size:24px;font-weight:700;color:#b42318">{{ expired_count }}</div><div style="font-size:11px;text-transform:uppercase;color:#667085;letter-spacing:.05em">Expired</div></td>
+              <td style="width:33.3%;padding:14px;border:1px solid #fedf89;border-radius:10px;background:#fffbeb"><div style="font-size:24px;font-weight:700;color:#b54708">{{ critical_count }}</div><div style="font-size:11px;text-transform:uppercase;color:#667085;letter-spacing:.05em">Critical ≤ 7d</div></td>
+            </tr>
+          </table>
+        </div>
+
+        {% for report in reports %}
+          <div style="padding:14px 28px 18px">
+            <div style="border:1px solid #dfe3e8;border-left:5px solid {{ report.condition_color }};border-radius:12px;overflow:hidden">
+              <div style="padding:16px 18px;background:#f9fafb;border-bottom:1px solid #eaecf0">
+                <table role="presentation" style="width:100%;border-collapse:collapse">
+                  <tr>
+                    <td style="vertical-align:top">
+                      <div style="font-size:18px;font-weight:700;word-break:break-word">{{ report.certificate.name }}</div>
+                      <div style="font-size:13px;color:#667085;margin-top:3px">{{ report.condition_text }}</div>
+                    </td>
+                    <td style="text-align:right;vertical-align:top;white-space:nowrap">
+                      <span style="display:inline-block;padding:5px 9px;border-radius:999px;background:{{ report.condition_color }};color:#ffffff;font-size:11px;font-weight:700;text-transform:uppercase">{{ report.condition_label }}</span>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <div style="padding:16px 18px">
+                <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#667085;letter-spacing:.05em;margin-bottom:8px">Validity</div>
+                <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:18px">
+                  <tr><td style="padding:5px 0;color:#667085;width:145px">Valid from</td><td style="padding:5px 0">{{ report.certificate.valid_from }}</td></tr>
+                  <tr><td style="padding:5px 0;color:#667085">Expires at</td><td style="padding:5px 0;font-weight:700">{{ report.certificate.valid_to }}</td></tr>
+                  <tr><td style="padding:5px 0;color:#667085">Alert trigger</td><td style="padding:5px 0">{{ report.certificate.alert_trigger }} {{ report.certificate.get_trigger_unit_display }}(s)</td></tr>
+                </table>
+
+                <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#667085;letter-spacing:.05em;margin-bottom:8px">Certificate identity</div>
+                <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:18px">
+                  <tr><td style="padding:5px 0;color:#667085;width:145px">Subject</td><td style="padding:5px 0;word-break:break-word">{{ report.certificate.subject }}</td></tr>
+                  <tr><td style="padding:5px 0;color:#667085">Issuer</td><td style="padding:5px 0;word-break:break-word">{{ report.certificate.issuer }}</td></tr>
+                  <tr><td style="padding:5px 0;color:#667085">Serial</td><td style="padding:5px 0;word-break:break-all">{{ report.certificate.serial_number }}</td></tr>
+                  <tr><td style="padding:5px 0;color:#667085">SHA-256</td><td style="padding:5px 0;word-break:break-all;font-family:monospace;font-size:12px">{{ report.certificate.fingerprint_sha256 }}</td></tr>
+                </table>
+
+                {% if report.payload.certificate.subject_alternative_names %}
+                  <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#667085;letter-spacing:.05em;margin-bottom:8px">Subject alternative names</div>
+                  <div style="font-size:13px;line-height:1.6;margin-bottom:18px">{% for san in report.payload.certificate.subject_alternative_names %}<span style="display:inline-block;background:#eef2f6;border-radius:6px;padding:3px 7px;margin:0 4px 4px 0">{{ san }}</span>{% endfor %}</div>
+                {% endif %}
+
+                {% if report.payload.certificate.groups or report.payload.certificate.bundles %}
+                  <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#667085;letter-spacing:.05em;margin-bottom:8px">NetBox context</div>
+                  <table style="width:100%;border-collapse:collapse;font-size:13px">
+                    <tr><td style="padding:5px 0;color:#667085;width:145px">Groups</td><td style="padding:5px 0">{% for group in report.payload.certificate.groups %}{{ group.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td></tr>
+                    <tr><td style="padding:5px 0;color:#667085">Bundles</td><td style="padding:5px 0">{% for bundle in report.payload.certificate.bundles %}{{ bundle.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td></tr>
+                  </table>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+
+        <div style="padding:8px 28px 26px;font-size:12px;color:#667085">Generated {{ generated_at }} by the NetBox Certificates expiration worker.</div>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

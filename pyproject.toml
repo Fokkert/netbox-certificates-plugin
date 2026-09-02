@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netbox-certificates-plugin"
+version = "0.4.11"
+description = "X.509 certificate, private-key, CSR, bundle, certificate-authority, relationship, and expiration management for NetBox"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [
+  {name = "NetBox Certificates Plugin contributors"},
+]
+keywords = [
+  "netbox",
+  "netbox-plugin",
+  "x509",
+  "certificate",
+  "pki",
+  "csr",
+  "pkcs12",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Framework :: Django",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: System Administrators",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Security :: Cryptography",
+  "Topic :: System :: Systems Administration",
+]
+dependencies = [
+  "cryptography>=42",
+]
+
+[project.optional-dependencies]
+rar = ["rarfile>=4.2"]
+
+[project.urls]
+Homepage = "https://github.com/Fokkert/netbox-certificates-plugin"
+Repository = "https://github.com/Fokkert/netbox-certificates-plugin"
+Issues = "https://github.com/Fokkert/netbox-certificates-plugin/issues"
+Documentation = "https://github.com/Fokkert/netbox-certificates-plugin#readme"
+Changelog = "https://github.com/Fokkert/netbox-certificates-plugin/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+include = ["netbox_certificates*"]
+
+[tool.setuptools.package-data]
+netbox_certificates = [
+  "templates/**/*.html",
+  "static/**/*",
+]

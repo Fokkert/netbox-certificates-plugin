@@ -1,0 +1,14 @@
+include LICENSE
+include NOTICE
+include README.md
+include CHANGELOG.md
+include COMPATIBILITY.md
+include CONTRIBUTING.md
+include SECURITY.md
+include UPGRADE.md
+include VALIDATION.md
+include AI_ASSISTANCE.md
+recursive-include docs *.md
+recursive-include netbox_certificates/templates *.html
+recursive-include netbox_certificates/static *
+recursive-include netbox_certificates/migrations *.py

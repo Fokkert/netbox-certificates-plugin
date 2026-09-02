@@ -1,0 +1,28 @@
+{% extends 'generic/object.html' %}
+{% load helpers %}
+{% block extra_controls %}
+  {% if can_download %}<a class="btn btn-primary me-2" href="{% url 'plugins:netbox_certificates:download' kind='certificate' pk=object.pk %}"><i class="mdi mdi-download"></i> Download</a>{% endif %}
+  {% if can_add_link %}<a class="btn btn-outline-primary me-2" href="{% url 'plugins:netbox_certificates:link_add' kind='certificate' pk=object.pk %}"><i class="mdi mdi-link-plus"></i> Link Object</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="row"><div class="col-md-6">
+<div class="card mb-3"><h2 class="card-header">Certificate</h2><table class="table table-hover attr-table">
+<tr><th>Name</th><td>{{ object.name }}</td></tr><tr><th>Status</th><td>{{ object.get_status_display }}</td></tr>
+<tr><th>Expiration Health</th><td>{{ expiry.label }}{% if expiry.days != None %} ({{ expiry.days }} day{{ expiry.days|pluralize }}){% endif %}</td></tr>
+<tr><th>Format</th><td>{{ object.get_source_format_display }}</td></tr><tr><th>Valid From</th><td>{{ object.valid_from|placeholder }}</td></tr><tr><th>Expires At</th><td>{{ object.valid_to|placeholder }}</td></tr>
+<tr><th>Alert Trigger</th><td>{{ object.alert_trigger|default_if_none:"—" }} {{ object.get_trigger_unit_display|default:"" }}</td></tr>
+<tr><th>Serial</th><td><code>{{ object.serial_number|placeholder }}</code></td></tr><tr><th>SHA-256</th><td><code>{{ object.fingerprint_sha256 }}</code></td></tr>
+<tr><th>Public Key SHA-256</th><td><code>{{ object.public_key_fingerprint }}</code></td></tr><tr><th>Key</th><td>{{ object.key_type }}{% if object.key_size %} {{ object.key_size }} bit{% endif %}{% if object.curve %} / {{ object.curve }}{% endif %}</td></tr>
+<tr><th>CA Certificate</th><td>{{ object.is_ca|yesno:"Yes,No" }}</td></tr><tr><th>Parent Certificate</th><td>{% if visible_parent %}<a href="{{ visible_parent.get_absolute_url }}">{{ visible_parent }}</a>{% else %}—{% endif %}</td></tr>
+</table></div>
+<div class="card mb-3"><h2 class="card-header">Identity</h2><table class="table table-hover attr-table"><tr><th>Subject</th><td>{{ object.subject|placeholder }}</td></tr><tr><th>Certificate Authority</th><td>{% if object.authority %}<a href="{{ object.authority.get_absolute_url }}">{{ object.authority.name }}</a>{% else %}—{% endif %}</td></tr><tr><th>Issuer DN</th><td>{{ object.issuer|placeholder }}</td></tr><tr><th>SANs</th><td>{% if object.subject_alternative_names %}<ul class="mb-0">{% for san in object.subject_alternative_names %}<li>{{ san }}</li>{% endfor %}</ul>{% else %}—{% endif %}</td></tr></table></div>
+{% if object.is_ca %}<div class="card mb-3"><h2 class="card-header">Issued Certificates</h2><div class="card-body">{% if issued_certificates %}<ul class="mb-0">{% for cert in issued_certificates %}<li><a href="{{ cert.get_absolute_url }}">{{ cert }}</a></li>{% endfor %}</ul>{% else %}<span class="text-muted">No visible certificates are currently linked to this CA.</span>{% endif %}</div></div>{% endif %}
+<div class="card mb-3"><h2 class="card-header">Certificate Material</h2><div class="card-body"><pre class="mb-0 text-break" style="white-space:pre-wrap;max-height:420px;overflow:auto"><code>{{ object.material }}</code></pre></div></div>
+</div><div class="col-md-6">
+{% include 'netbox_certificates/_groups.html' %}
+<div class="card mb-3"><h2 class="card-header">Bundles</h2><div class="card-body">{% if related_bundles %}<ul class="mb-0">{% for bundle in related_bundles %}<li><a href="{{ bundle.get_absolute_url }}">{{ bundle }}</a></li>{% endfor %}</ul>{% else %}<span class="text-muted">No visible Bundles.</span>{% endif %}</div></div>
+<div class="card mb-3"><h2 class="card-header">Chain Validation</h2><div class="card-body"><strong>{% if chain_validation.valid %}VALID{% elif chain_validation.complete %}INVALID{% else %}INCOMPLETE{% endif %}</strong><ul class="mb-0">{% for check in chain_validation.checks %}<li>{% if check.ok %}✓{% else %}✗{% endif %} {% if check.object %}<a href="{{ check.object.get_absolute_url }}">{{ check.object }}</a>: {% endif %}{{ check.message }}</li>{% endfor %}</ul></div></div>
+<div class="card mb-3"><h2 class="card-header">Renewal History</h2><div class="card-body">{% if visible_supersedes %}<div>Supersedes: <a href="{{ visible_supersedes.get_absolute_url }}">{{ visible_supersedes }}</a></div>{% endif %}{% if renewed_by %}<div>Renewed by:<ul>{% for cert in renewed_by %}<li><a href="{{ cert.get_absolute_url }}">{{ cert }}</a></li>{% endfor %}</ul></div>{% endif %}{% if not visible_supersedes and not renewed_by %}<span class="text-muted">None</span>{% endif %}</div></div>
+{% include 'netbox_certificates/_links.html' %}{% include 'inc/panels/custom_fields.html' %}{% include 'inc/panels/tags.html' %}{% include 'inc/panels/comments.html' %}
+</div></div>
+{% endblock %}

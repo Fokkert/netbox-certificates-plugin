@@ -1,0 +1,13 @@
+<div class="card mb-3">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <h2 class="mb-0">Groups</h2>
+    <a class="btn btn-sm btn-outline-primary" href="{% url 'plugins:netbox_certificates:artifactgroup_list' %}">Manage Groups</a>
+  </div>
+  <div class="card-body">
+    {% if visible_groups %}
+      <div class="d-flex flex-wrap gap-2">
+        {% for group in visible_groups %}<a class="badge text-bg-secondary text-decoration-none" href="{{ group.get_absolute_url }}">{{ group.name }}</a>{% endfor %}
+      </div>
+    {% else %}<span class="text-muted">Not assigned to a Group.</span>{% endif %}
+  </div>
+</div>

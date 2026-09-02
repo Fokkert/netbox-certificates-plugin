@@ -1,0 +1,20 @@
+<div class="card mb-3">
+  <h2 class="card-header">Cryptographic Relationships</h2>
+  {% if cryptographic_links %}
+  <div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Object</th><th>Type</th><th>Relationship</th><th>Origin</th><th></th></tr></thead><tbody>
+  {% for item in cryptographic_links %}<tr>
+    <td><a href="{{ item.other.get_absolute_url }}">{{ item.other }}</a></td><td>{{ item.type_label }}</td><td><strong>{{ item.relation_label }}</strong></td><td>{{ item.link.get_origin_display }}</td>
+    <td class="text-end">{% if item.can_remove %}<a class="btn btn-sm btn-outline-danger" href="{% url 'plugins:netbox_certificates:link_remove' pk=item.link.pk %}">Remove</a>{% endif %}</td>
+  </tr>{% endfor %}</tbody></table></div>
+  {% else %}<div class="card-body text-muted">No cryptographic relationships.</div>{% endif %}
+</div>
+<div class="card mb-3">
+  <h2 class="card-header">Linked NetBox Objects</h2>
+  {% if generic_links %}
+  <div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Object</th><th>Type</th><th>Relationship</th><th>Origin</th><th>Note</th><th></th></tr></thead><tbody>
+  {% for item in generic_links %}<tr>
+    <td>{% if item.other.get_absolute_url %}<a href="{{ item.other.get_absolute_url }}">{{ item.other }}</a>{% else %}{{ item.other }}{% endif %}</td><td>{{ item.type_label }}</td><td>{{ item.relation_label }}</td><td>{{ item.link.get_origin_display }}</td><td>{{ item.link.note|default:"—" }}</td>
+    <td class="text-end">{% if item.can_remove %}<a class="btn btn-sm btn-outline-danger" href="{% url 'plugins:netbox_certificates:link_remove' pk=item.link.pk %}">Remove</a>{% endif %}</td>
+  </tr>{% endfor %}</tbody></table></div>
+  {% else %}<div class="card-body text-muted">No additional NetBox objects linked.</div>{% endif %}
+</div>

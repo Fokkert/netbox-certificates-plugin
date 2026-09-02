@@ -1,0 +1,4 @@
+{% extends 'generic/object_list.html' %}
+{% block extra_controls %}
+  {% if perms.netbox_certificates.add_bundle %}<a class="btn btn-primary me-2" href="{% url 'plugins:netbox_certificates:import_objects' %}"><i class="mdi mdi-upload"></i> Import Objects</a>{% endif %}
+{% endblock %}

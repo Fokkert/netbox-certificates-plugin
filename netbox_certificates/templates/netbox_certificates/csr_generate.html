@@ -1,0 +1,241 @@
+{% extends 'generic/object_edit.html' %}
+{% load form_helpers %}
+{% block title %}Generate CSR and Private Key{% endblock %}
+
+{% block form %}
+  {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+  <div class="mb-4">
+    <h2>NetBox Metadata</h2>
+    {% render_field form.name %}
+    {% render_field form.owner %}
+    {% render_field form.groups %}
+  </div>
+
+  <div class="mb-4">
+    <h2>Subject</h2>
+    {% render_field form.common_name %}
+    {% render_field form.organization %}
+    {% render_field form.organizational_unit %}
+    {% render_field form.country %}
+    {% render_field form.state %}
+    {% render_field form.locality %}
+    {% render_field form.street_address %}
+    {% render_field form.postal_code %}
+    {% render_field form.subject_serial_number %}
+    {% render_field form.email %}
+  </div>
+
+  <div class="mb-4">
+    <h2>Subject Alternative Names (SANs)</h2>
+    <div class="card">
+      <div>
+        <table class="table table-hover table-vcenter mb-0">
+          <thead>
+            <tr>
+              <th style="width: 180px;">Type</th>
+              <th>Value</th>
+              <th class="text-end" style="width: 1%; white-space: nowrap;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="san-editor"></tbody>
+        </table>
+      </div>
+      <div class="card-footer">
+        <button type="button" id="add-san" class="btn btn-primary btn-sm">
+          <i class="mdi mdi-plus-thick"></i> Add SAN
+        </button>
+      </div>
+    </div>
+    {% if form.sans.errors %}<div class="text-danger mt-2">{{ form.sans.errors }}</div>{% endif %}
+  </div>
+
+  <div class="mb-4">
+    <h2>Private Key &amp; Signature</h2>
+    {% render_field form.key_algorithm %}
+    <div id="rsa-bits-row">{% render_field form.rsa_bits %}</div>
+    <div id="ec-curve-row">{% render_field form.ec_curve %}</div>
+    <div id="signature-hash-row">{% render_field form.signature_hash %}</div>
+    <div id="rsa-signature-row">{% render_field form.rsa_signature %}</div>
+  </div>
+
+  <div class="mb-4">
+    <h2>Requested X.509 Extensions</h2>
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <div class="card h-100">
+          <div class="card-header"><h3 class="mb-0">Key Usage</h3></div>
+          <div class="card-body">
+            {% for field in ku_fields %}
+              <div class="form-check mb-2">{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card h-100">
+          <div class="card-header"><h3 class="mb-0">Extended Key Usage</h3></div>
+          <div class="card-body">
+            {% for field in eku_fields %}
+              <div class="form-check mb-2">{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card mt-3">
+      <div class="card-header"><h3 class="mb-0">CA Request</h3></div>
+      <div class="card-body">
+        {% render_field form.request_ca %}
+        <div id="path-length-row">{% render_field form.path_length %}</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const hidden = document.getElementById('id_sans');
+    const editor = document.getElementById('san-editor');
+    const addButton = document.getElementById('add-san');
+    const examples = {
+      DNS: 'www.example.com',
+      IP: '192.0.2.10 or 2001:db8::10',
+      EMAIL: 'admin@example.com',
+      URI: 'spiffe://example/service'
+    };
+
+    function refreshSANRow(row) {
+      const type = row.querySelector('.san-type').value;
+      row.querySelector('.san-value').placeholder = examples[type];
+    }
+
+    function enhanceSANType(select, attempt = 0) {
+      if (select.tomselect) return;
+
+      // Use the already-initialized RSA Signature field as the canonical NetBox
+      // static-choice configuration. The 0.4.7 implementation reused only the
+      // constructor, which lost NetBox's control settings and allowed the SAN
+      // widget to render like an editable text input.
+      const reference = document.getElementById('id_rsa_signature');
+      const referenceInstance = reference && reference.tomselect;
+      const SelectConstructor = referenceInstance && referenceInstance.constructor;
+
+      if (!SelectConstructor) {
+        if (attempt < 40) {
+          window.setTimeout(() => enhanceSANType(select, attempt + 1), 25);
+        }
+        return;
+      }
+
+      const selectedValue = select.value || 'DNS';
+      const sanOptions = Array.from(select.options).map(option => ({
+        value: option.value,
+        text: option.textContent
+      }));
+
+      // Clone NetBox's settings so the SAN control behaves like RSA Signature,
+      // but replace the option/item data with the SAN choices. Render the menu
+      // under <body> so the surrounding table/card cannot clip the dropdown.
+      const settings = Object.assign({}, referenceInstance.settings, {
+        options: sanOptions,
+        items: [selectedValue],
+        create: false,
+        maxItems: 1,
+        dropdownParent: 'body'
+      });
+
+      // Static SAN choices never use an API loader. Do not inherit one from a
+      // future NetBox reference control implementation.
+      delete settings.load;
+      settings.preload = false;
+
+      const instance = new SelectConstructor(select, settings);
+
+      // Defensive guarantee: all SAN choices must exist even if the TomSelect
+      // implementation changes how it consumes the supplied `options` setting.
+      sanOptions.forEach(option => {
+        if (!instance.options[option.value]) {
+          instance.addOption(option);
+        }
+      });
+      instance.setValue(selectedValue, true);
+      instance.refreshOptions(false);
+    }
+
+    function addSANRow(type = 'DNS', value = '') {
+      const row = document.createElement('tr');
+      row.className = 'san-row';
+      row.innerHTML = `
+        <td>
+          <select class="form-select san-type" aria-label="SAN type">
+            <option value="DNS">DNS</option>
+            <option value="IP">IP</option>
+            <option value="EMAIL">Email</option>
+            <option value="URI">URI</option>
+          </select>
+        </td>
+        <td>
+          <input type="text" class="form-control san-value" autocomplete="off" aria-label="SAN value">
+        </td>
+        <td class="text-end">
+          <button type="button" class="btn btn-sm btn-outline-danger san-remove" title="Remove SAN" aria-label="Remove SAN">
+            <i class="mdi mdi-trash-can-outline"></i>
+          </button>
+        </td>`;
+      const typeSelect = row.querySelector('.san-type');
+      typeSelect.value = type;
+      row.querySelector('.san-value').value = value;
+      typeSelect.addEventListener('change', () => refreshSANRow(row));
+      row.querySelector('.san-remove').addEventListener('click', () => {
+        if (typeSelect.tomselect) typeSelect.tomselect.destroy();
+        row.remove();
+      });
+      refreshSANRow(row);
+      editor.appendChild(row);
+      enhanceSANType(typeSelect);
+    }
+
+    (hidden.value || '').split(/\r?\n/).filter(Boolean).forEach(item => {
+      const i = item.indexOf(':');
+      addSANRow(i > 0 ? item.slice(0, i) : 'DNS', i > 0 ? item.slice(i + 1) : item);
+    });
+    if (!editor.children.length) addSANRow();
+    addButton.addEventListener('click', () => addSANRow());
+    hidden.closest('form').addEventListener('submit', () => {
+      hidden.value = [...editor.querySelectorAll('.san-row')]
+        .map(row => {
+          const value = row.querySelector('.san-value').value.trim();
+          return value ? `${row.querySelector('.san-type').value}:${value}` : '';
+        })
+        .filter(Boolean)
+        .join('\n');
+    });
+
+    const algorithm = document.getElementById('id_key_algorithm');
+    function refreshAlgorithm() {
+      const value = algorithm.value;
+      document.getElementById('rsa-bits-row').style.display = value === 'rsa' ? '' : 'none';
+      document.getElementById('rsa-signature-row').style.display = value === 'rsa' ? '' : 'none';
+      document.getElementById('ec-curve-row').style.display = value === 'ec' ? '' : 'none';
+      document.getElementById('signature-hash-row').style.display = (value === 'rsa' || value === 'ec') ? '' : 'none';
+    }
+    algorithm.addEventListener('change', refreshAlgorithm);
+    refreshAlgorithm();
+
+    const requestCA = document.getElementById('id_request_ca');
+    function refreshCA() {
+      document.getElementById('path-length-row').style.display = requestCA.checked ? '' : 'none';
+    }
+    requestCA.addEventListener('change', refreshCA);
+    refreshCA();
+  });
+  </script>
+{% endblock %}
+
+{% block buttons %}
+<div class="d-flex gap-2">
+  <a href="{{ return_url }}" class="btn btn-outline-secondary">Cancel</a>
+  <button type="submit" class="btn btn-primary">Generate CSR</button>
+</div>
+{% endblock %}

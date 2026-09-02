@@ -1,0 +1,164 @@
+.inventory-page {
+  padding-top: 0.35rem;
+  padding-bottom: 1rem;
+}
+
+.inventory-shell > .card-body { padding: 1.25rem; }
+
+/* Explicit backgrounds are intentional: do not rely on color-mix() or theme-variable support. */
+.inventory-summary-bundles {
+  border-top: 4px solid #8b5cf6 !important;
+  background-color: rgba(139, 92, 246, 0.12) !important;
+}
+.inventory-summary-certificates {
+  border-top: 4px solid #206bc4 !important;
+  background-color: rgba(32, 107, 196, 0.12) !important;
+}
+.inventory-summary-privatekeys {
+  border-top: 4px solid #d63939 !important;
+  background-color: rgba(214, 57, 57, 0.12) !important;
+}
+.inventory-summary-csrs {
+  border-top: 4px solid #2fb344 !important;
+  background-color: rgba(47, 179, 68, 0.12) !important;
+}
+
+.bundle-inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.inventory-bundle-card {
+  min-width: 0;
+  border: 1px solid var(--tblr-border-color, rgba(98, 105, 118, 0.24));
+  border-top: 4px solid #8b5cf6;
+  border-radius: 0.75rem;
+  background-color: rgba(139, 92, 246, 0.07);
+  overflow: hidden;
+  box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.04);
+}
+
+.inventory-bundle-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--tblr-border-color, rgba(98, 105, 118, 0.24));
+}
+
+.inventory-bundle-kicker,
+.inventory-member-role {
+  display: block;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  color: var(--tblr-secondary-color, #8492a6);
+}
+
+.inventory-bundle-name {
+  display: inline-block;
+  max-width: 100%;
+  margin-top: 0.2rem;
+  font-size: 1.05rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--tblr-body-color, inherit);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.inventory-bundle-name:hover,
+.inventory-member:hover .inventory-member-name { text-decoration: underline; }
+
+.inventory-members {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr));
+  gap: 0.85rem;
+  padding: 1rem;
+}
+
+.inventory-member {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(32, 107, 196, 0.30);
+  border-left: 4px solid #206bc4;
+  border-radius: 0.6rem;
+  color: inherit;
+  text-decoration: none;
+  background-color: rgba(32, 107, 196, 0.10);
+}
+
+.inventory-member-certificate {
+  border-color: rgba(32, 107, 196, 0.30);
+  border-left-color: #206bc4;
+  background-color: rgba(32, 107, 196, 0.10);
+}
+.inventory-member-privatekey {
+  border-color: rgba(214, 57, 57, 0.30);
+  border-left-color: #d63939;
+  background-color: rgba(214, 57, 57, 0.10);
+}
+.inventory-member-csr {
+  border-color: rgba(47, 179, 68, 0.30);
+  border-left-color: #2fb344;
+  background-color: rgba(47, 179, 68, 0.10);
+}
+.inventory-member-ca,
+.inventory-member-chain-certificate {
+  border-color: rgba(245, 159, 0, 0.32);
+  border-left-color: #f59f00;
+  background-color: rgba(245, 159, 0, 0.10);
+}
+
+.inventory-member-name {
+  font-weight: 650;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.inventory-member-subtitle {
+  color: var(--tblr-secondary-color, #8492a6);
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+.inventory-group-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.unbundled-inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+.inventory-unbundled-group {
+  min-width: 0;
+  border: 1px solid var(--tblr-border-color, rgba(98, 105, 118, 0.24));
+  border-radius: 0.75rem;
+  background: var(--tblr-bg-surface, var(--tblr-card-bg, transparent));
+  overflow: hidden;
+}
+.inventory-unbundled-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--tblr-border-color, rgba(98, 105, 118, 0.24));
+}
+.inventory-unbundled-header h3 { font-size: 1rem; font-weight: 650; }
+
+@media (max-width: 575.98px) {
+  .inventory-shell > .card-body { padding: 0.8rem; }
+  .inventory-bundle-header { padding: 0.85rem; }
+  .inventory-members { padding: 0.85rem; }
+}

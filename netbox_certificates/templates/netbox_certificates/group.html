@@ -1,0 +1,47 @@
+{% extends 'generic/object.html' %}
+{% block content %}
+<div class="row">
+  <div class="col-md-5">
+    <div class="card mb-3">
+      <h2 class="card-header">Group</h2>
+      <table class="table table-hover attr-table mb-0">
+        <tr><th>Name</th><td>{{ object.name }}</td></tr>
+        <tr><th>Parent Group</th><td>{% if parent_group %}<a href="{{ parent_group.get_absolute_url }}">{{ parent_group.name }}</a>{% else %}—{% endif %}</td></tr>
+        <tr><th>Owner</th><td>{{ object.owner|default:"—" }}</td></tr>
+        <tr><th>Description</th><td>{{ object.description|default:"—" }}</td></tr>
+      </table>
+    </div>
+    {% include 'inc/panels/custom_fields.html' %}
+    {% include 'inc/panels/tags.html' %}
+    {% include 'inc/panels/comments.html' %}
+  </div>
+
+  <div class="col-md-7">
+    <div class="card mb-3">
+      <h2 class="card-header">Members</h2>
+      <div class="card-body">
+        <div class="mb-3">
+          <div class="text-secondary text-uppercase small fw-semibold mb-2">Groups</div>
+          {% if child_groups %}<div class="d-flex flex-wrap gap-2">{% for group in child_groups %}<a class="badge text-bg-primary text-decoration-none" href="{{ group.get_absolute_url }}">{{ group.name }}</a>{% endfor %}</div>{% else %}—{% endif %}
+        </div>
+        <div class="mb-3">
+          <div class="text-secondary text-uppercase small fw-semibold mb-2">Bundles</div>
+          {% if bundles %}<ul class="mb-0">{% for obj in bundles %}<li><a href="{{ obj.get_absolute_url }}">{{ obj }}</a></li>{% endfor %}</ul>{% else %}—{% endif %}
+        </div>
+        <div class="mb-3">
+          <div class="text-secondary text-uppercase small fw-semibold mb-2">Certificates</div>
+          {% if certificates %}<ul class="mb-0">{% for obj in certificates %}<li><a href="{{ obj.get_absolute_url }}">{{ obj }}</a>{% if obj.is_ca %} <span class="badge text-bg-secondary">CA certificate</span>{% endif %}</li>{% endfor %}</ul>{% else %}—{% endif %}
+        </div>
+        <div class="mb-3">
+          <div class="text-secondary text-uppercase small fw-semibold mb-2">Private Keys</div>
+          {% if private_keys %}<ul class="mb-0">{% for obj in private_keys %}<li><a href="{{ obj.get_absolute_url }}">{{ obj }}</a></li>{% endfor %}</ul>{% else %}—{% endif %}
+        </div>
+        <div>
+          <div class="text-secondary text-uppercase small fw-semibold mb-2">CSRs</div>
+          {% if csrs %}<ul class="mb-0">{% for obj in csrs %}<li><a href="{{ obj.get_absolute_url }}">{{ obj }}</a></li>{% endfor %}</ul>{% else %}—{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

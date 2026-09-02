@@ -1,0 +1,4 @@
+{% extends 'generic/object_edit.html' %}
+{% block title %}Import Objects{% endblock %}
+{% block form %}{% include 'htmx/form.html' %}{% endblock %}
+{% block buttons %}<a href="{{ return_url }}" class="btn btn-outline-secondary me-2">Cancel</a><button type="submit" class="btn btn-primary"><i class="mdi mdi-upload me-1"></i> Import Objects</button>{% endblock %}
