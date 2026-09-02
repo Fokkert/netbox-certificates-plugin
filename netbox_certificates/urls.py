@@ -1,9 +1,12 @@
 from django.urls import path
-from . import models, views
+
+from . import bulk_export, models, views
 
 app_name = "netbox_certificates"
+
 urlpatterns = (
     path("certificates/", views.CertificateListView.as_view(), name="certificate_list"),
+    path("certificates/export-material/", bulk_export.BulkMaterialExportView.as_view(), {"kind": "certificate"}, name="certificate_material_export"),
     path("certificates/edit/", views.CertificateBulkEditView.as_view(), name="certificate_bulk_edit"),
     path("certificates/rename/", views.CertificateBulkRenameView.as_view(), name="certificate_bulk_rename"),
     path("certificates/delete/", views.CertificateBulkDeleteView.as_view(), name="certificate_bulk_delete"),
@@ -13,13 +16,16 @@ urlpatterns = (
     path("certificates/<int:pk>/delete/", views.CertificateDeleteView.as_view(), name="certificate_delete"),
     path("certificates/<int:pk>/changelog/", views.ArtifactObjectChangeLogView.as_view(), name="certificate_changelog", kwargs={"model": models.Certificate}),
 
-    path("certificate-authorities/", views.CertificateAuthorityListView.as_view(), name="certificateauthority_list"),
-    path("certificate-authorities/<int:pk>/", views.CertificateAuthorityView.as_view(), name="certificateauthority"),
-    path("certificate-authorities/<int:pk>/edit/", views.CertificateAuthorityEditView.as_view(), name="certificateauthority_edit"),
-    path("certificate-authorities/<int:pk>/delete/", views.CertificateAuthorityDeleteView.as_view(), name="certificateauthority_delete"),
-    path("certificate-authorities/<int:pk>/changelog/", views.ArtifactObjectChangeLogView.as_view(), name="certificateauthority_changelog", kwargs={"model": models.CertificateAuthority}),
+    # CertificateAuthority remains the internal root-identity/chain-resolution model,
+    # but the dedicated web UI has been retired. Legacy URLs redirect to Certificates.
+    path("certificate-authorities/", bulk_export.CertificateAuthorityLegacyRedirectView.as_view(), name="certificateauthority_list"),
+    path("certificate-authorities/<int:pk>/", bulk_export.CertificateAuthorityLegacyRedirectView.as_view(), name="certificateauthority"),
+    path("certificate-authorities/<int:pk>/edit/", bulk_export.CertificateAuthorityLegacyRedirectView.as_view(), name="certificateauthority_edit"),
+    path("certificate-authorities/<int:pk>/delete/", bulk_export.CertificateAuthorityLegacyRedirectView.as_view(), name="certificateauthority_delete"),
+    path("certificate-authorities/<int:pk>/changelog/", bulk_export.CertificateAuthorityLegacyRedirectView.as_view(), name="certificateauthority_changelog"),
 
     path("private-keys/", views.PrivateKeyListView.as_view(), name="privatekey_list"),
+    path("private-keys/export-material/", bulk_export.BulkMaterialExportView.as_view(), {"kind": "privatekey"}, name="privatekey_material_export"),
     path("private-keys/edit/", views.PrivateKeyBulkEditView.as_view(), name="privatekey_bulk_edit"),
     path("private-keys/rename/", views.PrivateKeyBulkRenameView.as_view(), name="privatekey_bulk_rename"),
     path("private-keys/delete/", views.PrivateKeyBulkDeleteView.as_view(), name="privatekey_bulk_delete"),
@@ -30,6 +36,7 @@ urlpatterns = (
     path("private-keys/<int:pk>/changelog/", views.ArtifactObjectChangeLogView.as_view(), name="privatekey_changelog", kwargs={"model": models.PrivateKey}),
 
     path("csrs/", views.CSRListView.as_view(), name="csr_list"),
+    path("csrs/export-material/", bulk_export.BulkMaterialExportView.as_view(), {"kind": "csr"}, name="csr_material_export"),
     path("csrs/edit/", views.CSRBulkEditView.as_view(), name="csr_bulk_edit"),
     path("csrs/rename/", views.CSRBulkRenameView.as_view(), name="csr_bulk_rename"),
     path("csrs/delete/", views.CSRBulkDeleteView.as_view(), name="csr_bulk_delete"),
@@ -41,6 +48,7 @@ urlpatterns = (
     path("csrs/<int:pk>/changelog/", views.ArtifactObjectChangeLogView.as_view(), name="csr_changelog", kwargs={"model": models.CSR}),
 
     path("bundles/", views.BundleListView.as_view(), name="bundle_list"),
+    path("bundles/export-material/", bulk_export.BulkMaterialExportView.as_view(), {"kind": "bundle"}, name="bundle_material_export"),
     path("bundles/edit/", views.BundleBulkEditView.as_view(), name="bundle_bulk_edit"),
     path("bundles/rename/", views.BundleBulkRenameView.as_view(), name="bundle_bulk_rename"),
     path("bundles/delete/", views.BundleBulkDeleteView.as_view(), name="bundle_bulk_delete"),

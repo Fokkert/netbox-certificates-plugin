@@ -1,6 +1,5 @@
 from netbox.plugins import PluginMenu, PluginMenuItem
 
-
 menu = PluginMenu(
     label="SSL Certificates",
     icon_class="mdi mdi-certificate-outline",
@@ -15,11 +14,6 @@ menu = PluginMenu(
                 PluginMenuItem(
                     link="plugins:netbox_certificates:inventory",
                     link_text="Inventory",
-                ),
-                PluginMenuItem(
-                    link="plugins:netbox_certificates:certificateauthority_list",
-                    link_text="Certificate Authorities",
-                    permissions=["netbox_certificates.view_certificateauthority"],
                 ),
             ),
         ),

@@ -1,4 +1,12 @@
 # Changelog
+## 0.5.0
+
+- Add batch import of multiple Bundle archives in one transaction.
+- Add loose multi-Bundle import by grouping certificate/private-key/CSR candidates by public-key fingerprint while leaving unrelated standalone objects independent.
+- Add protected **Export Material** actions to Certificates, Private Keys, CSRs, and Bundles, including filter-aware bulk ZIP export.
+- Retire the dedicated Certificate Authorities web navigation/page. Root-CA identity synchronization, certificate authority relationships, chain resolution, and the read-only REST API remain intact; legacy web URLs redirect to Certificates.
+- Keep the NetBox 4.5.9-4.5.10 compatibility gate and Python 3.12+ requirement.
+- No database schema migration is required.
 
 ## 0.4.11
 

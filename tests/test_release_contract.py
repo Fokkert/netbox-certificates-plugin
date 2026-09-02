@@ -15,9 +15,9 @@ class ReleaseContractTests(unittest.TestCase):
         pyproject = self.read("pyproject.toml")
         plugin_manifest = self.read("netbox-plugin.yaml")
 
-        self.assertIn('version = "0.4.11"', text)
-        self.assertIn('version = "0.4.11"', pyproject)
-        self.assertIn('version: 0.4.11', plugin_manifest)
+        self.assertIn('version = "0.5.0"', text)
+        self.assertIn('version = "0.5.0"', pyproject)
+        self.assertIn('version: 0.5.0', plugin_manifest)
 
         self.assertIn('min_version = "4.5.9"', text)
         self.assertIn('max_version = "4.5.10"', text)
@@ -66,20 +66,18 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn('migrations.RemoveField(', migration)
         self.assertIn('"verbose_name": "group"', migration)
 
-    def test_certificate_authority_is_identity_model(self):
+    def test_certificate_authority_is_internal_identity_model(self):
         models = self.read("netbox_certificates/models.py")
-        views = self.read("netbox_certificates/views.py")
-        tables = self.read("netbox_certificates/tables.py")
         api_urls = self.read("netbox_certificates/api/urls.py")
+        service = self.read("netbox_certificates/services/certificate_authorities.py")
         self.assertIn("class CertificateAuthority(PrimaryModel)", models)
         self.assertIn("issuer_dn = models.TextField", models)
         self.assertIn("authority = models.ForeignKey(", models)
-        self.assertIn("CertificateAuthorityEditView", views)
-        self.assertNotIn("class CertificateAuthorityTable(CertificateTable)", tables)
         self.assertIn('router.register("certificate-authorities", CertificateAuthorityViewSet)', api_urls)
-
-    def test_certificate_authority_standard_routes_exist(self):
+        self.assertIn("def root_certificate_for", service)
+    def test_certificate_authority_web_routes_are_legacy_redirects(self):
         urls = self.read("netbox_certificates/urls.py")
+        navigation = self.read("netbox_certificates/navigation.py")
         for name in (
             "certificateauthority_list",
             "certificateauthority",
@@ -88,8 +86,8 @@ class ReleaseContractTests(unittest.TestCase):
             "certificateauthority_changelog",
         ):
             self.assertIn(f'name="{name}"', urls)
-
-
+        self.assertGreaterEqual(urls.count("CertificateAuthorityLegacyRedirectView.as_view()"), 5)
+        self.assertNotIn('link_text="Certificate Authorities"', navigation)
     def test_expiration_alert_configuration_api_queryset_is_ordered(self):
         views = self.read("netbox_certificates/api/views.py")
         block = views.split("class ExpiryAlertConfigurationViewSet", 1)[1].split("class ExpiryAlertEventViewSet", 1)[0]
@@ -132,7 +130,7 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn("import socket", alerts)
         self.assertIn("isinstance(reason, socket.gaierror)", alerts)
         self.assertIn("Webhook DNS lookup failed", alerts)
-        self.assertIn("netbox-certificates-plugin/0.4.11", alerts)
+        self.assertIn("netbox-certificates-plugin/0.5.0", alerts)
 
     def test_inventory_colors_are_explicit_and_cache_busted(self):
         css = self.read("netbox_certificates/static/netbox_certificates/inventory.css")
@@ -142,7 +140,7 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn("#d63939", css)
         self.assertIn("#2fb344", css)
         self.assertIn("background-color: rgba", css)
-        self.assertIn("?v=0.4.11", template)
+        self.assertIn("?v=0.5.0", template)
         self.assertNotIn("Object Groups:", template)
 
     def test_csr_generator_uses_netbox_table_style_san_list_and_two_extension_columns(self):
@@ -204,7 +202,7 @@ class ReleaseContractTests(unittest.TestCase):
         urls = self.read("netbox_certificates/urls.py")
         navigation = self.read("netbox_certificates/navigation.py")
         self.assertIn('path("import/", views.UnifiedImportView.as_view()', urls)
-        self.assertIn('link_text="Certificate Authorities"', navigation)
+        self.assertNotIn('link_text="Certificate Authorities"', navigation)
         self.assertIn('link_text="Groups"', navigation)
         operations = navigation.split('"Operations"', 1)[1]
         self.assertIn('link_text="Import Objects"', operations)
@@ -220,21 +218,20 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertNotIn('FieldSet("name", "parent", "owner"', group_block)
         self.assertIn('fields = ("name", "parent", "owner", "description", "comments", "tags")', group_block)
 
-    def test_groups_and_certificate_authorities_have_native_export(self):
+    def test_groups_keep_native_export_and_certificate_authority_web_ui_is_retired(self):
         views = self.read("netbox_certificates/views.py")
+        urls = self.read("netbox_certificates/urls.py")
+        navigation = self.read("netbox_certificates/navigation.py")
         self.assertIn("class ArtifactGroupListView(generic.ObjectListView):\n    actions = (AddObject, BulkExport, BulkEdit, BulkRename, BulkDelete)", views)
-        self.assertIn("class CertificateAuthorityListView(generic.ObjectListView):\n    actions = (BulkExport,)", views)
-
+        self.assertIn("CertificateAuthorityLegacyRedirectView", urls)
+        self.assertNotIn('link_text="Certificate Authorities"', navigation)
     def test_certificate_authorities_are_root_only(self):
         service = self.read("netbox_certificates/services/certificate_authorities.py")
         migration = self.read("netbox_certificates/migrations/0013_root_authorities_and_bundle_status.py")
-        views = self.read("netbox_certificates/views.py")
         self.assertIn("def root_certificate_for", service)
         self.assertIn("parsed.subject != parsed.issuer", service)
         self.assertIn("parsed.verify_directly_issued_by(parsed)", service)
         self.assertIn("Intermediate issuer identities are no longer Certificate Authorities", migration)
-        self.assertIn('certificates__subject=F("certificates__issuer")', views)
-
     def test_filter_forms_and_filtersets_cover_all_meaningful_fields(self):
         forms = self.read("netbox_certificates/forms.py")
         filtersets = self.read("netbox_certificates/filtersets.py")

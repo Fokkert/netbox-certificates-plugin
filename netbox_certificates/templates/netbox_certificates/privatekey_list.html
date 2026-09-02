@@ -1,4 +1,5 @@
 {% extends 'generic/object_list.html' %}
 {% block extra_controls %}
+  {% if perms.netbox_certificates.download_privatekey %}<a class="btn btn-outline-primary me-2" href="{% url 'plugins:netbox_certificates:privatekey_material_export' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"><i class="mdi mdi-download-multiple"></i> Export Material</a>{% endif %}
   {% if perms.netbox_certificates.add_certificate or perms.netbox_certificates.add_privatekey or perms.netbox_certificates.add_csr %}<a class="btn btn-primary me-2" href="{% url 'plugins:netbox_certificates:import_objects' %}"><i class="mdi mdi-upload"></i> Import Objects</a>{% endif %}
 {% endblock %}

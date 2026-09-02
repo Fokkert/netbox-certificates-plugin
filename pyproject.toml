@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netbox-certificates-plugin"
-version = "0.4.11"
+version = "0.5.0"
 description = "X.509 certificate, private-key, CSR, bundle, certificate-authority, relationship, and expiration management for NetBox"
 readme = "README.md"
 requires-python = ">=3.12"

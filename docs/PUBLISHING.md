@@ -45,7 +45,7 @@ With GitHub CLI authenticated:
 ```bash
 git init -b main
 git add .
-git commit -m "Initial public release preparation for 0.4.11
+git commit -m "Initial public release preparation for 0.5.0
 
 AI-Assisted-by: ChatGPT (OpenAI)"
 
@@ -108,7 +108,7 @@ python -m build
 python -m twine check dist/*
 ```
 
-You should get both a wheel and source distribution for version 0.4.11.
+You should get both a wheel and source distribution for version 0.5.0.
 
 ## 7. Configure TestPyPI Trusted Publishing
 
@@ -123,7 +123,7 @@ The workflow in `.github/workflows/testpypi.yml` uses OIDC. It does not require 
 
 In GitHub, create the environment **testpypi**. Optionally require maintainer approval for deployments.
 
-Trigger **Actions → Publish to TestPyPI → Run workflow**.
+Trigger **Actions ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Publish to TestPyPI ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Run workflow**.
 
 ## 8. Test the TestPyPI artifact
 
@@ -136,7 +136,7 @@ python -m pip install --upgrade pip
 python -m pip install cryptography
 python -m pip install --no-deps \
   --index-url https://test.pypi.org/simple/ \
-  netbox-certificates-plugin==0.4.11
+  netbox-certificates-plugin==0.5.0
 python -m pip show netbox-certificates-plugin
 ```
 
@@ -153,7 +153,7 @@ On PyPI, create a Trusted Publisher for:
 
 Create a protected GitHub environment named **pypi**. Maintainer approval is strongly recommended.
 
-The production workflow triggers only when a GitHub Release is published.
+The production workflow triggers when a Git tag matching `v*` is pushed. The workflow builds and validates the distributions, creates/updates the GitHub Release, and publishes the exact artifacts to PyPI through the protected `pypi` environment.
 
 ## 10. Create the production release
 
@@ -169,29 +169,21 @@ python -m twine check dist/*
 Commit and push any final release changes, then create an annotated tag:
 
 ```bash
-git tag -a v0.4.11 -m "NetBox Certificates Plugin 0.4.11"
-git push origin v0.4.11
+git tag -a v0.5.0 -m "NetBox Certificates Plugin 0.5.0"
+git push origin v0.5.0
 ```
 
-Create the GitHub Release from that tag, either in the UI or with GitHub CLI:
+Pushing the annotated tag triggers `.github/workflows/release.yml`. The workflow validates that the tag exactly matches `pyproject.toml`, compiles sources, runs the release-contract tests, builds and validates wheel/sdist artifacts, creates the GitHub Release, attaches the distributions, and publishes the same artifacts to PyPI with OIDC Trusted Publishing.
 
-```bash
-gh release create v0.4.11 \
-  --verify-tag \
-  --title "NetBox Certificates Plugin 0.4.11" \
-  --notes-file CHANGELOG.md
-```
-
-Publishing the release triggers `.github/workflows/release.yml`, which checks metadata/tag/version consistency, runs tests, builds wheel + sdist, validates them, attaches them to GitHub, and publishes the exact artifacts to PyPI using OIDC Trusted Publishing.
-
+Do **not** manually create a second GitHub Release before the tag workflow completes. If the `pypi` environment requires approval, approve that deployment in GitHub Actions after reviewing the build job.
 ## 11. Verify production publication
 
 Verify all three identities match:
 
 ```text
-Git tag:       v0.4.11
-PluginConfig:  0.4.11
-PyPI version:  0.4.11
+Git tag:       v0.5.0
+PluginConfig:  0.5.0
+PyPI version:  0.5.0
 ```
 
 Then validate the published artifact in staging/production using `docs/UNINSTALL.md` and the README.
@@ -207,6 +199,6 @@ For every version:
 5. Run tests/build/twine checks.
 6. Publish to TestPyPI first for packaging changes.
 7. Tag exactly `v<version>`.
-8. Publish the GitHub Release and approve the `pypi` environment deployment.
+8. Push the release tag, let `release.yml` create the GitHub Release, and approve the `pypi` environment deployment if required.
 9. Verify PyPI installation from a clean environment.
 10. Never reuse/re-upload a PyPI version. Fixes get a new version.

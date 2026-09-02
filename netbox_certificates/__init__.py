@@ -5,7 +5,7 @@ class NetBoxCertificatesConfig(PluginConfig):
     name = "netbox_certificates"
     verbose_name = "NetBox Certificates Plugin"
     description = "SSL certificate, private key, CSR, bundle, Groups, CA identities, and expiration management"
-    version = "0.4.11"
+    version = "0.5.0"
     base_url = "ssl-certificates"
     min_version = "4.5.9"
     max_version = "4.5.10"

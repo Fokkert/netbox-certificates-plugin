@@ -1,5 +1,6 @@
 {% extends 'generic/object_list.html' %}
 {% block extra_controls %}
+  {% if perms.netbox_certificates.download_csr %}<a class="btn btn-outline-primary me-2" href="{% url 'plugins:netbox_certificates:csr_material_export' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"><i class="mdi mdi-download-multiple"></i> Export Material</a>{% endif %}
   {% if perms.netbox_certificates.add_csr and perms.netbox_certificates.add_privatekey %}<a class="btn btn-success me-2" href="{% url 'plugins:netbox_certificates:csr_generate' %}"><i class="mdi mdi-key-plus"></i> Generate CSR</a>{% endif %}
   {% if perms.netbox_certificates.add_certificate or perms.netbox_certificates.add_privatekey or perms.netbox_certificates.add_csr %}<a class="btn btn-primary me-2" href="{% url 'plugins:netbox_certificates:import_objects' %}"><i class="mdi mdi-upload"></i> Import Objects</a>{% endif %}
 {% endblock %}

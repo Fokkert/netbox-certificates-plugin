@@ -10,7 +10,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import F, Q
+from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -23,14 +23,14 @@ from core.models import ObjectType
 
 from .choices import LinkOriginChoices, LinkRelationChoices
 from .constants import MAX_UPLOAD_BYTES
-from .filtersets import ArtifactGroupFilterSet, BundleFilterSet, CertificateAuthorityFilterSet, CertificateFilterSet, CSRFilterSet, PrivateKeyFilterSet
+from .filtersets import ArtifactGroupFilterSet, BundleFilterSet, CertificateFilterSet, CSRFilterSet, PrivateKeyFilterSet
 from .forms import (
     ArtifactGroupBulkEditForm, ArtifactGroupFilterForm, ArtifactGroupForm, ArtifactLinkForm, ArtifactLinkTypeForm,
     BundleArtifactFilterForm, BundleBulkEditForm, BundleExportForm, BundleForm,
-    CertificateArtifactFilterForm, CertificateAuthorityFilterForm, CertificateAuthorityForm, CertificateBulkEditForm, CertificateForm, CSRArtifactFilterForm, CSRBulkEditForm, CSRForm, CSRGenerateForm,
+    CertificateArtifactFilterForm, CertificateBulkEditForm, CertificateForm, CSRArtifactFilterForm, CSRBulkEditForm, CSRForm, CSRGenerateForm,
     ExpiryAlertConfigurationForm, PrivateKeyArtifactFilterForm, PrivateKeyBulkEditForm, PrivateKeyForm, UnifiedImportForm,
 )
-from .models import ArtifactGroup, ArtifactLink, Bundle, Certificate, CertificateAuthority, CSR, ExpiryAlertConfiguration, ExpiryAlertEvent, PrivateKey
+from .models import ArtifactGroup, ArtifactLink, Bundle, Certificate, CSR, ExpiryAlertConfiguration, ExpiryAlertEvent, PrivateKey
 from .permissions import action_queryset as _action_queryset, object_allowed as _object_allowed
 from .services.alerts import ExpiryAlertError, send_email, send_webhook
 from .services.chain import ordered_chain, validate_chain
@@ -44,7 +44,7 @@ from .services.parser import ArtifactParseError, parse_blob
 from .services.pkcs12_export import PFXExportError, build_pfx
 from .services.status import refresh_certificate_statuses
 from .services.unified_import import UnifiedImportError, UploadItem, import_objects
-from .tables import ArtifactGroupTable, BundleTable, CertificateAuthorityTable, CertificateTable, CSRTable, PrivateKeyTable
+from .tables import ArtifactGroupTable, BundleTable, CertificateTable, CSRTable, PrivateKeyTable
 
 ARTIFACT_MODELS = {"certificate": Certificate, "privatekey": PrivateKey, "csr": CSR, "bundle": Bundle}
 
@@ -126,41 +126,6 @@ class CertificateListView(CertificateStatusRefreshMixin, generic.ObjectListView)
     filterset = CertificateFilterSet
     filterset_form = CertificateArtifactFilterForm
     template_name = "netbox_certificates/certificate_list.html"
-
-
-class CertificateAuthorityListView(generic.ObjectListView):
-    actions = (BulkExport,)
-    queryset = CertificateAuthority.objects.filter(
-        certificates__is_ca=True,
-        certificates__parent_certificate__isnull=True,
-        certificates__subject=F("certificates__issuer"),
-    ).select_related("owner").prefetch_related("certificates").distinct()
-    table = CertificateAuthorityTable
-    filterset = CertificateAuthorityFilterSet
-    filterset_form = CertificateAuthorityFilterForm
-    template_name = "netbox_certificates/certificate_authority_list.html"
-
-    def get_extra_context(self, request):
-        return {"title": "Certificate Authorities"}
-
-
-class CertificateAuthorityView(generic.ObjectView):
-    queryset = CertificateAuthority.objects.select_related("owner").prefetch_related("certificates")
-    template_name = "netbox_certificates/certificate_authority.html"
-
-    def get_extra_context(self, request, instance):
-        certificates = _action_queryset(Certificate, request.user, "view").filter(authority=instance).order_by("name", "valid_to")
-        return {"issued_certificates": certificates}
-
-
-class CertificateAuthorityEditView(generic.ObjectEditView):
-    queryset = CertificateAuthority.objects.all()
-    form = CertificateAuthorityForm
-
-
-class CertificateAuthorityDeleteView(generic.ObjectDeleteView):
-    queryset = CertificateAuthority.objects.all()
-    default_return_url = "plugins:netbox_certificates:certificateauthority_list"
 
 
 class CertificateView(CertificateStatusRefreshMixin, LinkedObjectView):
