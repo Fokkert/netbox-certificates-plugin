@@ -3,6 +3,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import models
+from taggit.managers import TaggableManager
+from extras.managers import NetBoxTaggableManager
 from django.urls import reverse
 from django.utils import timezone
 from netbox.models import NetBoxModel, PrimaryModel
@@ -82,6 +84,13 @@ class CertificatePolicy(PrimaryModel):
 
 
 class Service(PrimaryModel):
+    tags = TaggableManager(
+        through="extras.TaggedItem",
+        ordering=("weight", "name"),
+        manager=NetBoxTaggableManager,
+        related_name="netbox_certificates_service_tagged+",
+    )
+
     name = models.CharField(max_length=160, unique=True)
     status = models.CharField(max_length=32, choices=ServiceStatusChoices, default=ServiceStatusChoices.ACTIVE)
     service_type = models.CharField(max_length=64, choices=ServiceTypeChoices, default=ServiceTypeChoices.WEBSITE)

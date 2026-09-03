@@ -119,7 +119,7 @@ class MetadataArchiveExportView(LoginRequiredMixin, View):
         manifest = {
             "format": "netbox-certificates-export-manifest",
             "manifest_version": 1,
-            "plugin_version": "1.0.3",
+            "plugin_version": "1.0.4",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "object_kind": kind,
             "count": len(records),

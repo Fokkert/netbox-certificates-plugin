@@ -15,12 +15,12 @@ pyproject = read("pyproject.toml")
 plugin_yaml = read("netbox-plugin.yaml")
 config = read("netbox_certificates/__init__.py")
 
-if 'version = "1.0.3"' not in pyproject:
-    errors.append("pyproject.toml does not declare version 1.0.3")
-if "version: 1.0.3" not in plugin_yaml:
-    errors.append("netbox-plugin.yaml does not declare version 1.0.3")
-if 'version = "1.0.3"' not in config:
-    errors.append("PluginConfig does not declare version 1.0.3")
+if 'version = "1.0.4"' not in pyproject:
+    errors.append("pyproject.toml does not declare version 1.0.4")
+if "version: 1.0.4" not in plugin_yaml:
+    errors.append("netbox-plugin.yaml does not declare version 1.0.4")
+if 'version = "1.0.4"' not in config:
+    errors.append("PluginConfig does not declare version 1.0.4")
 if 'min_version = "4.5.9"' not in config or 'max_version = "4.5.10"' not in config:
     errors.append("NetBox compatibility gate must remain 4.5.9 through 4.5.10")
 

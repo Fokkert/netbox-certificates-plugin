@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.4
+
+- Fix the remaining NetBox 4.5 reverse-accessor collision on Service tags.
+- Explicitly namespace the plugin Service TaggableManager reverse relation.
+- Add a state-only migration; no tag data or database schema is changed.
+
 ## 1.0.3
 
 - Fix reverse-accessor collisions between the plugin Service model and NetBox core ipam.Service for inherited owner and tags relations.

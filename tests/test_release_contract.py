@@ -9,13 +9,13 @@ class ReleaseContractTests(unittest.TestCase):
     def read(self, relative):
         return (ROOT / relative).read_text(encoding="utf-8")
 
-    def test_release_metadata_is_1_0_3(self):
+    def test_release_metadata_is_1_0_4(self):
         pyproject = self.read("pyproject.toml")
         plugin = self.read("netbox-plugin.yaml")
         config = self.read("netbox_certificates/__init__.py")
-        self.assertIn('version = "1.0.3"', pyproject)
-        self.assertIn("version: 1.0.3", plugin)
-        self.assertIn('version = "1.0.3"', config)
+        self.assertIn('version = "1.0.4"', pyproject)
+        self.assertIn("version: 1.0.4", plugin)
+        self.assertIn('version = "1.0.4"', config)
         self.assertIn('min_version = "4.5.9"', config)
         self.assertIn('max_version = "4.5.10"', config)
 
@@ -114,7 +114,7 @@ class ReleaseContractTests(unittest.TestCase):
         ):
             self.assertIn(heading, readme)
         self.assertIn("NetBox Certificates Plugin", readme)
-        self.assertIn("netbox-certificates-plugin==1.0.3", readme)
+        self.assertIn("netbox-certificates-plugin==1.0.4", readme)
 
 
 
