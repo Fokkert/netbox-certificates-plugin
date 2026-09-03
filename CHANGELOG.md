@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- Publish the corrected 1.0 package release.
+- No additional database migrations.
+
 ## 1.0.0
 
 - Add Services with many-to-many cryptographic relationships and native NetBox object links.

@@ -1,4 +1,4 @@
-# Validation — 1.0.0
+# Validation
 
 The update package performs source-level validation after applying the release files.
 

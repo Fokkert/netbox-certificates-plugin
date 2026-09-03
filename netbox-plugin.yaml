@@ -1,7 +1,7 @@
 name: netbox-certificates-plugin
 package_name: netbox-certificates-plugin
 module_name: netbox_certificates
-version: 1.0.0
+version: 1.0.1
 description: Certificate inventory, services, cryptographic relationships, health, policy, alerts, and secure material management for NetBox
 repository: https://github.com/Fokkert/netbox-certificates-plugin
 license: Apache-2.0

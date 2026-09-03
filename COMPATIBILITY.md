@@ -1,6 +1,6 @@
 # Compatibility
 
-## 1.0.0
+## 1.0.x
 
 | Component | Supported |
 | --- | --- |
@@ -13,4 +13,4 @@
 
 The plugin enforces `PluginConfig.min_version = "4.5.9"` and `max_version = "4.5.10"`.
 
-NetBox 4.6 and later are not accepted by 1.0.0. A future compatibility release should validate migrations, generic views, GraphQL, background jobs, permission behavior and filter contracts against the target NetBox version before raising the maximum version.
+NetBox 4.6 and later are not accepted by the 1.0 series. A future compatibility release should validate migrations, generic views, GraphQL, background jobs, permission behavior and filter contracts against the target NetBox version before raising the maximum version.

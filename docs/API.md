@@ -1,4 +1,4 @@
-# REST API — 1.0.0
+# REST API
 
 Base path:
 
