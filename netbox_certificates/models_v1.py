@@ -86,6 +86,7 @@ class CertificatePolicy(PrimaryModel):
 class Service(PrimaryModel):
     tags = TaggableManager(
         through="extras.TaggedItem",
+        to="extras.Tag",
         ordering=("weight", "name"),
         manager=NetBoxTaggableManager,
         related_name="netbox_certificates_service_tagged+",

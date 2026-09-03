@@ -51,7 +51,7 @@ Existing expiration-alert database records are retained for data safety but are 
 Pin:
 
 ```text
-netbox-certificates-plugin==1.0.4
+netbox-certificates-plugin==1.0.5
 ```
 
 Then run:
@@ -71,7 +71,7 @@ sudo -u netbox /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py check
 Expected package version:
 
 ```text
-Version: 1.0.4
+Version: 1.0.5
 ```
 
 Restart services:

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.5
+
+- Fix NetBox 4.5 migration-state rendering by explicitly serializing TaggableManager target models as extras.Tag.
+- Correct the historical 0014 migration and the 0018 Service tags state migration, which must load before any later repair migration can run.
+- Keep the runtime Service tags definition consistent with the serialized migration state.
+- Add regression coverage for every serialized TaggableManager in the plugin migrations.
+- No new migration number is added because the defect is inside migrations that must themselves become loadable.
+
 ## 1.0.4
 
 - Fix the remaining NetBox 4.5 reverse-accessor collision on Service tags.

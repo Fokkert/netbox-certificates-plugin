@@ -17,6 +17,7 @@ class Migration(migrations.Migration):
                     name="tags",
                     field=taggit.managers.TaggableManager(
                         through="extras.TaggedItem",
+                        to="extras.Tag",
                         ordering=("weight", "name"),
                         manager=extras.managers.NetBoxTaggableManager,
                         related_name="netbox_certificates_service_tagged+",

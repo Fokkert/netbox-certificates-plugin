@@ -40,7 +40,7 @@ class BulkOperationsContractTests(unittest.TestCase):
         for text in (exporter, metadata):
             self.assertIn('"manifest.json"', text)
             self.assertIn("sha256", text.lower())
-            self.assertIn('"plugin_version": "1.0.4"', text)
+            self.assertIn('"plugin_version": "1.0.5"', text)
 
     def test_sensitive_archive_headers_remain(self):
         exporter = self.read("netbox_certificates/bulk_export.py")

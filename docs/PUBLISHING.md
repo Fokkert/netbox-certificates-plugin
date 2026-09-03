@@ -1,4 +1,4 @@
-# Publishing 1.0.4
+# Publishing 1.0.5
 
 ## Preconditions
 
@@ -25,8 +25,8 @@ git push origin main
 After the main-branch workflow succeeds:
 
 ```powershell
-git tag -a v1.0.4 -m "NetBox Certificates Plugin 1.0.4"
-git push origin v1.0.4
+git tag -a v1.0.5 -m "NetBox Certificates Plugin 1.0.5"
+git push origin v1.0.5
 ```
 
 The repository's release workflow should build/validate the wheel and source distribution, create/update the GitHub Release and publish to PyPI according to its existing trusted-publishing configuration.
@@ -43,4 +43,4 @@ python -m pip index versions netbox-certificates-plugin \
   --no-cache-dir
 ```
 
-Confirm `1.0.4` is visible before changing production `local_requirements.txt`.
+Confirm `1.0.5` is visible before changing production `local_requirements.txt`.

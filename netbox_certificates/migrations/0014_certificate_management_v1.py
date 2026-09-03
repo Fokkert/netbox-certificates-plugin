@@ -70,6 +70,7 @@ def _base_fields():
             "tags",
             taggit.managers.TaggableManager(
                 through="extras.TaggedItem",
+                to="extras.Tag",
                 ordering=("weight", "name"),
                 manager=extras.managers.NetBoxTaggableManager,
             ),
