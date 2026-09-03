@@ -243,7 +243,7 @@ def _webhook_url(config):
 def send_webhook(config, certificate=None, *, test=False):
     url = _webhook_url(config)
     data = json.dumps(build_alert_payload(certificate, test=test), separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    headers = {"Content-Type": "application/json", "Accept": "application/json", "User-Agent": "netbox-certificates-plugin/1.0.2"}
+    headers = {"Content-Type": "application/json", "Accept": "application/json", "User-Agent": "netbox-certificates-plugin/1.0.3"}
     try:
         bearer = decrypt_secret(config.webhook_bearer_token_encrypted)
     except PrivateKeyEncryptionError as exc:

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3
+
+- Fix reverse-accessor collisions between the plugin Service model and NetBox core ipam.Service for inherited owner and tags relations.
+- Namespace Service default reverse relations using the plugin app label.
+- Add a state-only migration; no database schema columns or tables are changed.
+
 ## 1.0.2
 
 - Fix NetBox 4.5 compatibility for v1 ChoiceSet definitions.

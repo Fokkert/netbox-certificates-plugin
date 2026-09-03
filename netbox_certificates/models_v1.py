@@ -166,6 +166,7 @@ class Service(PrimaryModel):
 
     class Meta:
         ordering = ("name",)
+        default_related_name = "%(app_label)s_%(model_name)s_set"
         permissions = (
             ("archive_export_service", "Can archive-export services"),
         )
