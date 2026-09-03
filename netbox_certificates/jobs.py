@@ -1,20 +1,9 @@
-from netbox.jobs import JobRunner, system_job
-from .constants import ALERT_SYSTEM_JOB_INTERVAL_MINUTES
-from .services.alerts import run_expiry_alert_scan
-from .services.status import refresh_certificate_statuses
+"""1.0 background-job entry point.
 
+The pre-1.0 expiration-only system job is intentionally removed. Health,
+validity, and all configured alert types are processed by the unified job.
+"""
 
-@system_job(interval=ALERT_SYSTEM_JOB_INTERVAL_MINUTES)
-class ExpiryAlertSystemJob(JobRunner):
-    class Meta:
-        name = "NetBox Certificates: Expiration Alert Scan"
-    def run(self, *args, **kwargs):
-        return run_expiry_alert_scan()
+from .jobs_v1 import CertificateHealthAndAlertJob
 
-
-@system_job(interval=60)
-class CertificateStatusSystemJob(JobRunner):
-    class Meta:
-        name = "NetBox Certificates: Refresh Certificate Status"
-    def run(self, *args, **kwargs):
-        return {"updated": refresh_certificate_statuses()}
+__all__ = ("CertificateHealthAndAlertJob",)

@@ -401,7 +401,7 @@ class ArtifactGroupBulkDeleteView(SmartBulkDeleteView):
 class UnifiedImportView(LoginRequiredMixin, View):
     template_name = "netbox_certificates/import_objects.html"
     def _context(self, request, form=None):
-        return {"form": form or UnifiedImportForm(user=request.user), "return_url": request.GET.get("return_url") or reverse("plugins:netbox_certificates:inventory")}
+        return {"form": form or UnifiedImportForm(user=request.user), "return_url": request.GET.get("return_url") or reverse("plugins:netbox_certificates:vault")}
     def get(self, request):
         return render(request, self.template_name, self._context(request))
     def post(self, request):
@@ -450,7 +450,7 @@ class UnifiedImportView(LoginRequiredMixin, View):
         if kinds == {Certificate}: return redirect("plugins:netbox_certificates:certificate_list")
         if kinds == {PrivateKey}: return redirect("plugins:netbox_certificates:privatekey_list")
         if kinds == {CSR}: return redirect("plugins:netbox_certificates:csr_list")
-        return redirect("plugins:netbox_certificates:inventory")
+        return redirect("plugins:netbox_certificates:vault")
 
 
 class CSRGenerateView(PermissionRequiredMixin, View):
@@ -635,7 +635,7 @@ class ExpirationAlertsView(LoginRequiredMixin, View):
         form = ExpiryAlertConfigurationForm(request.POST, instance=config, require_email=action == "test_email", require_webhook=action == "test_webhook")
         if not form.is_valid(): return render(request, self.template_name, self._context(request, form=form))
         config = form.save()
-        if action == "save": messages.success(request, "Expiration alert configuration saved."); return redirect("plugins:netbox_certificates:expiration_alerts")
+        if action == "save": messages.success(request, "Expiration alert configuration saved."); return redirect("plugins:netbox_certificates:alertrule_list")
         if not self._test_allowed(request.user): raise PermissionDenied("You do not have permission to test expiration alerts.")
         now = timezone.now()
         try:
@@ -655,7 +655,7 @@ class ExpirationAlertsView(LoginRequiredMixin, View):
                 config.webhook_last_test_at = now; config.webhook_last_test_success = False; config.webhook_last_test_message = message[:500]
                 config.save(update_fields=("webhook_last_test_at", "webhook_last_test_success", "webhook_last_test_message", "last_updated"))
             messages.error(request, message)
-        return redirect("plugins:netbox_certificates:expiration_alerts")
+        return redirect("plugins:netbox_certificates:alertrule_list")
 
 
 class ArtifactLinkCreateView(LoginRequiredMixin, View):

@@ -1,14 +1,16 @@
 # Compatibility
 
-## 0.5.0
+## 1.0.0
 
-| NetBox | Support level |
+| Component | Supported |
 | --- | --- |
-| 4.5.9 | Declared supported; same compatibility target as 0.4.11. Run staging/live validation before production promotion of 0.5.0. |
-| 4.5.10 | Declared supported by `PluginConfig`; same NetBox 4.5 patch line. |
-| <= 4.5.8 | Unsupported and rejected by `min_version = "4.5.9"`. |
-| >= 4.6.0 | Unsupported and rejected by `max_version = "4.5.10"`; a dedicated compatibility release is required. |
+| NetBox | 4.5.9, 4.5.10 |
+| Python | 3.12+ |
+| PostgreSQL | The version supported by the selected NetBox 4.5 installation |
+| `cryptography` | 42+ |
+| `requests` | 2.32+ |
+| Upgrade source | 0.5.0 |
 
-Python 3.12+ is required by the package. The 0.5.0 release does not change the NetBox compatibility gate.
+The plugin enforces `PluginConfig.min_version = "4.5.9"` and `max_version = "4.5.10"`.
 
-The release changes application behavior only; it does not alter the database schema. The existing `CertificateAuthority` data model and CA-chain relationships are retained.
+NetBox 4.6 and later are not accepted by 1.0.0. A future compatibility release should validate migrations, generic views, GraphQL, background jobs, permission behavior and filter contracts against the target NetBox version before raising the maximum version.

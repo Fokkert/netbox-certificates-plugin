@@ -1,0 +1,24 @@
+<div class="card mb-3">
+  <h5 class="card-header d-flex justify-content-between align-items-center">
+    <span>Services</span>
+    {% if perms.netbox_certificates.change_service %}
+      <a class="btn btn-sm btn-outline-primary" href="{% url 'plugins:netbox_certificates:service_list' %}">
+        <i class="mdi mdi-server-network"></i> Manage Services
+      </a>
+    {% endif %}
+  </h5>
+  <div class="card-body p-0">
+    <table class="table table-hover attr-table mb-0">
+      <tbody>
+        {% for service in linked_services %}
+          <tr>
+            <td><a href="{{ service.get_absolute_url }}">{{ service }}</a></td>
+            <td class="text-end text-muted">{{ service.get_service_type_display }}</td>
+          </tr>
+        {% empty %}
+          <tr><td class="text-muted">No Services linked.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

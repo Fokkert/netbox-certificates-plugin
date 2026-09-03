@@ -1,0 +1,9 @@
+{% for node in nodes %}
+<li class="mb-1">
+  {% if node.children %}<button type="button" class="btn btn-sm btn-link p-0 me-1" data-group-toggle="{{ node.id }}" aria-controls="group-children-{{ node.id }}" aria-expanded="true"><i class="mdi mdi-chevron-down"></i></button>{% else %}<span class="d-inline-block" style="width:1.5rem"></span>{% endif %}
+  <a href="{{ node.url }}">{{ node.name }}</a>
+  <span class="badge text-bg-secondary ms-2">{{ node.service_count }} services</span>
+  <span class="badge text-bg-secondary ms-1">{{ node.artifact_count }} artifacts</span>
+  {% if node.children %}<ul class="list-unstyled ms-4" id="group-children-{{ node.id }}">{% include 'netbox_certificates/inc/group_tree_nodes.html' with nodes=node.children %}</ul>{% endif %}
+</li>
+{% endfor %}

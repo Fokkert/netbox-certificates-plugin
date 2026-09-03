@@ -1,0 +1,45 @@
+{% extends 'generic/object.html' %}
+{% load helpers %}
+{% load plugins %}
+
+{% block content %}
+{% if test_action_name %}
+<div class="mb-3">
+  {% if test_action_name == "alertchannel_test" %}
+    <form method="post" action="{% url 'plugins:netbox_certificates:alertchannel_test' pk=object.pk %}" class="d-inline">
+  {% else %}
+    <form method="post" action="{% url 'plugins:netbox_certificates:alertrule_test' pk=object.pk %}" class="d-inline">
+  {% endif %}
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline-warning"><i class="mdi mdi-send-check"></i> Test</button>
+    </form>
+</div>
+{% endif %}
+<div class="row">
+  <div class="col col-md-8">
+    <div class="card">
+      <h5 class="card-header">{{ object|meta:"verbose_name"|capfirst }}</h5>
+      <table class="table table-hover attr-table">
+        {% for label, value in detail_rows %}
+          <tr>
+            <th scope="row">{{ label }}</th>
+            <td>{{ value|placeholder }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% include 'inc/panels/custom_fields.html' %}
+    {% include 'inc/panels/comments.html' %}
+    {% plugin_left_page object %}
+  </div>
+  <div class="col col-md-4">
+    {% include 'inc/panels/tags.html' %}
+    {% plugin_right_page object %}
+  </div>
+</div>
+<div class="row">
+  <div class="col col-md-12">
+    {% plugin_full_width_page object %}
+  </div>
+</div>
+{% endblock %}

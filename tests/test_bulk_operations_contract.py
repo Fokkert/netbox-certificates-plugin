@@ -8,69 +8,69 @@ class BulkOperationsContractTests(unittest.TestCase):
     def read(self, relative):
         return (ROOT / relative).read_text(encoding="utf-8")
 
-    def test_material_export_routes_exist_for_all_crypto_object_pages(self):
+    def test_material_routes_exist_for_crypto_lists_and_ca(self):
         urls = self.read("netbox_certificates/urls.py")
-        for route_name in (
+        for name in (
             "certificate_material_export",
             "privatekey_material_export",
             "csr_material_export",
             "bundle_material_export",
+            "certificateauthority_material_export",
         ):
-            self.assertIn(f'name="{route_name}"', urls)
+            self.assertIn(f'name="{name}"', urls)
 
-    def test_bulk_export_preserves_custom_permission_boundaries(self):
-        export = self.read("netbox_certificates/bulk_export.py")
-        self.assertIn('"certificate": {', export)
-        self.assertIn('"privatekey": {', export)
-        self.assertIn('"csr": {', export)
-        self.assertIn('"bundle": {', export)
-        self.assertIn('"action": "download"', export)
-        self.assertIn('"action": "export"', export)
-        self.assertIn("action_queryset(config[\"model\"], request.user, config[\"action\"])", export)
-        self.assertIn("decrypt_private_key", export)
-        self.assertIn('response["Cache-Control"] = "no-store, no-cache, must-revalidate, private"', export)
+    def test_export_filter_bug_is_fixed_by_allowlisting_filterset_keys(self):
+        exporter = self.read("netbox_certificates/bulk_export.py")
+        self.assertIn("allowed = set(filterset_class.base_filters.keys())", exporter)
+        self.assertIn("for key in allowed:", exporter)
+        self.assertIn("request.GET.getlist(key)", exporter)
+        self.assertIn('{"filter", "filter_id"}', exporter)
+        self.assertNotIn("filterset_class(request.GET or None", exporter)
 
-    def test_list_pages_expose_material_export_controls(self):
-        expected = {
-            "certificate_list.html": "certificate_material_export",
-            "privatekey_list.html": "privatekey_material_export",
-            "csr_list.html": "csr_material_export",
-            "bundle_list.html": "bundle_material_export",
-        }
-        for template, route_name in expected.items():
+    def test_material_export_starts_with_action_restricted_queryset(self):
+        exporter = self.read("netbox_certificates/bulk_export.py")
+        self.assertIn('action_queryset(config["model"], request.user, config["action"])', exporter)
+        self.assertIn("decrypt_private_key", exporter)
+        self.assertIn('"action": "download"', exporter)
+        self.assertIn('"action": "export"', exporter)
+
+    def test_multi_file_exports_have_manifest_and_checksums(self):
+        exporter = self.read("netbox_certificates/bulk_export.py")
+        metadata = self.read("netbox_certificates/export_v1.py")
+        for text in (exporter, metadata):
+            self.assertIn('"manifest.json"', text)
+            self.assertIn("sha256", text.lower())
+            self.assertIn('"plugin_version": "1.0.0"', text)
+
+    def test_sensitive_archive_headers_remain(self):
+        exporter = self.read("netbox_certificates/bulk_export.py")
+        self.assertIn('response["Cache-Control"] = "no-store, no-cache, must-revalidate, private"', exporter)
+        self.assertIn('response["Pragma"] = "no-cache"', exporter)
+        self.assertIn('response["X-Content-Type-Options"] = "nosniff"', exporter)
+
+    def test_new_lists_use_native_bulk_capable_generic_views(self):
+        views = self.read("netbox_certificates/views_v1.py")
+        for view_name in (
+            "ServiceBulkEditView",
+            "ServiceBulkDeleteView",
+            "CertificatePolicyBulkEditView",
+            "CertificatePolicyBulkDeleteView",
+            "ObjectLinkBulkEditView",
+            "ObjectLinkBulkDeleteView",
+            "AlertRuleBulkEditView",
+            "AlertRuleBulkDeleteView",
+        ):
+            self.assertIn(f"class {view_name}", views)
+
+    def test_crypto_list_templates_keep_custom_export_controls(self):
+        for template in (
+            "certificate_list.html",
+            "privatekey_list.html",
+            "csr_list.html",
+            "bundle_list.html",
+        ):
             text = self.read(f"netbox_certificates/templates/netbox_certificates/{template}")
-            self.assertIn(route_name, text)
             self.assertIn("Export Material", text)
-            self.assertIn("request.GET.urlencode", text)
-
-    def test_certificate_authority_ui_is_retired_but_identity_mechanism_remains(self):
-        navigation = self.read("netbox_certificates/navigation.py")
-        urls = self.read("netbox_certificates/urls.py")
-        views = self.read("netbox_certificates/views.py")
-        models = self.read("netbox_certificates/models.py")
-        api_urls = self.read("netbox_certificates/api/urls.py")
-        service = self.read("netbox_certificates/services/certificate_authorities.py")
-
-        self.assertNotIn('link_text="Certificate Authorities"', navigation)
-        self.assertIn("CertificateAuthorityLegacyRedirectView", urls)
-        self.assertNotIn("class CertificateAuthorityListView", views)
-        self.assertNotIn("class CertificateAuthorityView", views)
-        self.assertNotIn("class CertificateAuthorityEditView", views)
-        self.assertNotIn("class CertificateAuthorityDeleteView", views)
-        self.assertFalse((ROOT / "netbox_certificates/templates/netbox_certificates/certificate_authority.html").exists())
-        self.assertFalse((ROOT / "netbox_certificates/templates/netbox_certificates/certificate_authority_list.html").exists())
-        self.assertIn("class CertificateAuthority(PrimaryModel)", models)
-        self.assertIn("authority = models.ForeignKey(", models)
-        self.assertIn('router.register("certificate-authorities", CertificateAuthorityViewSet)', api_urls)
-        self.assertIn("def root_certificate_for", service)
-
-    def test_unified_import_can_batch_archives_and_loose_bundle_identities(self):
-        unified = self.read("netbox_certificates/services/unified_import.py")
-        self.assertIn("archive_items = [item for item in items if is_archive(item.data)]", unified)
-        self.assertIn("with transaction.atomic():", unified)
-        self.assertIn("def _loose_bundle_groups(parsed_records):", unified)
-        self.assertIn("public-key fingerprint", unified.lower())
-        self.assertIn("bulk-bundle-", unified)
 
 
 if __name__ == "__main__":

@@ -1,204 +1,46 @@
-# Publishing to GitHub and PyPI
+# Publishing 1.0.0
 
-This document is the maintainer release runbook for NetBox Certificates Plugin.
+## Preconditions
 
-## 1. Choose the public repository identity
+Before publishing:
 
-The intended repository name is:
+1. apply the supplied update to a clean 0.5.0 clone;
+2. allow the updater's static tests/compile checks to complete;
+3. review `git status`;
+4. push `main`;
+5. let GitHub Actions complete successfully.
 
-```text
-netbox-certificates-plugin
+## Commit and push
+
+```powershell
+cd "$HOME\Desktop\test\netbox-certificates-plugin"
+
+git add -A
+git commit -m "feat: release certificate management 1.0"
+git push origin main
 ```
 
-Before the first public release, replace **every** occurrence of:
+## Tag
 
-```text
-Fokkert
+After the main-branch workflow succeeds:
+
+```powershell
+git tag -a v1.0.0 -m "NetBox Certificates Plugin 1.0.0"
+git push origin v1.0.0
 ```
 
-with the real GitHub user/organization that will own the repository.
+The repository's release workflow should build/validate the wheel and source distribution, create/update the GitHub Release and publish to PyPI according to its existing trusted-publishing configuration.
 
-Run:
+Do not publish a second manually-built distribution with different bytes under the same version.
+
+## PyPI verification
+
+After publication:
 
 ```bash
-python scripts/check_release_metadata.py
+python -m pip index versions netbox-certificates-plugin \
+  --index-url https://pypi.org/simple \
+  --no-cache-dir
 ```
 
-The check intentionally fails while the placeholder remains.
-
-## 2. Check the PyPI distribution name
-
-The intended distribution name is:
-
-```text
-netbox-certificates-plugin
-```
-
-PyPI project names are globally unique. Check the live PyPI project page immediately before first publication. If the name has been claimed, change only the **distribution name** in `pyproject.toml` and the release/install documentation; the NetBox plugin import module can remain `netbox_certificates`.
-
-There is an existing GitHub project (`NetworkSeb/netbox-certificates`) using the same Python import module `netbox_certificates`. The projects cannot safely coexist in one Python environment. This is documented in the README.
-
-## 3. Create the GitHub repository
-
-With GitHub CLI authenticated:
-
-```bash
-git init -b main
-git add .
-git commit -m "Initial public release preparation for 0.5.0
-
-AI-Assisted-by: ChatGPT (OpenAI)"
-
-gh repo create Fokkert/netbox-certificates-plugin \
-  --public \
-  --source=. \
-  --remote=origin \
-  --push
-```
-
-Or create an empty repository in the GitHub UI and add it as `origin` manually.
-
-Recommended repository topics:
-
-```text
-netbox netbox-plugin x509 pki certificates csr pkcs12 django ai-assisted-development
-```
-
-## 4. ChatGPT/OpenAI attribution
-
-Do **not** fabricate a GitHub co-author email for ChatGPT. GitHub counts a `Co-authored-by:` trailer as a contribution only when the email is associated with a real GitHub account.
-
-This repository instead uses four explicit disclosure surfaces:
-
-1. README disclosure near the top.
-2. `AI_ASSISTANCE.md` describing the role of AI and human responsibility.
-3. `NOTICE` attribution that downstream Apache-2.0 distributions must preserve when applicable.
-4. Optional custom commit trailer:
-
-```text
-AI-Assisted-by: ChatGPT (OpenAI)
-```
-
-That trailer is human-readable metadata; it is intentionally **not** a fake GitHub co-author identity.
-
-Do not imply that OpenAI sponsors, endorses, owns, or maintains the project.
-
-## 5. License
-
-The repository uses **Apache License 2.0 + NOTICE**.
-
-This is a good fit for a NetBox plugin because it is permissive and compatible with the wider NetBox ecosystem while retaining license/NOTICE attribution obligations and requiring prominent notices for modified files when distributing derivatives.
-
-If you wanted file-level copyleft instead, MPL-2.0 would be a stronger alternative, but switching licenses after public contributions begin can become complicated. Decide before accepting outside contributions.
-
-## 6. Local build verification
-
-Use a clean Python virtual environment separate from production NetBox:
-
-```bash
-python3 -m venv .venv-build
-source .venv-build/bin/activate
-python -m pip install --upgrade pip build twine
-
-python scripts/check_release_metadata.py
-python -m unittest discover -s tests -v
-python -m compileall -q netbox_certificates
-rm -rf dist build *.egg-info
-python -m build
-python -m twine check dist/*
-```
-
-You should get both a wheel and source distribution for version 0.5.0.
-
-## 7. Configure TestPyPI Trusted Publishing
-
-Create/configure the TestPyPI project and add a GitHub Trusted Publisher using:
-
-- GitHub owner: your repository owner
-- Repository: `netbox-certificates-plugin`
-- Workflow filename: `testpypi.yml`
-- Environment: `testpypi`
-
-The workflow in `.github/workflows/testpypi.yml` uses OIDC. It does not require a long-lived PyPI API token in GitHub Secrets.
-
-In GitHub, create the environment **testpypi**. Optionally require maintainer approval for deployments.
-
-Trigger **Actions ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Publish to TestPyPI ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Run workflow**.
-
-## 8. Test the TestPyPI artifact
-
-For a metadata/download test in an isolated environment:
-
-```bash
-python3 -m venv /tmp/nbcert-testpypi
-source /tmp/nbcert-testpypi/bin/activate
-python -m pip install --upgrade pip
-python -m pip install cryptography
-python -m pip install --no-deps \
-  --index-url https://test.pypi.org/simple/ \
-  netbox-certificates-plugin==0.5.0
-python -m pip show netbox-certificates-plugin
-```
-
-Do not import the plugin outside a NetBox environment as a runtime compatibility test; it imports NetBox APIs by design.
-
-## 9. Configure production PyPI Trusted Publishing
-
-On PyPI, create a Trusted Publisher for:
-
-- GitHub owner: your repository owner
-- Repository: `netbox-certificates-plugin`
-- Workflow filename: `release.yml`
-- Environment: `pypi`
-
-Create a protected GitHub environment named **pypi**. Maintainer approval is strongly recommended.
-
-The production workflow triggers when a Git tag matching `v*` is pushed. The workflow builds and validates the distributions, creates/updates the GitHub Release, and publishes the exact artifacts to PyPI through the protected `pypi` environment.
-
-## 10. Create the production release
-
-Make sure the working tree is clean and all checks pass:
-
-```bash
-python scripts/check_release_metadata.py
-python -m unittest discover -s tests -v
-python -m build
-python -m twine check dist/*
-```
-
-Commit and push any final release changes, then create an annotated tag:
-
-```bash
-git tag -a v0.5.0 -m "NetBox Certificates Plugin 0.5.0"
-git push origin v0.5.0
-```
-
-Pushing the annotated tag triggers `.github/workflows/release.yml`. The workflow validates that the tag exactly matches `pyproject.toml`, compiles sources, runs the release-contract tests, builds and validates wheel/sdist artifacts, creates the GitHub Release, attaches the distributions, and publishes the same artifacts to PyPI with OIDC Trusted Publishing.
-
-Do **not** manually create a second GitHub Release before the tag workflow completes. If the `pypi` environment requires approval, approve that deployment in GitHub Actions after reviewing the build job.
-## 11. Verify production publication
-
-Verify all three identities match:
-
-```text
-Git tag:       v0.5.0
-PluginConfig:  0.5.0
-PyPI version:  0.5.0
-```
-
-Then validate the published artifact in staging/production using `docs/UNINSTALL.md` and the README.
-
-## 12. Future release checklist
-
-For every version:
-
-1. Update `netbox_certificates/__init__.py` version and compatibility gate if required.
-2. Update `pyproject.toml` version.
-3. Update `CHANGELOG.md`, `COMPATIBILITY.md`, `UPGRADE.md`, and validation evidence.
-4. If NetBox minor-version support changes, run a fresh live test matrix before widening `min_version`/`max_version`.
-5. Run tests/build/twine checks.
-6. Publish to TestPyPI first for packaging changes.
-7. Tag exactly `v<version>`.
-8. Push the release tag, let `release.yml` create the GitHub Release, and approve the `pypi` environment deployment if required.
-9. Verify PyPI installation from a clean environment.
-10. Never reuse/re-upload a PyPI version. Fixes get a new version.
+Confirm `1.0.0` is visible before changing production `local_requirements.txt`.

@@ -1,20 +1,29 @@
-# Security Policy
+# Security
 
-## Supported versions
+## Sensitive material
 
-For release 0.4.11, the declared NetBox range is 4.5.9-4.5.10.
+Private-key material is encrypted at rest with the Fernet key configured under:
 
-## Reporting a vulnerability
+```python
+PLUGINS_CONFIG["netbox_certificates"]["encryption_key"]
+```
 
-Do not post private-key material, Fernet encryption keys, API tokens, SMTP credentials, webhook tokens, or other secrets in a public GitHub issue.
+1.0 also encrypts SMTP passwords and webhook configuration.
 
-Enable GitHub **Private vulnerability reporting** for the repository and use it for security reports. Until configured, contact the repository maintainer privately through the account/organization that owns the repository.
+Do not rotate or replace the Fernet key without a migration procedure.
 
-## Security invariants
+## Exposure boundaries
 
-- private-key plaintext is encrypted at rest and excluded from ordinary serializers;
-- private-key material API access requires superuser status and a write-enabled token;
-- CSR generation that creates a private key is superuser-only through the API;
-- Bundle export containing a private key and all PFX exports are superuser-only through the API;
-- cryptographically mismatched primary artifacts are rejected atomically;
-- sensitive downloads should not be cached.
+Raw private-key material and alert secrets are excluded from:
+
+- normal list/detail metadata serializers;
+- GraphQL metadata;
+- global search indexes;
+- ordinary metadata archives;
+- filters.
+
+Authorized direct/material exports may contain decrypted private keys. Treat those downloaded files/archives as secrets.
+
+## Reporting
+
+Report suspected vulnerabilities through the repository's security-reporting mechanism or maintainers rather than publishing exploit details in a public issue before coordination.

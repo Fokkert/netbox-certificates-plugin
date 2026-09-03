@@ -1,50 +1,94 @@
-# Upgrade Notes
+# Upgrade to 1.0.0
 
-## 0.4.11 -> 0.5.0
+Version 1.0.0 changes the plugin UI, API, relationship model, alerting model, and database schema.
 
-0.5.0 has **no database schema migration**. The `CertificateAuthority` model and certificate-chain relationships remain intact.
+## Before upgrading
 
-This feature release:
+Back up:
 
-- adds multi-Bundle batch import for multiple uploaded archives and multiple loose identity sets;
-- adds protected bulk cryptographic-material export on the Certificates, Private Keys, CSRs, and Bundles pages;
-- retires the dedicated Certificate Authorities web page/navigation while retaining root-CA identity resolution and the read-only REST API;
-- redirects legacy Certificate Authority web URLs to filtered Certificate inventory views.
+1. PostgreSQL
+2. NetBox `configuration.py`
+3. `/opt/netbox/local_requirements.txt`
+4. the existing `netbox_certificates` Fernet encryption key
 
-Back up the NetBox database and the plugin encryption key before any production upgrade. Update the pinned package version in `/opt/netbox/local_requirements.txt`, run NetBox's normal `upgrade.sh`, run `manage.py check`, and restart NetBox and NetBox RQ.
+Keep the existing Fernet key. Replacing it will make previously encrypted private-key and alert-channel secrets unreadable.
 
-Because bulk Private Key and Bundle material exports can contain plaintext private-key material, review `download_privatekey` and `export_bundle` ObjectPermissions before enabling the release for operators.
+## Data migration
 
-## 0.4.10 -> 0.4.11
+The upgrade preserves existing:
 
-0.4.11 has no database migration and no new static asset. Replace the plugin source, run `manage.py check`, and restart NetBox and NetBox RQ. This release fixes direct REST creation of Certificate and CSR objects with valid PEM material under NetBox 4.5.x model validation.
+- Groups
+- Certificates
+- Private Keys
+- CSRs
+- Bundles
+- certificate-chain and root relationships
 
-## 0.4.9 -> 0.4.10
+New tables are added for Services, Certificate Policies, Object Links, Health Findings, Alert Rules, Alert Channels, and Alert Events.
 
-0.4.10 has no database migration and no new static asset. Replace the plugin source, run `manage.py check`, and restart NetBox and NetBox RQ. This release corrects unified-import API validation status codes: invalid cryptographic combinations now return HTTP 400 rather than HTTP 500.
+Legacy ArtifactLink records are migrated to ObjectLink where their endpoints can be resolved.
 
-## 0.4.8 -> 0.4.9
+## API and URL changes
 
-0.4.9 has no database migration and no new static asset. Replace the plugin source, run `manage.py check`, and restart NetBox and NetBox RQ. This release fixes ordering for the expiration-alert configuration REST API queryset.
+Applications or scripts using older plugin URLs must update them before deployment.
 
-## 0.4.7 -> 0.4.9
+| Previous | 1.0.0 |
+| --- | --- |
+| `/inventory/` | `/vault/` |
+| `/expiration-alerts/` | `/alerts/` |
+| legacy ArtifactLink API | `object-links/` |
+| legacy CA identity API | `certificate-authorities/` returning CA Certificate objects |
+| expiration-only alert resources | `alert-rules/`, `alert-channels/`, `alert-events/` |
 
-0.4.9 has no database migration and no new static asset. Replace the plugin source, run `manage.py check`, and restart NetBox and NetBox RQ.
+The old routes are not aliases in 1.0.0.
 
-The release corrects only the CSR SAN Type dropdown initialization introduced in 0.4.7.
+## Alert configuration
 
-## 0.4.6 -> 0.4.7
+Existing expiration-alert database records are retained for data safety but are not converted automatically to Alert Rules and Alert Channels. Configure the required 1.0.0 channels and rules after the upgrade.
 
-0.4.7 has no database migration and introduces no new static asset. Replace the plugin source and restart both NetBox services.
+## Upgrade
 
-## 0.4.5 -> 0.4.6
+Pin:
 
-0.4.6 has no database migration and introduces no new static file. Replace the plugin source and restart both NetBox services.
+```text
+netbox-certificates-plugin==1.0.0
+```
 
-## 0.4.4 -> 0.4.5
+Then run:
 
-0.4.5 has no database migration and no new static assets.
+```bash
+cd /opt/netbox
+sudo ./upgrade.sh
+```
 
-Replace the plugin source, run `manage.py check`, and restart both NetBox and NetBox RQ services.
+Validate:
 
-Retired 0.4.x compatibility routes are intentionally removed. Use the current `expiration-alerts/`, `expiration-alert-configurations/`, `expiration-alert-events/`, `certificates/expiration-summary/`, and `import-objects/` interfaces only.
+```bash
+sudo -u netbox /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py check
+/opt/netbox/venv/bin/python -m pip show netbox-certificates-plugin
+```
+
+Expected package version:
+
+```text
+Version: 1.0.0
+```
+
+Restart services:
+
+```bash
+sudo systemctl restart netbox netbox-rq
+```
+
+## Rollback
+
+A database migrated to 1.0.0 should not be downgraded by installing 0.5.0 over it.
+
+Rollback procedure:
+
+1. stop NetBox
+2. restore the pre-upgrade PostgreSQL backup
+3. restore the previous `local_requirements.txt`
+4. reinstall the previous plugin version
+5. run `manage.py check`
+6. restart NetBox and NetBox RQ

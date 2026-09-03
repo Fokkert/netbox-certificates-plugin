@@ -1,0 +1,28 @@
+{% extends 'generic/object_list.html' %}
+{% block extra_controls %}
+  {{ block.super }}
+  {% if perms.netbox_certificates.run_healthscan_healthfinding %}<form method="post" action="{% url 'plugins:netbox_certificates:health_refresh' %}" class="d-inline me-2">{% csrf_token %}<button class="btn btn-outline-warning" type="submit"><i class="mdi mdi-refresh"></i> Run Health Scan</button></form>{% endif %}
+  {% if perms.netbox_certificates.archive_export_healthfinding %}<a class="btn btn-outline-primary me-2" href="{% url 'plugins:netbox_certificates:healthfinding_archive_export' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"><i class="mdi mdi-archive-arrow-down"></i> Export Archive</a>{% endif %}
+  <a class="btn btn-outline-secondary me-2" href="{% url 'plugins:netbox_certificates:certificatepolicy_list' %}"><i class="mdi mdi-shield-check"></i> Policies</a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col"><div class="card"><div class="card-body"><div class="text-muted">Critical</div><div class="display-6">{{ health_counts.critical }}</div></div></div></div>
+  <div class="col"><div class="card"><div class="card-body"><div class="text-muted">High</div><div class="display-6">{{ health_counts.high }}</div></div></div></div>
+  <div class="col"><div class="card"><div class="card-body"><div class="text-muted">Medium</div><div class="display-6">{{ health_counts.medium }}</div></div></div></div>
+  <div class="col"><div class="card"><div class="card-body"><div class="text-muted">Warning</div><div class="display-6">{{ health_counts.warning }}</div></div></div></div>
+  <div class="col"><div class="card"><div class="card-body"><div class="text-muted">Total Active</div><div class="display-6">{{ health_counts.total }}</div></div></div></div>
+</div>
+<div class="card mb-3">
+  <h5 class="card-header">Finding Categories</h5>
+  <div class="card-body d-flex flex-wrap gap-3">
+    {% for row in health_categories %}
+      <span class="badge text-bg-secondary">{{ row.category|title }}: {{ row.total }}</span>
+    {% empty %}
+      <span class="text-muted">No active findings.</span>
+    {% endfor %}
+  </div>
+</div>
+{{ block.super }}
+{% endblock %}

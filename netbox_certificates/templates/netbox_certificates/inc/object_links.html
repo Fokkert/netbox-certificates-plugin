@@ -1,0 +1,68 @@
+<div class="card mb-3">
+  <h5 class="card-header d-flex justify-content-between align-items-center">
+    <span>Linked NetBox Objects</span>
+    {% if perms.netbox_certificates.add_objectlink %}
+      <a class="btn btn-sm btn-primary" href="{% url 'plugins:netbox_certificates:objectlink_add' %}?source_type={{ source_content_type.pk }}&source_object_id={{ object.pk }}&return_url={{ object.get_absolute_url|urlencode }}">
+        <i class="mdi mdi-link-plus"></i> Link
+      </a>
+    {% endif %}
+  </h5>
+  <div class="card-body p-0">
+    <table class="table table-hover attr-table mb-0">
+      <tbody>
+        {% for link in object_links %}
+          <tr>
+            <th scope="row">
+              {{ link.relationship }}
+              {% if link.automatic %}<span class="badge text-bg-info ms-1">automatic</span>{% endif %}
+            </th>
+            <td>
+              {% if link.target %}
+                {% if link.target.get_absolute_url %}<a href="{{ link.target.get_absolute_url }}">{{ link.target }}</a>{% else %}{{ link.target }}{% endif %}
+              {% else %}
+                <span class="text-muted">Missing object</span>
+              {% endif %}
+              {% if link.label %}<span class="text-muted ms-2">{{ link.label }}</span>{% endif %}
+            </td>
+            <td class="text-end text-nowrap">
+              {% if not link.automatic and perms.netbox_certificates.change_objectlink %}
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'plugins:netbox_certificates:objectlink_edit' pk=link.pk %}" title="Edit link"><i class="mdi mdi-pencil"></i></a>
+              {% endif %}
+              {% if not link.automatic and perms.netbox_certificates.delete_objectlink %}
+                <a class="btn btn-sm btn-outline-danger" href="{% url 'plugins:netbox_certificates:objectlink_delete' pk=link.pk %}" title="Delete link"><i class="mdi mdi-trash-can-outline"></i></a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        {% for link in reverse_object_links %}
+          <tr>
+            <th scope="row">
+              {{ link.relationship }} <span class="text-muted">(reverse)</span>
+              {% if link.automatic %}<span class="badge text-bg-info ms-1">automatic</span>{% endif %}
+            </th>
+            <td>
+              {% if link.source %}
+                {% if link.source.get_absolute_url %}<a href="{{ link.source.get_absolute_url }}">{{ link.source }}</a>{% else %}{{ link.source }}{% endif %}
+              {% else %}
+                <span class="text-muted">Missing object</span>
+              {% endif %}
+              {% if link.label %}<span class="text-muted ms-2">{{ link.label }}</span>{% endif %}
+            </td>
+            <td class="text-end text-nowrap">
+              {% if not link.automatic and perms.netbox_certificates.change_objectlink %}
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'plugins:netbox_certificates:objectlink_edit' pk=link.pk %}" title="Edit link"><i class="mdi mdi-pencil"></i></a>
+              {% endif %}
+              {% if not link.automatic and perms.netbox_certificates.delete_objectlink %}
+                <a class="btn btn-sm btn-outline-danger" href="{% url 'plugins:netbox_certificates:objectlink_delete' pk=link.pk %}" title="Delete link"><i class="mdi mdi-trash-can-outline"></i></a>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          {% if not object_links %}
+            <tr><td colspan="3" class="text-muted">No linked NetBox objects.</td></tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -2,7 +2,7 @@
 {% load helpers %}
 {% block extra_controls %}
   {% if can_download %}<a class="btn btn-primary me-2" href="{% url 'plugins:netbox_certificates:download' kind='certificate' pk=object.pk %}"><i class="mdi mdi-download"></i> Download</a>{% endif %}
-  {% if can_add_link %}<a class="btn btn-outline-primary me-2" href="{% url 'plugins:netbox_certificates:link_add' kind='certificate' pk=object.pk %}"><i class="mdi mdi-link-plus"></i> Link Object</a>{% endif %}
+  {% if can_add_link %}<a class="btn btn-outline-primary me-2" href="{% url 'plugins:netbox_certificates:objectlink_add' %}"><i class="mdi mdi-link-plus"></i> Link Object</a>{% endif %}
 {% endblock %}
 {% block content %}
 <div class="row"><div class="col-md-6">

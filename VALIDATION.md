@@ -1,24 +1,34 @@
-# Validation Notes - 0.5.0
+# Validation — 1.0.0
 
-0.5.0 is a feature release for bulk import/export and Certificate Authority UI retirement.
+The update package performs source-level validation after applying the release files.
 
-Source-level validation performed for this update includes:
+## Automated checks
 
-- Python syntax compilation for all new/replaced Python modules;
-- release-contract/static tests for the four material-export routes and permission boundaries;
-- static verification that the Certificate Authorities navigation item is removed while the `CertificateAuthority` model, certificate `authority` foreign key, root-CA service, and read-only API route remain;
-- static verification that batch import supports multiple archive inputs and groups loose Bundle candidates by public-key fingerprint;
-- archive integrity verification for the supplied update ZIP.
+- 0.5.0 source baseline verification
+- release metadata verification
+- 1.0 model and API integration checks
+- static feature contract tests
+- Python source compilation
+- `git diff --check`
+- repository neutrality/security scan
+- removed route/API registration checks
 
-Production/live NetBox integration validation is still required before publishing 0.5.0. In particular, validate:
+The contract tests cover Services, many-to-many cryptographic relationships, ObjectLinks, CA Certificate views, Health checks, Alert models, export filtering, manifests, global search, migrations, and navigation.
 
-1. importing ten unrelated certificates in one request;
-2. importing five independent Bundle archives in one request;
-3. importing multiple loose certificate/key/CSR Bundle sets;
-4. bulk Certificate and CSR export under constrained ObjectPermissions;
-5. bulk Private Key export under the intended `download_privatekey` scope;
-6. bulk Bundle export for public-only and private-key-containing Bundles;
-7. legacy Certificate Authority URLs redirecting to Certificates without breaking CA-chain resolution;
-8. `manage.py check`, background jobs, and expiration-alert delivery after upgrade.
+## NetBox runtime validation
 
-No database migration is expected for 0.5.0 because the CA identity model and relationships remain unchanged.
+Before production deployment, run against NetBox 4.5.9 or 4.5.10 with PostgreSQL and Redis:
+
+```bash
+python manage.py check
+python manage.py migrate --check
+python manage.py makemigrations --check --dry-run netbox_certificates
+```
+
+Recommended smoke tests:
+
+1. create a Service and link a Certificate
+2. export a filtered Certificate list with **Export Material**
+3. run a Health scan
+4. verify an Alert Channel test
+5. verify existing Certificates, Keys, CSRs, Bundles, and Groups are present after migration

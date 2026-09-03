@@ -1,4 +1,16 @@
 # Changelog
+
+## 1.0.0
+
+- Add Services with many-to-many cryptographic relationships and native NetBox object links.
+- Add Certificate Policies and structured Health and Validity findings.
+- Add configurable alert rules, SMTP/webhook channels, and delivery history.
+- Restore Certificate Authorities as a view and API of CA Certificate objects.
+- Replace Inventory with Cryptographic Vault and add an expandable Group tree.
+- Add relationship-aware filtering, global search, GraphQL coverage, and NetBox-native metadata support.
+- Fix filtered material export and add SHA-256 manifests to multi-file exports.
+- Replace legacy relationship, CA identity, and expiration-alert public interfaces with the 1.0 object model.
+
 ## 0.5.0
 
 - Add batch import of multiple Bundle archives in one transaction.

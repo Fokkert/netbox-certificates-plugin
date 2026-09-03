@@ -1,0 +1,59 @@
+{% extends 'base/layout.html' %}
+{% load helpers %}
+
+{% block title %}Cryptographic Vault{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col">
+    <h1>Cryptographic Vault</h1>
+    <p class="text-muted mb-0">Consolidated cryptographic inventory, service assignment, and health overview.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  {% for label, value, url in vault_cards %}
+    <div class="col-sm-6 col-xl-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="text-muted">{{ label }}</div>
+          <div class="display-6 mb-2">{{ value }}</div>
+          {% if url %}<a href="{{ url }}">Open</a>{% endif %}
+        </div>
+      </div>
+    </div>
+  {% empty %}
+    <div class="col-12"><div class="alert alert-info">No Vault data is visible with your current permissions.</div></div>
+  {% endfor %}
+</div>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <h5 class="card-header">Unassigned Cryptographic Objects</h5>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-8">Certificates without a Service</dt><dd class="col-sm-4 text-end">{{ unassigned_certificates }}</dd>
+          <dt class="col-sm-8">Private Keys without a Service</dt><dd class="col-sm-4 text-end">{{ unassigned_private_keys }}</dd>
+          <dt class="col-sm-8">CSRs without a Service</dt><dd class="col-sm-4 text-end">{{ unassigned_csrs }}</dd>
+          <dt class="col-sm-8">Bundles without a Service</dt><dd class="col-sm-4 text-end">{{ unassigned_bundles }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <h5 class="card-header">Active Health Finding Categories</h5>
+      <div class="card-body">
+        {% for row in vault_health_categories %}
+          <div class="d-flex justify-content-between border-bottom py-1">
+            <span>{{ row.category|title }}</span><strong>{{ row.total }}</strong>
+          </div>
+        {% empty %}
+          <span class="text-muted">No active findings.</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

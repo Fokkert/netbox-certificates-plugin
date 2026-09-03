@@ -1,0 +1,3 @@
+{% extends 'generic/object_list.html' %}
+{% block extra_controls %}
+  {{ block.super }}{% if perms.netbox_certificates.archive_export_alertchannel %}<a class="btn btn-outline-primary me-2" href="{% url 'plugins:netbox_certificates:alertchannel_archive_export' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"><i class="mdi mdi-archive-arrow-down"></i> Export Archive</a>{% endif %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:alertrule_list' %}">Rules</a>{% endblock %}

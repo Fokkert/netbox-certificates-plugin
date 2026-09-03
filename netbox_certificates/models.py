@@ -405,3 +405,15 @@ def delete_empty_bundles():
 @receiver(post_delete, sender=CSR)
 def cleanup_empty_bundles_after_member_delete(sender, instance, **kwargs):
     delete_empty_bundles()
+
+# Public 1.0 management models. Imported after the established cryptographic
+# model classes to preserve their implementation and avoid circular initialization.
+from .models_v1 import (
+    AlertChannel,
+    AlertEvent,
+    AlertRule,
+    CertificatePolicy,
+    HealthFinding,
+    ObjectLink,
+    Service,
+)

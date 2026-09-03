@@ -1,0 +1,55 @@
+{% extends 'generic/object_list.html' %}
+{% load static %}
+
+{% block extra_controls %}
+  {{ block.super }}
+  {% if perms.netbox_certificates.view_artifactgroup %}
+    <a class="btn btn-outline-primary me-2" href="{% url 'plugins:netbox_certificates:artifactgroup_archive_export' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
+      <i class="mdi mdi-archive-arrow-down"></i> Export Archive
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="card mb-3">
+    <h5 class="card-header">Group Tree</h5>
+    <div class="card-body">
+      <ul class="list-unstyled mb-0" id="certificate-group-tree">
+        {% include 'netbox_certificates/inc/group_tree_nodes.html' with nodes=group_tree %}
+      </ul>
+      {% if not group_tree %}<span class="text-muted">No Groups match the current filter.</span>{% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h5 class="card-header">Table View</h5>
+    <div class="card-body p-0">
+      {{ block.super }}
+    </div>
+  </div>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-group-toggle]').forEach(function (button) {
+      const key = 'nbcert-group-' + button.dataset.groupToggle;
+      const target = document.getElementById('group-children-' + button.dataset.groupToggle);
+      if (!target) return;
+
+      const open = localStorage.getItem(key) !== 'closed';
+      target.hidden = !open;
+      button.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+      const icon = button.querySelector('i');
+      if (icon) icon.className = open ? 'mdi mdi-chevron-down' : 'mdi mdi-chevron-right';
+
+      button.addEventListener('click', function () {
+        const nextOpen = target.hidden;
+        target.hidden = !nextOpen;
+        button.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+        if (icon) icon.className = nextOpen ? 'mdi mdi-chevron-down' : 'mdi mdi-chevron-right';
+        localStorage.setItem(key, nextOpen ? 'open' : 'closed');
+      });
+    });
+  });
+  </script>
+{% endblock %}
