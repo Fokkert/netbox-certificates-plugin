@@ -10,13 +10,13 @@ class ServiceStatusChoices(ChoiceSet):
     DEPRECATED = "deprecated"
     OFFLINE = "offline"
 
-    CHOICES = (
+    CHOICES = [
         (ACTIVE, "Active", "green"),
         (PLANNED, "Planned", "blue"),
         (MAINTENANCE, "Maintenance", "orange"),
         (DEPRECATED, "Deprecated", "yellow"),
         (OFFLINE, "Offline", "gray"),
-    )
+    ]
 
 
 class ServiceTypeChoices(ChoiceSet):
@@ -48,7 +48,7 @@ class ServiceTypeChoices(ChoiceSet):
     EXTERNAL_APPLICATION = "external_application"
     OTHER = "other"
 
-    CHOICES = (
+    CHOICES = [
         (WEB_SERVER, "Web Server", "blue"),
         (WEBSITE, "Website", "blue"),
         (REPOSITORY, "Repository", "purple"),
@@ -74,7 +74,7 @@ class ServiceTypeChoices(ChoiceSet):
         (INTERNAL_APPLICATION, "Internal Application", "gray"),
         (EXTERNAL_APPLICATION, "External Application", "gray"),
         (OTHER, "Other", "gray"),
-    )
+    ]
 
 
 class ServiceEnvironmentChoices(ChoiceSet):
@@ -87,14 +87,14 @@ class ServiceEnvironmentChoices(ChoiceSet):
     LAB = "lab"
     OTHER = "other"
 
-    CHOICES = (
+    CHOICES = [
         (PRODUCTION, "Production", "red"),
         (STAGING, "Staging", "orange"),
         (DEVELOPMENT, "Development", "blue"),
         (TESTING, "Testing", "cyan"),
         (LAB, "Lab", "purple"),
         (OTHER, "Other", "gray"),
-    )
+    ]
 
 
 class ServiceCriticalityChoices(ChoiceSet):
@@ -105,12 +105,12 @@ class ServiceCriticalityChoices(ChoiceSet):
     HIGH = "high"
     CRITICAL = "critical"
 
-    CHOICES = (
+    CHOICES = [
         (LOW, "Low", "gray"),
         (MEDIUM, "Medium", "yellow"),
         (HIGH, "High", "orange"),
         (CRITICAL, "Critical", "red"),
-    )
+    ]
 
 
 class FindingSeverityChoices(ChoiceSet):
@@ -122,13 +122,13 @@ class FindingSeverityChoices(ChoiceSet):
     HIGH = "high"
     CRITICAL = "critical"
 
-    CHOICES = (
+    CHOICES = [
         (INFO, "Info", "blue"),
         (WARNING, "Warning", "yellow"),
         (MEDIUM, "Medium", "orange"),
         (HIGH, "High", "red"),
         (CRITICAL, "Critical", "red"),
-    )
+    ]
 
 
 class FindingStatusChoices(ChoiceSet):
@@ -139,12 +139,12 @@ class FindingStatusChoices(ChoiceSet):
     IGNORED = "ignored"
     RESOLVED = "resolved"
 
-    CHOICES = (
+    CHOICES = [
         (ACTIVE, "Active", "red"),
         (ACKNOWLEDGED, "Acknowledged", "yellow"),
         (IGNORED, "Ignored", "gray"),
         (RESOLVED, "Resolved", "green"),
-    )
+    ]
 
 
 class AlertChannelTypeChoices(ChoiceSet):
@@ -153,10 +153,10 @@ class AlertChannelTypeChoices(ChoiceSet):
     EMAIL = "email"
     WEBHOOK = "webhook"
 
-    CHOICES = (
+    CHOICES = [
         (EMAIL, "Email", "blue"),
         (WEBHOOK, "Webhook", "purple"),
-    )
+    ]
 
 
 class AlertEventStatusChoices(ChoiceSet):
@@ -166,8 +166,8 @@ class AlertEventStatusChoices(ChoiceSet):
     FAILED = "failed"
     SKIPPED = "skipped"
 
-    CHOICES = (
+    CHOICES = [
         (DELIVERED, "Delivered", "green"),
         (FAILED, "Failed", "red"),
         (SKIPPED, "Skipped", "gray"),
-    )
+    ]

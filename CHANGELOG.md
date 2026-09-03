@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2
+
+- Fix NetBox 4.5 compatibility for v1 ChoiceSet definitions.
+- Add regression coverage requiring keyed ChoiceSet CHOICES values to use lists.
+- No additional database migrations.
+
 ## 1.0.1
 
 - Publish the corrected 1.0 package release.

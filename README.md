@@ -158,7 +158,7 @@ See [docs/API.md](docs/API.md).
 Add the package to `/opt/netbox/local_requirements.txt`:
 
 ```text
-netbox-certificates-plugin==1.0.1
+netbox-certificates-plugin==1.0.2
 ```
 
 Enable the plugin:
