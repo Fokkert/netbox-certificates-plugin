@@ -1,4 +1,5 @@
 from django import forms
+from urllib.parse import urlsplit
 from django.utils.html import format_html_join
 from django.utils.safestring import mark_safe
 from django.contrib.contenttypes.models import ContentType
@@ -78,8 +79,23 @@ class JSONListField(forms.JSONField):
         return value
 
 
+class LineListField(forms.CharField):
+    widget = forms.Textarea
+
+    def prepare_value(self, value):
+        return "\n".join(str(item) for item in value) if isinstance(value, list) else value
+
+    def to_python(self, value):
+        if isinstance(value, list):
+            return value
+        return [line.strip() for line in str(value or "").splitlines() if line.strip()]
+
+
 class ServiceForm(PrimaryModelForm):
-    deployment = forms.CharField(required=True, widget=DeploymentTextInput())
+    deployment = forms.ChoiceField(choices=[(p, p) for p in DeploymentTextInput.presets] + [("custom", "Custom deployment")])
+    custom_deployment = forms.CharField(required=False, max_length=120, label="Custom deployment name")
+    protocol = forms.ChoiceField(choices=[(p, p.upper()) for p in ("https", "tls", "ldaps", "smtps", "imaps", "pop3s", "mqtts", "postgresql", "mysql")])
+    port = forms.IntegerField(required=False, min_value=1, max_value=65535, help_text="Leave blank to use the URL port or the protocol default.")
     deployment_metadata = forms.JSONField(required=False)
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False)
     certificates = DynamicModelMultipleChoiceField(queryset=Certificate.objects.all(), required=False)
@@ -87,14 +103,16 @@ class ServiceForm(PrimaryModelForm):
     csrs = DynamicModelMultipleChoiceField(queryset=CSR.objects.all(), required=False)
     bundles = DynamicModelMultipleChoiceField(queryset=Bundle.objects.all(), required=False)
     policy = DynamicModelChoiceField(queryset=CertificatePolicy.objects.all(), required=False)
-    additional_urls = JSONListField(required=False, help_text='JSON list, e.g. ["https://service.example/"]')
+    additional_urls = LineListField(required=False, help_text="One URL per line.", widget=forms.Textarea(attrs={"rows": 3}))
 
     fieldsets = (
-        FieldSet("name", "status", "service_type", "other_type", "deployment", "deployment_metadata", "environment", "criticality"),
+        FieldSet("name", "status", "service_type", "environment", "criticality", name="Service"),
+        FieldSet("deployment", "custom_deployment", name="Deployment"),
         FieldSet("protocol", "primary_url", "additional_urls", "hostname", "port", "sni_name", name="Endpoints"),
         FieldSet("external_reference", "contact", "enabled", "policy", name="Management"),
         FieldSet("groups", "certificates", "private_keys", "csrs", "bundles", name="Relationships"),
         FieldSet("owner", "description", "comments", "tags", name="NetBox"),
+        FieldSet("other_type", "deployment_metadata", name="Advanced"),
     )
 
     class Meta:
@@ -106,6 +124,38 @@ class ServiceForm(PrimaryModelForm):
             "groups", "certificates", "private_keys", "csrs", "bundles",
             "owner", "description", "comments", "tags",
         )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            for name in ("deployment", "protocol"):
+                value = getattr(self.instance, name)
+                if value not in dict(self.fields[name].choices):
+                    self.fields[name].choices = [*self.fields[name].choices, (value, value)]
+        else:
+            self.initial["port"] = None
+        self.fields["primary_url"].help_text = "Enter the service URL; hostname and SNI are filled from it when left blank."
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("deployment") == "custom":
+            if not cleaned.get("custom_deployment"):
+                self.add_error("custom_deployment", "Enter a deployment name.")
+            cleaned["deployment"] = cleaned.get("custom_deployment") or "Generic TLS Endpoint"
+        cleaned["deployment_metadata"] = cleaned.get("deployment_metadata") or {}
+        parsed = urlsplit(cleaned.get("primary_url") or "")
+        if not cleaned.get("hostname"):
+            cleaned["hostname"] = parsed.hostname or ""
+        if not cleaned.get("sni_name"):
+            cleaned["sni_name"] = cleaned.get("hostname") or ""
+        if not cleaned.get("port"):
+            defaults = {"https": 443, "tls": 443, "ldaps": 636, "smtps": 465, "imaps": 993,
+                        "pop3s": 995, "mqtts": 8883, "postgresql": 5432, "mysql": 3306}
+            try:
+                cleaned["port"] = parsed.port or defaults.get(cleaned.get("protocol"), 443)
+            except ValueError:
+                self.add_error("primary_url", "The URL port must be between 1 and 65535.")
+        return cleaned
 
 
 class ServiceBulkEditForm(PrimaryModelBulkEditForm):
@@ -265,6 +315,21 @@ class HealthFindingBulkEditForm(PrimaryModelBulkEditForm):
     nullable_fields = ("description", "comments")
 
 
+class HealthFindingForm(PrimaryModelForm):
+    class Meta:
+        model = HealthFinding
+        fields = ("status", "description", "comments", "tags")
+
+    def save(self, commit=True):
+        from django.utils import timezone
+        instance = super().save(commit=False)
+        instance.resolved_at = timezone.now() if instance.status == "resolved" else None
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
+
+
 class HealthFindingFilterForm(PrimaryModelFilterSetForm):
     model = HealthFinding
     q = forms.CharField(required=False)
@@ -345,10 +410,10 @@ class AlertChannelForm(PrimaryModelForm):
         FieldSet("name", "enabled", "channel_type", "recipients", "subject_prefix"),
         FieldSet(
             "smtp_host", "smtp_port", "smtp_username", "smtp_password",
-            "smtp_use_tls", "smtp_use_ssl", "from_email",
+            "smtp_use_tls", "smtp_use_ssl", "smtp_verify_tls", "from_email",
             name="SMTP",
         ),
-        FieldSet("webhook_url", "webhook_headers", name="Webhook"),
+        FieldSet("webhook_url", "webhook_headers", "webhook_verify_tls", name="Webhook"),
         FieldSet("owner", "description", "comments", "tags", name="NetBox"),
     )
 
@@ -357,7 +422,7 @@ class AlertChannelForm(PrimaryModelForm):
         fields = (
             "name", "enabled", "channel_type", "recipients",
             "smtp_host", "smtp_port", "smtp_username", "smtp_password",
-            "smtp_use_tls", "smtp_use_ssl", "from_email",
+            "smtp_use_tls", "smtp_use_ssl", "smtp_verify_tls", "webhook_verify_tls", "from_email",
             "webhook_url", "webhook_headers", "subject_prefix",
             "owner", "description", "comments", "tags",
         )

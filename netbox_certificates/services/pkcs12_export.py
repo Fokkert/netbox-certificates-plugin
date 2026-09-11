@@ -8,8 +8,8 @@ class PFXExportError(ValueError):
     pass
 
 
-def build_pfx(bundle, password: str, chain_certificates=None) -> bytes:
-    if not password:
+def build_pfx(bundle, password: str, chain_certificates=None, *, allow_unencrypted=False) -> bytes:
+    if not password and not allow_unencrypted:
         raise PFXExportError("A non-empty password is required for PFX export.")
     if bundle.certificate is None or bundle.private_key is None:
         raise PFXExportError("PFX export requires both a certificate and a private key.")
@@ -30,5 +30,6 @@ def build_pfx(bundle, password: str, chain_certificates=None) -> bytes:
             raise PFXExportError(f"Unable to parse chain certificate {obj}: {exc}") from exc
     return pkcs12.serialize_key_and_certificates(
         name=bundle.certificate.name.encode("utf-8"), key=key, cert=cert, cas=cas or None,
-        encryption_algorithm=serialization.BestAvailableEncryption(password.encode("utf-8")),
+        encryption_algorithm=(serialization.BestAvailableEncryption(password.encode("utf-8"))
+                              if password else serialization.NoEncryption()),
     )

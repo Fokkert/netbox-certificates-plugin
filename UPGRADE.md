@@ -1,94 +1,88 @@
-# Upgrade to 1.0.0
+# Upgrade to 1.1.0
 
-Version 1.0.0 changes the plugin UI, API, relationship model, alerting model, and database schema.
+This revision upgrades 1.0.5 in place on NetBox 4.5.9 or 4.5.10. No uninstall is needed. The commands below assume the standard `/opt/netbox` installation, local PostgreSQL database `netbox`, and systemd services `netbox` and `netbox-rq`. Adjust these names for your VM; Docker installations should rebuild their image instead.
 
 ## Before upgrading
 
-Back up:
+Keep the existing `PLUGINS_CONFIG['netbox_certificates']['encryption_key']` unchanged. Back up PostgreSQL, NetBox configuration (including that key), and `/opt/netbox/local_requirements.txt`. A VM snapshot is also useful.
 
-1. PostgreSQL
-2. NetBox `configuration.py`
-3. `/opt/netbox/local_requirements.txt`
-4. the existing `netbox_certificates` Fernet encryption key
+Run on the Linux VM, not on the development Windows computer:
 
-Keep the existing Fernet key. Replacing it will make previously encrypted private-key and alert-channel secrets unreadable.
+```bash
+sudo systemctl stop netbox netbox-rq
+umask 077
+sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.1.0.dump"
+sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.1.0
+```
 
-## Data migration
+If the database is remote or has a different name, use your usual database backup command. Confirm the backup succeeded before continuing.
 
-The upgrade preserves existing:
+## Install the new package
 
-- Groups
-- Certificates
-- Private Keys
-- CSRs
-- Bundles
-- certificate-chain and root relationships
+After GitHub's release workflow has successfully published **1.1.0** to PyPI:
 
-New tables are added for Services, Certificate Policies, Object Links, Health Findings, Alert Rules, Alert Channels, and Alert Events.
+```bash
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.1.0'
+```
 
-Legacy ArtifactLink records are migrated to ObjectLink where their endpoints can be resolved.
+Before publication, copy the built `netbox_certificates_plugin-1.1.0-py3-none-any.whl` to the VM, for example `/tmp/`, and use this command instead:
 
-## API and URL changes
+```bash
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade /tmp/netbox_certificates_plugin-1.1.0-py3-none-any.whl
+```
 
-Applications or scripts using older plugin URLs must update them before deployment.
-
-| Previous | 1.0.0 |
-| --- | --- |
-| `/inventory/` | `/vault/` |
-| `/expiration-alerts/` | `/alerts/` |
-| legacy ArtifactLink API | `object-links/` |
-| legacy CA identity API | `certificate-authorities/` returning CA Certificate objects |
-| expiration-only alert resources | `alert-rules/`, `alert-channels/`, `alert-events/` |
-
-The old routes are not aliases in 1.0.0.
-
-## Alert configuration
-
-Existing expiration-alert database records are retained for data safety but are not converted automatically to Alert Rules and Alert Channels. Configure the required 1.0.0 channels and rules after the upgrade.
-
-## Upgrade
-
-Pin:
+Edit `/opt/netbox/local_requirements.txt` with `sudoedit` and replace the existing plugin entry with the following single line. This preserves the version when NetBox's upgrade script recreates its environment:
 
 ```text
-netbox-certificates-plugin==1.0.5
+netbox-certificates-plugin==1.1.0
 ```
 
 Then run:
 
 ```bash
-cd /opt/netbox
-sudo ./upgrade.sh
-```
-
-Validate:
-
-```bash
-sudo -u netbox /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py check
+cd /opt/netbox/netbox
+sudo /opt/netbox/venv/bin/python manage.py migrate
+sudo /opt/netbox/venv/bin/python manage.py collectstatic --no-input
+sudo /opt/netbox/venv/bin/python manage.py check
+sudo /opt/netbox/venv/bin/python manage.py migrate --check
+sudo /opt/netbox/venv/bin/python manage.py makemigrations --check --dry-run netbox_certificates
+sudo /opt/netbox/venv/bin/python manage.py refresh_certificate_status
+sudo /opt/netbox/venv/bin/python manage.py refresh_certificate_health
 /opt/netbox/venv/bin/python -m pip show netbox-certificates-plugin
+sudo systemctl start netbox netbox-rq
+sudo systemctl status netbox netbox-rq --no-pager
 ```
 
-Expected package version:
+The installed version should be `1.1.0`. If a migration or check fails, investigate that error before restarting; do not skip it.
 
-```text
-Version: 1.0.5
-```
+## After restarting
 
-Restart services:
+- Hard-refresh the browser to load the new static files.
+- Open **Health and Validity**, inspect expiration counts and findings, and open a finding detail page.
+- Expand a group, add a subfolder, and check existing membership.
+- Export a bundle as separate files and as PFX, with and without password protection and chain inclusion.
+- Open **Alerts Configuration** as a superuser. The new default configuration starts disabled; existing 1.0.x rules remain active and accessible through the additional-rules link. Review them before enabling overlapping alerts.
+- Configure and save email/webhook settings, then use the explicit test buttons if desired. Turning off the appropriate **Verify TLS certificate** checkbox permits an untrusted destination certificate.
+- NetBox's RQ worker must be running; the existing health/alert system job runs every 15 minutes. Repeat time `0` means once per occurrence, with a separate recovery notification if selected.
 
-```bash
-sudo systemctl restart netbox netbox-rq
-```
+## Data migration
+
+Migration `0019_alert_settings` adds two TLS verification fields (both default to true) and an internal singleton configuration table. Certificates, keys, CSRs, bundles, groups, services, policies, existing rules/channels, and delivery history are retained.
+
+## API and URL changes
+
+| Previous | 1.1.0 |
+| --- | --- |
+| `/expiration-dashboard/` | Redirects to combined `/health/` |
+| `/alerts/` rule list | Single alert settings page (superuser) |
+| Rule list | `/alerts/rules/` |
+| Bundle material GET | Options form; submit POST to download |
+| PFX API | `allow_unencrypted_pfx=true` explicitly permits an empty password |
+
+SMTP/webhook API channels add `smtp_verify_tls` and `webhook_verify_tls`, both true by default. Service JSON API fields retain their existing types; the UI accepts additional URLs one per line.
+
+For upgrades from 0.5.0: `/inventory/` was replaced by `/vault/`, the legacy ArtifactLink API by `object-links/`, and CA identity resources by CA Certificate views. Legacy expiration-alert records remain stored but are not automatically converted; configure the new alert settings. The migration sequence retains older artifact data.
 
 ## Rollback
 
-A database migrated to 1.0.0 should not be downgraded by installing 0.5.0 over it.
-
-Rollback procedure:
-
-1. stop NetBox
-2. restore the pre-upgrade PostgreSQL backup
-3. restore the previous `local_requirements.txt`
-4. reinstall the previous plugin version
-5. run `manage.py check`
-6. restart NetBox and NetBox RQ
+Stop NetBox and the worker, restore the pre-upgrade PostgreSQL backup and configuration/local requirements, reinstall `netbox-certificates-plugin==1.0.5`, run `manage.py collectstatic --no-input` and `manage.py check`, then restart. Keep the original encryption key. Reinstalling an older package alone does not roll back the database or changed alert settings.

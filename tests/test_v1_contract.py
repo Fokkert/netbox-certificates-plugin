@@ -23,7 +23,7 @@ class VersionOneFeatureContracts(unittest.TestCase):
         self.assertIn("class DeploymentTextInput", forms)
         self.assertIn('"Nginx"', forms)
         self.assertIn('"Kubernetes Ingress"', forms)
-        self.assertIn("forms.CharField(required=True, widget=DeploymentTextInput())", forms)
+        self.assertIn("custom_deployment = forms.CharField", forms)
 
     def test_generic_object_links_are_many_object_capable(self):
         models = self.read("netbox_certificates/models_v1.py")
@@ -89,9 +89,9 @@ class VersionOneFeatureContracts(unittest.TestCase):
 
     def test_groups_have_expandable_tree(self):
         template = self.read("netbox_certificates/templates/netbox_certificates/artifactgroup_tree_list.html")
-        self.assertIn("aria-expanded", template)
-        self.assertIn("localStorage", template)
-        self.assertIn("block.super", template)
+        self.assertIn("groups.js", template)
+        self.assertNotIn("block.super", template)
+        self.assertIn("localStorage", self.read("netbox_certificates/static/netbox_certificates/groups.js"))
 
     def test_search_indexes_cover_inventory_and_crypto_identifiers(self):
         search = self.read("netbox_certificates/search.py")

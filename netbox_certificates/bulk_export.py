@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from django.http import FileResponse, Http404, HttpResponse, QueryDict
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import render
 
 from .artifact_filtersets_v1 import (
     BundleV1FilterSet,
@@ -18,6 +19,7 @@ from .models import Bundle, Certificate, CSR, PrivateKey
 from .permissions import action_queryset
 from .services.encryption import PrivateKeyEncryptionError, decrypt_private_key
 from .services.chain import ordered_chain
+from .services.pkcs12_export import build_pfx
 
 
 EXPORT_CONFIG = {
@@ -88,14 +90,19 @@ def _material_for_object(kind, obj):
     raise ValueError(f"Unsupported artifact kind: {kind}")
 
 
-def _bundle_members(bundle):
+def _bundle_members(bundle, *, include_chain=True, export_pfx=False, password="", protect_pfx=True):
     prefix = f"bundle-{_artifact_token(bundle)}"
     members = []
-    if bundle.certificate is not None:
+    if export_pfx:
+        chain = _bundle_chain(bundle) if include_chain else []
+        data = build_pfx(bundle, password if protect_pfx else "", chain,
+                         allow_unencrypted=not protect_pfx)
+        members.append((f"{prefix}/{prefix}.pfx", data, bundle.certificate))
+    if bundle.certificate is not None and not export_pfx:
         members.append(
             (f"{prefix}/{_artifact_filename(bundle.certificate, '.crt')}", bundle.certificate.material.encode("ascii"), bundle.certificate)
         )
-    if bundle.private_key is not None:
+    if bundle.private_key is not None and not export_pfx:
         members.append(
             (f"{prefix}/{_artifact_filename(bundle.private_key, '.key')}", decrypt_private_key(bundle.private_key.encrypted_material), bundle.private_key)
         )
@@ -104,6 +111,13 @@ def _bundle_members(bundle):
             (f"{prefix}/{_artifact_filename(bundle.csr, '.csr')}", bundle.csr.material.encode("ascii"), bundle.csr)
         )
 
+    for index, certificate in enumerate(_bundle_chain(bundle) if include_chain and not export_pfx else [], start=1):
+        members.append((f"{prefix}/chain/{index:02d}-{_artifact_filename(certificate, '.crt')}",
+                        certificate.material.encode("ascii"), certificate))
+    return members
+
+
+def _bundle_chain(bundle):
     chain = []
     if bundle.certificate is not None:
         chain.extend(ordered_chain(bundle.certificate))
@@ -113,15 +127,7 @@ def _bundle_members(bundle):
             chain.append(certificate)
             existing.add(certificate.pk)
 
-    for index, certificate in enumerate(chain, start=1):
-        members.append(
-            (
-                f"{prefix}/chain/{index:02d}-{_artifact_filename(certificate, '.crt')}",
-                certificate.material.encode("ascii"),
-                certificate,
-            )
-        )
-    return members
+    return chain
 
 
 def _filtered_query_data(filterset_class, request, forced_filters=None):
@@ -176,11 +182,38 @@ class BulkMaterialExportView(LoginRequiredMixin, View):
     forced_filters = None
 
     def get(self, request, kind):
+        if kind == "bundle":
+            from .forms import BundleExportForm
+            form = BundleExportForm()
+            form.fields["archive_format"].choices = (("zip", "ZIP"),)
+            return render(request, "netbox_certificates/bundle_export.html", {"form": form, "bulk": True})
+        return self._export(request, kind)
+
+    def post(self, request, kind):
+        if kind != "bundle":
+            return HttpResponse(status=405)
+        from .forms import BundleExportForm
+        form = BundleExportForm(request.POST)
+        form.fields["archive_format"].choices = (("zip", "ZIP"),)
+        if not form.is_valid():
+            return render(request, "netbox_certificates/bundle_export.html", {"form": form, "bulk": True})
+        self.bundle_options = {key: form.cleaned_data[key] for key in ("include_chain", "export_pfx", "protect_pfx")}
+        self.bundle_options["password"] = form.cleaned_data["pfx_password"]
+        from .services.pkcs12_export import PFXExportError
+        try:
+            return self._export(request, kind)
+        except PFXExportError as exc:
+            form.add_error(None, str(exc))
+            return render(request, "netbox_certificates/bundle_export.html", {"form": form, "bulk": True})
+
+    def _export(self, request, kind):
         config = EXPORT_CONFIG.get(kind)
         if config is None:
             raise Http404("Unknown material export type.")
 
         queryset = action_queryset(config["model"], request.user, config["action"])
+        if kind == "bundle" and self.bundle_options.get("export_pfx"):
+            queryset = queryset.filter(pk__in=action_queryset(Bundle, request.user, "export_pfx"))
         if kind == "bundle":
             queryset = queryset.select_related("certificate", "private_key", "csr").prefetch_related("chain_certificates")
 
@@ -220,7 +253,7 @@ class BulkMaterialExportView(LoginRequiredMixin, View):
         manifest = {
             "format": "netbox-certificates-export-manifest",
             "manifest_version": 1,
-            "plugin_version": "1.0.5",
+            "plugin_version": "1.1.0",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "object_kind": kind,
             "filters": {key: filter_data.getlist(key) for key in filter_data.keys()},
@@ -235,7 +268,7 @@ class BulkMaterialExportView(LoginRequiredMixin, View):
                     for bundle in queryset.iterator(chunk_size=100):
                         object_entry = _object_manifest(bundle)
                         object_entry["files"] = []
-                        for filename, data, artifact in _bundle_members(bundle):
+                        for filename, data, artifact in _bundle_members(bundle, **self.bundle_options):
                             checksum = _write_member(archive, filename, data)
                             file_entry = {
                                 "path": filename,
@@ -281,20 +314,13 @@ class CertificateAuthorityMaterialExportView(BulkMaterialExportView):
 class SingleBundleArchiveExportView(LoginRequiredMixin, View):
     """Export one Bundle as ZIP/TAR with a manifest.
 
-    Existing PFX/PKCS#12 requests are delegated to the established pre-1.0
-    BundleExportView so its password validation and sensitive-operation checks
-    remain unchanged.
+    GET renders export choices; POST produces a manifest archive using the
+    selected PFX, password protection, and certificate-chain settings.
     """
 
     spool_limit = 8 * 1024 * 1024
 
-    @staticmethod
-    def _requested_format(request):
-        return str(request.POST.get("format") or request.GET.get("format") or "zip").lower()
 
-    def _delegate_legacy(self, request, pk):
-        from .views import BundleExportView as LegacyBundleExportView
-        return LegacyBundleExportView.as_view()(request, pk=pk)
 
     def _bundle(self, request, pk):
         return (
@@ -306,11 +332,11 @@ class SingleBundleArchiveExportView(LoginRequiredMixin, View):
         )
 
     def _manifest_and_members(self, bundle):
-        members = _bundle_members(bundle)
+        members = _bundle_members(bundle, **self.bundle_options)
         manifest = {
             "format": "netbox-certificates-export-manifest",
             "manifest_version": 1,
-            "plugin_version": "1.0.5",
+            "plugin_version": "1.1.0",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "object_kind": "bundle",
             "count": 1,
@@ -369,29 +395,30 @@ class SingleBundleArchiveExportView(LoginRequiredMixin, View):
         response["X-Content-Type-Options"] = "nosniff"
         return response
 
-    def _archive(self, request, pk):
-        bundle = self._bundle(request, pk)
-        if bundle is None:
-            raise Http404("Bundle not found or export permission denied.")
-        if bundle.private_key_id and not request.user.is_superuser:
-            return HttpResponse(
-                "Bundle archives containing private-key material require a NetBox superuser.",
-                status=403,
-                content_type="text/plain; charset=utf-8",
-            )
-        requested_format = self._requested_format(request)
-        if requested_format in {"tar", "tarfile"}:
-            return self._tar(bundle)
-        return self._zip(bundle)
 
     def get(self, request, pk):
-        requested_format = self._requested_format(request)
-        if requested_format in {"pfx", "pkcs12", "pkcs#12"}:
-            return self._delegate_legacy(request, pk)
-        return self._archive(request, pk)
+        from .forms import BundleExportForm
+        bundle = self._bundle(request, pk)
+        if bundle is None:
+            raise Http404
+        return render(request, "netbox_certificates/bundle_export.html", {"object": bundle, "form": BundleExportForm()})
 
     def post(self, request, pk):
-        requested_format = self._requested_format(request)
-        if "password" in request.POST or requested_format in {"pfx", "pkcs12", "pkcs#12"}:
-            return self._delegate_legacy(request, pk)
-        return self._archive(request, pk)
+        from .forms import BundleExportForm
+        from .services.pkcs12_export import PFXExportError
+        bundle = self._bundle(request, pk)
+        if bundle is None:
+            raise Http404
+        form = BundleExportForm(request.POST)
+        if form.is_valid():
+            if form.cleaned_data["export_pfx"] and not action_queryset(Bundle, request.user, "export_pfx").filter(pk=pk).exists():
+                raise Http404
+            if bundle.private_key_id and not request.user.is_superuser:
+                return HttpResponse("Private-key export requires a NetBox superuser.", status=403)
+            self.bundle_options = {key: form.cleaned_data[key] for key in ("include_chain", "export_pfx", "protect_pfx")}
+            self.bundle_options["password"] = form.cleaned_data["pfx_password"]
+            try:
+                return self._tar(bundle) if form.cleaned_data["archive_format"] == "tar" else self._zip(bundle)
+            except (PFXExportError, PrivateKeyEncryptionError) as exc:
+                form.add_error(None, str(exc))
+        return render(request, "netbox_certificates/bundle_export.html", {"object": bundle, "form": form})

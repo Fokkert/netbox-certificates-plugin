@@ -26,7 +26,7 @@ for path in ROOT.rglob("*"):
         continue
     if path.name == "neutrality_scan.py":
         continue
-    if any(part in {".git", "__pycache__", ".pytest_cache", "dist", "build"} for part in path.parts):
+    if any(part in {".git", "__pycache__", ".pytest_cache", "dist", "build", ".venv", "venv", "env"} for part in path.parts):
         continue
     if path.suffix.lower() not in {".py", ".md", ".toml", ".yaml", ".yml", ".html", ".txt", ".ps1"}:
         continue

@@ -250,17 +250,6 @@ class ArtifactGroupForm(PrimaryModelForm):
             excluded_parent_ids = {self.instance.pk, *self.instance.descendant_ids()}
             parent_qs = parent_qs.exclude(pk__in=excluded_parent_ids)
 
-            # Parent choices are hierarchy-aware. A Group may only be moved beneath
-            # a Group at its current level or above; deeper Groups are descendants
-            # in the conceptual folder tree and must never be offered as parents.
-            current_depth = len(self.instance.ancestor_ids())
-            eligible_parent_ids = [
-                candidate.pk
-                for candidate in parent_qs
-                if len(candidate.ancestor_ids()) <= current_depth
-            ]
-            parent_qs = parent_qs.filter(pk__in=eligible_parent_ids)
-
             excluded_child_ids = {self.instance.pk, *self.instance.ancestor_ids()}
             child_qs = child_qs.exclude(pk__in=excluded_child_ids)
 
@@ -610,12 +599,14 @@ class UnifiedImportForm(forms.Form):
 class BundleExportForm(forms.Form):
     archive_format = forms.ChoiceField(choices=(("zip", "ZIP"), ("tar", "TAR")), initial="zip")
     export_pfx = forms.BooleanField(required=False, initial=False, label="Export as PFX")
+    protect_pfx = forms.BooleanField(required=False, initial=True, label="Protect PFX with a password",
+                                    help_text="Turn off to export an unencrypted PFX containing the private key.")
     include_chain = forms.BooleanField(required=False, initial=False, label="Include certificate chain")
-    pfx_password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "new-password"}))
-    pfx_password_confirm = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "new-password"}))
+    pfx_password = forms.CharField(required=False, strip=False, widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "new-password"}))
+    pfx_password_confirm = forms.CharField(required=False, strip=False, widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "new-password"}))
     def clean(self):
         cleaned = super().clean()
-        if cleaned.get("export_pfx"):
+        if cleaned.get("export_pfx") and cleaned.get("protect_pfx"):
             password = cleaned.get("pfx_password") or ""
             if not password:
                 self.add_error("pfx_password", "A password is required for PFX export.")

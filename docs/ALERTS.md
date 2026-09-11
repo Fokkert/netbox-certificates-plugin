@@ -2,6 +2,14 @@
 
 1.0 alerting is based on Health Findings instead of an expiration-only worker.
 
+## Settings page
+
+Open Alerts Configuration as a superuser. Select problem categories and severities, expiration lead time, cooldown, repeats, and recovery notifications. Configure email and/or webhook delivery and save. Tests send only when explicitly requested with the test buttons. SMTP supports STARTTLS, implicit TLS, or no TLS. SMTP and webhook certificate verification are enabled by default and independently configurable.
+
+A zero repeat interval means once per occurrence. Recovery notifications are separate and sent once; recurrence starts a new occurrence. Delivery follows the 15-minute NetBox system job cycle.
+
+Existing rules and channels are preserved. The page reports additional enabled rules; review those to avoid duplicate notifications. The enable switch controls the settings-page rule.
+
 ## Objects
 
 ### AlertChannel

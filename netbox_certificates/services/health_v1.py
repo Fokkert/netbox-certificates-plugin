@@ -63,6 +63,7 @@ def _finding(code, category, severity, obj, summary, *, related=None, details=No
         finding.first_detected = now
     if finding.status == FindingStatusChoices.RESOLVED:
         finding.status = ACTIVE
+        finding.first_detected = now
     finding.save()
     return finding
 
@@ -77,7 +78,7 @@ def _value(obj, *names, default=None):
 
 
 def _certificate_sans(cert):
-    value = _value(cert, "sans", "subject_alt_names", "san", default=[])
+    value = _value(cert, "subject_alternative_names", "sans", "subject_alt_names", "san", default=[])
     if isinstance(value, str):
         stripped = value.strip()
         if not stripped:
@@ -182,7 +183,7 @@ def _material_fingerprint(obj):
 
 def _validity(cert):
     not_before = _value(cert, "not_before", "valid_from")
-    not_after = _value(cert, "not_after", "valid_until", "expires")
+    not_after = _value(cert, "valid_to", "not_after", "valid_until", "expires")
     return not_before, not_after
 
 

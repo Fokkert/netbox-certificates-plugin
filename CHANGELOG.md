@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.0
+
+- Combine Health and Validity with the Expiration Dashboard; retain a redirect from the old dashboard URL.
+- Fix missing HealthFinding edit/delete/list routes and restrict table actions to implemented routes, including read-only alert delivery events.
+- Correct health scanning to read the actual certificate validity and SAN fields.
+- Replace the Groups list/filter nesting with a folder browser, expandable subgroups, search, new subfolders, and rename/move actions. Allow moves to any non-descendant folder.
+- Ask for archive format, PFX conversion, optional PFX password protection, and chain inclusion before single/bulk Bundle exports. Preserve manifests and private-key permission checks.
+- Add Service deployment/protocol dropdowns, URL-derived hostname/SNI/port defaults, newline URL entry, and an advanced-options section.
+- Add a single superuser alert settings page for email, webhooks, conditions, timing, tests, and delivery history; retain existing advanced rules and APIs.
+- Add independently configurable SMTP/webhook TLS verification (enabled by default), bounded SMTP timeouts, no webhook redirects, and sanitized delivery errors.
+- Fix once-per-occurrence and recovery notification deduplication.
+- Add migration 0019 for alert settings and TLS verification options.
+- Add a checked release helper, behavioral tests, and optional NetBox integration tests.
+- Retain the NetBox 4.5.9–4.5.10 compatibility gate. Full NetBox/PostgreSQL/Redis integration validation remains required on a test deployment.
+
 ## 1.0.5
 
 - Fix NetBox 4.5 migration-state rendering by explicitly serializing TaggableManager target models as extras.Tag.

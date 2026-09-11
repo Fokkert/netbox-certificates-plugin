@@ -2,6 +2,10 @@
 
 A Service represents a system, application, or endpoint that consumes certificate material.
 
+## Quick setup
+
+Choose a type, environment, deployment preset, and protocol. Enter a primary URL and select certificates or bundles. Leave port, hostname, and SNI blank to derive them from the URL and protocol. Additional URLs accept one URL per line. Optional fields are under Advanced options. Existing custom deployment and protocol values remain selectable when editing.
+
 ## Metadata
 
 Service fields include:

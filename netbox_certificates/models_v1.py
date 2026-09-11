@@ -356,6 +356,8 @@ class AlertChannel(PrimaryModel):
     smtp_password_encrypted = models.TextField(blank=True)
     smtp_use_tls = models.BooleanField(default=True)
     smtp_use_ssl = models.BooleanField(default=False)
+    smtp_verify_tls = models.BooleanField(default=True)
+    webhook_verify_tls = models.BooleanField(default=True)
     from_email = models.EmailField(blank=True)
     webhook_url_encrypted = models.TextField(blank=True)
     webhook_headers_encrypted = models.TextField(blank=True)
@@ -429,6 +431,20 @@ class AlertRule(PrimaryModel):
 
     def get_absolute_url(self):
         return reverse("plugins:netbox_certificates:alertrule", args=[self.pk])
+
+
+class AlertSettings(models.Model):
+    """Private singleton linking the settings page to the existing alert engine."""
+    _netbox_private = True
+
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    rule = models.ForeignKey(AlertRule, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    email_channel = models.ForeignKey(AlertChannel, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    webhook_channel = models.ForeignKey(AlertChannel, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        default_permissions = ()
+        constraints = [models.CheckConstraint(condition=models.Q(id=1), name="nbcert_alert_settings_singleton")]
 
 
 class AlertEvent(PrimaryModel):

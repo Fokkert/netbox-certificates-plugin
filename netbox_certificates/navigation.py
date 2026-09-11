@@ -8,10 +8,6 @@ menu = PluginMenu(
             "Overview",
             (
                 PluginMenuItem(
-                    link="plugins:netbox_certificates:expiration_dashboard",
-                    link_text="Expiration Dashboard",
-                ),
-                PluginMenuItem(
                     link="plugins:netbox_certificates:certificateauthority_list",
                     link_text="Certificate Authorities",
                 ),
@@ -68,7 +64,7 @@ menu = PluginMenu(
                     link_text="Generate CSR",
                 ),
                 PluginMenuItem(
-                    link="plugins:netbox_certificates:alertrule_list",
+                    link="plugins:netbox_certificates:alert_settings",
                     link_text="Alerts Configuration",
                     permissions=["netbox_certificates.view_alertrule"],
                 ),

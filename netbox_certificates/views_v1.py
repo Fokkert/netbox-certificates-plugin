@@ -2,6 +2,8 @@ from collections import defaultdict
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count
 from django.http import Http404
@@ -234,17 +236,19 @@ class CertificateAuthorityListView(generic.ObjectListView):
         }
 
 
-class ArtifactGroupTreeListView(legacy_views.ArtifactGroupListView):
+class ArtifactGroupTreeListView(LoginRequiredMixin, View):
+    queryset = ArtifactGroup.objects.all()
     filterset = ArtifactGroupV1FilterSet
     filterset_form = ArtifactGroupV1FilterForm
     template_name = "netbox_certificates/artifactgroup_tree_list.html"
 
+    def get(self, request):
+        if not request.user.has_perm("netbox_certificates.view_artifactgroup"):
+            raise PermissionDenied
+        return render(request, self.template_name, self.get_extra_context(request))
+
     def get_extra_context(self, request):
         context = {}
-        try:
-            context.update(super().get_extra_context(request))
-        except AttributeError:
-            pass
 
         visible = self.queryset.restrict(request.user, "view") if hasattr(self.queryset, "restrict") else self.queryset
         tree_filter = ArtifactGroupV1FilterSet(request.GET or None, queryset=visible)
@@ -255,9 +259,15 @@ class ArtifactGroupTreeListView(legacy_views.ArtifactGroupListView):
         for group in groups:
             children[group.parent_id].append(group)
 
+        # Aggregate only visible objects, without issuing queries per folder.
+        counts = {}
+        for name, model in (("certificates", Certificate), ("private_keys", PrivateKey),
+                            ("csrs", CSR), ("bundles", Bundle), ("services", Service)):
+            rows = action_queryset(model, request.user, "view").filter(groups__in=by_id).values("groups").annotate(total=Count("pk", distinct=True))
+            counts[name] = {row["groups"]: row["total"] for row in rows}
+
         def relation_count(group, name):
-            manager = getattr(group, name, None)
-            return manager.count() if manager is not None and hasattr(manager, "count") else 0
+            return counts[name].get(group.pk, 0)
 
         def node(group):
             artifact_count = sum(
@@ -330,6 +340,7 @@ class ServiceView(V1ObjectView):
 class ServiceEditView(generic.ObjectEditView):
     queryset = Service.objects.all()
     form = ServiceForm
+    template_name = "netbox_certificates/service_edit.html"
 
 
 class ServiceDeleteView(generic.ObjectDeleteView):
@@ -399,7 +410,7 @@ class CertificatePolicyBulkDeleteView(generic.BulkDeleteView):
     table = CertificatePolicyTable
 
 
-class HealthFindingListView(generic.ObjectListView):
+class HealthFindingListView(LoginRequiredMixin, View):
     queryset = HealthFinding.objects.all()
     table = HealthFindingTable
     filterset = HealthFindingFilterSet
@@ -407,8 +418,32 @@ class HealthFindingListView(generic.ObjectListView):
     actions = SYSTEM_ACTIONS
     template_name = "netbox_certificates/healthfinding_list.html"
 
+    def get(self, request):
+        if not (request.user.has_perm("netbox_certificates.view_healthfinding") or
+                request.user.has_perm("netbox_certificates.view_certificate")):
+            raise PermissionDenied
+        visible = action_queryset(HealthFinding, request.user, "view")
+        filtered = HealthFindingFilterSet(request.GET or None, queryset=visible)
+        context = self.get_extra_context(request)
+        context["filter_form"] = HealthFindingFilterForm(request.GET or None)
+        context["findings"] = Paginator(filtered.qs if filtered.is_valid() else visible.none(), 50).get_page(request.GET.get("page"))
+        query = request.GET.copy()
+        query.pop("page", None)
+        context["filter_query"] = query.urlencode()
+        from .services.expiry import expiry_state
+        certificates = action_queryset(Certificate, request.user, "view").order_by("valid_to")
+        counts = dict.fromkeys(("healthy", "warning", "critical", "expired", "unknown"), 0)
+        upcoming = []
+        for cert in certificates.iterator():
+            state = expiry_state(cert)
+            counts[state["level"]] += 1
+            if state["level"] in {"warning", "critical", "expired"} and len(upcoming) < 50:
+                upcoming.append((cert, state))
+        context.update(counts=counts, upcoming=upcoming)
+        return render(request, self.template_name, context)
+
     def get_extra_context(self, request):
-        active = HealthFinding.objects.exclude(status="resolved")
+        active = action_queryset(HealthFinding, request.user, "view").filter(status__in=("active", "acknowledged"))
         if hasattr(active, "restrict"):
             active = active.restrict(request.user, "view")
         return {
@@ -428,11 +463,21 @@ class HealthFindingListView(generic.ObjectListView):
 
 class HealthFindingView(V1ObjectView):
     queryset = HealthFinding.objects.all()
+    actions = tuple(action for action in generic.ObjectView.actions if action.__name__ != "CloneObject")
     detail_fields = (
         "severity", "status", "category", "code", "summary", "affected_object",
         "related_object", "details", "evidence", "fingerprint",
         "first_detected", "last_detected", "resolved_at", "owner", "description", "comments",
     )
+
+
+class HealthFindingEditView(generic.ObjectEditView):
+    queryset = HealthFinding.objects.all()
+    from .forms_v1 import HealthFindingForm as form
+
+
+class HealthFindingDeleteView(generic.ObjectDeleteView):
+    queryset = HealthFinding.objects.all()
 
 
 class HealthFindingBulkEditView(generic.BulkEditView):
@@ -609,6 +654,7 @@ class AlertEventListView(generic.ObjectListView):
 
 class AlertEventView(V1ObjectView):
     queryset = AlertEvent.objects.all()
+    actions = ()
     detail_fields = (
         "status", "rule", "channel", "finding", "delivered_at", "error",
         "payload_summary", "owner", "description", "comments",
@@ -641,9 +687,11 @@ class AlertChannelTestView(LoginRequiredMixin, View):
         try:
             send_test_channel(channel)
         except Exception as exc:
-            messages.error(request, f"Alert channel test failed: {exc}")
+            messages.error(request, f"Alert channel test failed ({type(exc).__name__}). Check destination and TLS settings.")
         else:
             messages.success(request, "Alert channel test delivered successfully.")
+        if request.POST.get("return_to_settings") and request.user.is_superuser:
+            return redirect("plugins:netbox_certificates:alert_settings")
         return redirect(channel.get_absolute_url())
 
 

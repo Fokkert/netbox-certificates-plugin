@@ -209,7 +209,8 @@ class BundleViewSet(NetBoxModelViewSet):
             chain = []
             if include_chain:
                 chain = ordered_chain(bundle.certificate); chain.extend(c for c in bundle.chain_certificates.all() if c.pk not in {x.pk for x in chain})
-            try: pfx_data = build_pfx(bundle, str(request.data.get("password", "")), chain_certificates=chain)
+            try: pfx_data = build_pfx(bundle, str(request.data.get("password", "")), chain_certificates=chain,
+                                      allow_unencrypted=_bool_value(request.data.get("allow_unencrypted_pfx"), False))
             except PFXExportError as exc: raise APIException(str(exc)) from exc
             files = [(_artifact_filename(bundle.certificate, ".pfx"), pfx_data)]
             if bundle.csr: files.append((_artifact_filename(bundle.csr, ".csr"), bundle.csr.material.encode("ascii")))

@@ -1,18 +1,23 @@
 from django.urls import path
+from django.views.generic import RedirectView
 
 from . import bulk_export, export_v1, models, views, views_v1
+from .alert_settings import AlertSettingsView
 
 app_name = "netbox_certificates"
 
 urlpatterns = (
     # OVERVIEW
-    path("expiration-dashboard/", views.ExpirationDashboardView.as_view(), name="expiration_dashboard"),
+    path("expiration-dashboard/", RedirectView.as_view(pattern_name="plugins:netbox_certificates:health", query_string=True), name="expiration_dashboard"),
     path("certificate-authorities/", views_v1.CertificateAuthorityListView.as_view(), name="certificateauthority_list"),
     path("certificate-authorities/export-material/", bulk_export.CertificateAuthorityMaterialExportView.as_view(), name="certificateauthority_material_export"),
     path("vault/", views_v1.CryptographicVaultView.as_view(), name="vault"),
     path("health/", views_v1.HealthFindingListView.as_view(), name="health"),
     path("health/refresh/", views_v1.HealthRefreshView.as_view(), name="health_refresh"),
     path("health/<int:pk>/", views_v1.HealthFindingView.as_view(), name="healthfinding"),
+    path("health/findings/", views_v1.HealthFindingListView.as_view(), name="healthfinding_list"),
+    path("health/<int:pk>/edit/", views_v1.HealthFindingEditView.as_view(), name="healthfinding_edit"),
+    path("health/<int:pk>/delete/", views_v1.HealthFindingDeleteView.as_view(), name="healthfinding_delete"),
     path("health/edit/", views_v1.HealthFindingBulkEditView.as_view(), name="healthfinding_bulk_edit"),
     path("health/delete/", views_v1.HealthFindingBulkDeleteView.as_view(), name="healthfinding_bulk_delete"),
     path("health/export-archive/", export_v1.MetadataArchiveExportView.as_view(), {"kind": "healthfinding"}, name="healthfinding_archive_export"),
@@ -112,7 +117,8 @@ urlpatterns = (
     # OPERATIONS
     path("import/", views.UnifiedImportView.as_view(), name="import_objects"),
     path("generate-csr/", views.CSRGenerateView.as_view(), name="csr_generate"),
-    path("alerts/", views_v1.AlertRuleListView.as_view(), name="alertrule_list"),
+    path("alerts/", AlertSettingsView.as_view(), name="alert_settings"),
+    path("alerts/rules/", views_v1.AlertRuleListView.as_view(), name="alertrule_list"),
     path("alerts/add/", views_v1.AlertRuleEditView.as_view(), name="alertrule_add"),
     path("alerts/edit/", views_v1.AlertRuleBulkEditView.as_view(), name="alertrule_bulk_edit"),
     path("alerts/rename/", views_v1.AlertRuleBulkRenameView.as_view(), name="alertrule_bulk_rename"),

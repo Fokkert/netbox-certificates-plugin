@@ -49,7 +49,7 @@ def _matches(rule, finding):
         if not object_tag_names.intersection({str(value) for value in rule.tag_names}):
             return False
 
-    if rule.expiration_days and finding.code == "CERT_EXPIRING":
+    if rule.expiration_days is not None and finding.code == "CERT_EXPIRING":
         days_remaining = finding.evidence.get("days_remaining")
         if days_remaining is None or int(days_remaining) > rule.expiration_days:
             return False
@@ -108,12 +108,17 @@ def _recent_event(rule, channel, finding):
     )
 
     # Recovery is a one-time state transition, not a repeating condition.
+    delivered = delivered.filter(created__gte=finding.first_detected)
     if finding.status == FindingStatusChoices.RESOLVED:
         return delivered.filter(payload_summary__finding_status=FindingStatusChoices.RESOLVED).exists()
+
+    delivered = delivered.exclude(payload_summary__finding_status=FindingStatusChoices.RESOLVED)
 
     last = delivered.order_by("-created").first()
     if last is None:
         return False
+    if rule.repeat_minutes == 0:
+        return True
 
     interval_minutes = max(rule.cooldown_minutes or 0, rule.repeat_minutes or 0)
     if interval_minutes <= 0:
@@ -150,7 +155,8 @@ def _email_connection(channel):
     from .secret_v1 import decrypt_text
     password = decrypt_text(channel.smtp_password_encrypted, default="")
     return get_connection(
-        backend="django.core.mail.backends.smtp.EmailBackend",
+        backend="netbox_certificates.services.smtp.ConfigurableTLSBackend",
+        verify_tls=channel.smtp_verify_tls,
         host=channel.smtp_host,
         port=channel.smtp_port,
         username=channel.smtp_username or None,
@@ -158,6 +164,7 @@ def _email_connection(channel):
         use_tls=channel.smtp_use_tls,
         use_ssl=channel.smtp_use_ssl,
         fail_silently=False,
+        timeout=15,
     )
 
 
@@ -170,14 +177,17 @@ def _send_email(channel, subject, body):
         to=list(channel.recipients),
         connection=connection,
     )
-    return message.send(fail_silently=False)
+    sent = message.send(fail_silently=False)
+    if not sent:
+        raise RuntimeError("SMTP did not accept the alert message.")
+    return sent
 
 
 def send_test_channel(channel):
     """Send a neutral test message without requiring or modifying a HealthFinding."""
     payload = {
         "type": "netbox-certificates-alert-test",
-        "plugin_version": "1.0.5",
+        "plugin_version": "1.1.0",
         "channel": channel.name,
         "timestamp": timezone.now().isoformat(),
     }
@@ -194,8 +204,12 @@ def send_test_channel(channel):
             json=payload,
             headers=decrypt_json(channel.webhook_headers_encrypted),
             timeout=15,
+            verify=channel.webhook_verify_tls,
+            allow_redirects=False,
         )
         response.raise_for_status()
+        if response.status_code >= 300:
+            raise ValueError("Webhook redirects are not followed; configure the final URL.")
     else:
         raise ValueError(f"Unsupported alert channel type: {channel.channel_type}")
     return payload
@@ -214,8 +228,12 @@ def _deliver(channel, rule, finding):
             json=payload,
             headers=decrypt_json(channel.webhook_headers_encrypted),
             timeout=15,
+            verify=channel.webhook_verify_tls,
+            allow_redirects=False,
         )
         response.raise_for_status()
+        if response.status_code >= 300:
+            raise ValueError("Webhook redirects are not followed; configure the final URL.")
     else:
         raise ValueError(f"Unsupported alert channel type: {channel.channel_type}")
     return payload
@@ -253,13 +271,14 @@ def dispatch_alerts(rule_ids=None, bypass_cooldown=False):
                     event.delivered_at = timezone.now()
                     event.payload_summary = {
                         "finding_code": finding.code,
+                        "finding_status": finding.status,
                         "severity": finding.severity,
                         "object_type": finding.object_type.model,
                         "object_id": finding.object_id,
                     }
                     delivered += 1
                 except Exception as exc:
-                    event.error = str(exc)[:4000]
+                    event.error = f"{type(exc).__name__}: delivery failed; check destination and TLS settings."
                     failed += 1
                 event.save()
     return {"delivered": delivered, "failed": failed, "skipped": skipped}

@@ -1,55 +1,17 @@
-{% extends 'generic/object_list.html' %}
+{% extends 'generic/_base.html' %}
 {% load static %}
-
-{% block extra_controls %}
-  {{ block.super }}
-  {% if perms.netbox_certificates.view_artifactgroup %}
-    <a class="btn btn-outline-primary me-2" href="{% url 'plugins:netbox_certificates:artifactgroup_archive_export' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
-      <i class="mdi mdi-archive-arrow-down"></i> Export Archive
-    </a>
-  {% endif %}
-{% endblock %}
-
+{% block title %}Groups{% endblock %}
 {% block content %}
-  <div class="card mb-3">
-    <h5 class="card-header">Group Tree</h5>
-    <div class="card-body">
-      <ul class="list-unstyled mb-0" id="certificate-group-tree">
-        {% include 'netbox_certificates/inc/group_tree_nodes.html' with nodes=group_tree %}
-      </ul>
-      {% if not group_tree %}<span class="text-muted">No Groups match the current filter.</span>{% endif %}
-    </div>
-  </div>
-
-  <div class="card">
-    <h5 class="card-header">Table View</h5>
-    <div class="card-body p-0">
-      {{ block.super }}
-    </div>
-  </div>
-
-  <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('[data-group-toggle]').forEach(function (button) {
-      const key = 'nbcert-group-' + button.dataset.groupToggle;
-      const target = document.getElementById('group-children-' + button.dataset.groupToggle);
-      if (!target) return;
-
-      const open = localStorage.getItem(key) !== 'closed';
-      target.hidden = !open;
-      button.setAttribute('aria-expanded', open ? 'true' : 'false');
-
-      const icon = button.querySelector('i');
-      if (icon) icon.className = open ? 'mdi mdi-chevron-down' : 'mdi mdi-chevron-right';
-
-      button.addEventListener('click', function () {
-        const nextOpen = target.hidden;
-        target.hidden = !nextOpen;
-        button.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
-        if (icon) icon.className = nextOpen ? 'mdi mdi-chevron-down' : 'mdi mdi-chevron-right';
-        localStorage.setItem(key, nextOpen ? 'open' : 'closed');
-      });
-    });
-  });
-  </script>
+<div class="d-flex flex-wrap gap-2 mb-3">
+{% if perms.netbox_certificates.add_artifactgroup %}<a class="btn btn-primary" href="{% url 'plugins:netbox_certificates:artifactgroup_add' %}">New folder</a>{% endif %}
+{% if perms.netbox_certificates.view_artifactgroup %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_archive_export' %}?{{ request.GET.urlencode }}">Export groups</a>{% endif %}
+<button type="button" class="btn btn-outline-secondary" data-expand-all="true">Expand all</button><button type="button" class="btn btn-outline-secondary" data-expand-all="false">Collapse all</button>
+</div>
+<form method="get" class="d-flex gap-2 mb-3"><label for="group-search" class="visually-hidden">Search groups</label><input id="group-search" class="form-control" name="q" value="{{ request.GET.q }}" placeholder="Find a folder"><button class="btn btn-outline-primary">Search</button><a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_list' %}">Clear</a></form>
+<div class="card"><h2 class="card-header">Certificate folders</h2><div class="card-body">
+<p class="text-muted">Expand folders to browse subgroups. Open a folder to see its certificates, keys, CSRs, and bundles.</p>
+<ul class="list-unstyled" id="certificate-group-tree">{% include 'netbox_certificates/inc/group_tree_nodes.html' with nodes=group_tree %}</ul>
+{% if not group_tree %}<p>No groups match your search.</p>{% endif %}
+</div></div>
+<script src="{% static 'netbox_certificates/groups.js' %}" defer></script>
 {% endblock %}

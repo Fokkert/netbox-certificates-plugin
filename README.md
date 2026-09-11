@@ -9,7 +9,7 @@ NetBox Certificates Plugin adds certificate inventory and lifecycle management t
 | NetBox | 4.5.9, 4.5.10 |
 | Python | 3.12+ |
 | `cryptography` | 42+ |
-| Upgrade source | 0.5.0 |
+| Upgrade source | 1.0.5 (older migrations retained) |
 
 ## Features
 
@@ -33,7 +33,6 @@ NetBox Certificates Plugin adds certificate inventory and lifecycle management t
 
 ```text
 OVERVIEW
-├── Expiration Dashboard
 ├── Certificate Authorities
 ├── Cryptographic Vault
 └── Health and Validity
@@ -58,7 +57,7 @@ A Service represents a system or endpoint that consumes certificate material. Ex
 
 Service metadata includes status, type, environment, deployment, deployment metadata, protocol, URLs, hostname, port, SNI name, criticality, external reference, contact, owner, tags, custom fields, description, and comments.
 
-`deployment` includes common UI suggestions and accepts custom values. `deployment_metadata` stores deployment-specific structured metadata such as a namespace, secret name, ingress name, virtual host, or configuration reference.
+`deployment` provides a dropdown of common technologies and a custom-name option. Protocols use dropdowns and default ports; a primary URL fills blank hostname/SNI/port fields. Additional URLs use one URL per line. Optional metadata is grouped under Advanced options. `deployment_metadata` stores deployment-specific structured metadata such as a namespace, secret name, ingress name, virtual host, or configuration reference.
 
 ## Certificate Authorities
 
@@ -69,6 +68,8 @@ The Certificate Authorities view lists imported `Certificate` objects with X.509
 Cryptographic Vault provides a consolidated overview of Certificates, CA Certificates, Private Keys, CSRs, Bundles, Services, unassigned objects, and active Health findings.
 
 ## Health and Validity
+
+The combined page shows expiration counts, upcoming/expired certificates, findings, filtering, policy access, and a health-scan action. The old Expiration Dashboard URL redirects here.
 
 Health findings are persistent, searchable NetBox objects with severity, status, evidence, affected object, related object, and detection timestamps.
 
@@ -96,6 +97,8 @@ Policies can be assigned to Services, Certificates, CSRs, and Bundles.
 
 ## Alerts
 
+**Alerts Configuration** is a single settings page for superusers: choose email/webhook delivery, categories and severities, expiration thresholds, cooldowns, repeats, and recovery alerts. Email and webhook TLS verification can be disabled independently for untrusted destinations. Existing rules remain available as advanced configuration.
+
 Alert Rules select Health findings by code, category, severity, status, object type, tag, owner, Service, Group, Policy, or expiration threshold.
 
 Alert Channels support SMTP and HTTP webhooks. SMTP passwords and webhook configuration are encrypted at rest with the plugin Fernet key.
@@ -118,6 +121,8 @@ The unified importer supports:
 Ambiguous cryptographic matches are rejected instead of guessed.
 
 ## Export
+
+Bundle export opens an options form. Choose separate files or PFX, optional PFX password protection, and whether to include the chain. Single bundles support ZIP/TAR; bulk bundles use ZIP. Exporting private keys still requires a superuser.
 
 NetBox-native export remains available for metadata tables.
 
@@ -158,7 +163,7 @@ See [docs/API.md](docs/API.md).
 Add the package to `/opt/netbox/local_requirements.txt`:
 
 ```text
-netbox-certificates-plugin==1.0.5
+netbox-certificates-plugin==1.1.0
 ```
 
 Enable the plugin:
@@ -198,7 +203,7 @@ sudo -u netbox /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py check
 sudo systemctl restart netbox netbox-rq
 ```
 
-For upgrades from 0.5.0, keep the existing Fernet key and read [UPGRADE.md](UPGRADE.md) before deployment.
+For upgrades from 1.0.5 or older versions, keep the existing Fernet key and read [UPGRADE.md](UPGRADE.md) before deployment.
 
 ## Security
 

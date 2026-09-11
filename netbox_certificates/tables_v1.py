@@ -5,6 +5,7 @@ from .models_v1 import AlertChannel, AlertEvent, AlertRule, CertificatePolicy, H
 
 
 class ServiceTable(PrimaryModelTable):
+    actions = columns.ActionsColumn(actions=("edit", "delete"))
     name = tables.Column(linkify=True)
     policy = tables.Column(linkify=True)
     groups = columns.ManyToManyColumn(linkify_item=True)
@@ -23,6 +24,7 @@ class ServiceTable(PrimaryModelTable):
 
 
 class CertificatePolicyTable(PrimaryModelTable):
+    actions = columns.ActionsColumn(actions=("edit", "delete"))
     name = tables.Column(linkify=True)
 
     class Meta(PrimaryModelTable.Meta):
@@ -36,6 +38,7 @@ class CertificatePolicyTable(PrimaryModelTable):
 
 
 class HealthFindingTable(PrimaryModelTable):
+    actions = columns.ActionsColumn(actions=("edit", "delete"))
     summary = tables.Column(linkify=True)
     affected_object = tables.Column(orderable=False)
     related_object = tables.Column(orderable=False)
@@ -54,6 +57,7 @@ class HealthFindingTable(PrimaryModelTable):
 
 
 class ObjectLinkTable(PrimaryModelTable):
+    actions = columns.ActionsColumn(actions=("edit", "delete"))
     source = tables.Column(orderable=False)
     target = tables.Column(orderable=False)
 
@@ -67,6 +71,7 @@ class ObjectLinkTable(PrimaryModelTable):
 
 
 class AlertChannelTable(PrimaryModelTable):
+    actions = columns.ActionsColumn(actions=("edit", "delete"))
     name = tables.Column(linkify=True)
 
     class Meta(PrimaryModelTable.Meta):
@@ -79,6 +84,7 @@ class AlertChannelTable(PrimaryModelTable):
 
 
 class AlertRuleTable(PrimaryModelTable):
+    actions = columns.ActionsColumn(actions=("edit", "delete"))
     name = tables.Column(linkify=True)
     channels = columns.ManyToManyColumn(linkify_item=True)
     services = columns.ManyToManyColumn(linkify_item=True)
@@ -96,6 +102,7 @@ class AlertRuleTable(PrimaryModelTable):
 
 
 class AlertEventTable(PrimaryModelTable):
+    actions = columns.ActionsColumn(actions=())
     class Meta(PrimaryModelTable.Meta):
         model = AlertEvent
         fields = (

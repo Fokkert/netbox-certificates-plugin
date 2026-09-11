@@ -1,1 +1,16 @@
-{% extends 'generic/object_edit.html' %}{% load form_helpers %}{% block title %}Export {{ object }}{% endblock %}{% block form %}{% include 'htmx/form.html' %}{% endblock %}{% block buttons %}<a href="{{ return_url }}" class="btn btn-outline-secondary me-2">Cancel</a><button type="submit" class="btn btn-primary"><i class="mdi mdi-export"></i> Export</button>{% endblock %}
+{% extends 'generic/_base.html' %}
+{% load form_helpers static %}
+{% block title %}Export {% if bulk %}Bundles{% else %}{{ object }}{% endif %}{% endblock %}
+{% block content %}
+<div class="card"><h2 class="card-header">Bundle export options</h2><div class="card-body">
+<p>Choose separate certificate and key files, or combine them into a PFX. The download includes a manifest inside the selected archive.</p>
+<form method="post">{% csrf_token %}
+{{ form.non_field_errors }}
+{% render_field form.archive_format %}{% render_field form.export_pfx %}{% render_field form.include_chain %}
+<div id="pfx-options">{% render_field form.protect_pfx %}
+<div id="pfx-passwords">{% render_field form.pfx_password %}{% render_field form.pfx_password_confirm %}</div></div>
+<button type="submit" class="btn btn-primary">Download bundle</button>
+<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:bundle_list' %}">Cancel</a>
+</form></div></div>
+<script src="{% static 'netbox_certificates/export.js' %}" defer></script>
+{% endblock %}
