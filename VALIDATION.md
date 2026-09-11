@@ -1,16 +1,16 @@
-# Validation for 1.1.1
+# Validation for 1.1.2
 
 ## Completed in the Windows development workspace
 
-- Verified the starting revision is GitHub main / v1.1.0 (`2e2f6f2`); preparing v1.1.1.
-- 73 standalone tests passed under Python 3.12 and Django 5.2.
-- Real cryptographic PFX round trips: encrypted, unencrypted opt-in, incorrect password, mismatched key, and chain selection.
-- Real Django forms, REST serializers, SQLite-backed group/filter regressions, template rendering with an isolated layout, and route/action consistency checks.
-- Empty material/metadata archives, meaningful invalid-filter errors, CA Basic Constraints checks using real certificates, per-certificate calendar-month timing, secret preparation before NetBox validation, and custom-action scope checks.
-- SMTP/webhook sample delivery tested with mocked transports; no real messages were sent from this workspace.
-- Service endpoint inference and explicit overrides, actual certificate validity/SAN field handling, SMTP TLS contexts, alert timing, and recovery deduplication.
-- Python compilation, release metadata checks, repository source scan, and diff whitespace checks.
-- Wheel and sdist build; distribution metadata checked with twine.
+- Started from the clean v1.1.1 release commit `8e10141`; prepared v1.1.2 without pushing or tagging.
+- 85 standalone tests passed under Python 3.12 and Django 5.2.
+- Group add/edit constructor regression executes the production import and checks Service choices, selected membership, hierarchy exclusions, and permission scoping.
+- Single UI and API ZIP/TAR exports use certificate-named archives and PFX files. Bulk exports retain both bundles when certificate names collide; manifests match archive contents and checksums.
+- Filename handling covers paths, control characters, Unicode, long names, reserved filenames, and case-insensitive collisions.
+- Finding links hide inaccessible or missing objects and escape names. Detail context and populated Health templates show readable evidence, including zero/negative values.
+- CSR plural normalization and retained SMTP/webhook sample buttons checked.
+- Existing CA-only validation, empty exports, calendar-month alert defaults, scoped permissions, Service form behavior, and cryptographic PFX round-trip regressions still pass.
+- Python compilation, release metadata checks, and diff whitespace checks pass.
 
 Standalone tests deliberately isolate functions/forms from the NetBox application. Template tests use a minimal parent layout; they are not a full browser test or a substitute for the NetBox runtime tests below.
 
@@ -37,7 +37,7 @@ python manage.py makemigrations --check --dry-run netbox_certificates
 python manage.py test netbox_certificates.tests
 ```
 
-The integration suite exercises populated health/detail/edit pages, the old-dashboard redirect, group hierarchy rendering, service creation with endpoint inference, alert configuration, and denial of unprivileged settings access. Django's test runner requires permission to create a test database; do not point an ad hoc test setup at production data.
+The optional integration suite additionally checks Group add/edit GET and POST requests with Service membership and finding object links in both list/detail pages. Existing coverage includes the old-dashboard redirect, group hierarchy rendering, service endpoint inference, alert configuration, and denial of unprivileged settings access. Django's test runner requires permission to create a test database; do not point an ad hoc test setup at production data.
 
 Also verify on the test VM:
 

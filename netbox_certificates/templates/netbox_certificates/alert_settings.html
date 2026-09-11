@@ -2,7 +2,6 @@
 {% load form_helpers %}
 {% block title %}Alerts Configuration{% endblock %}
 {% block content %}
-<p>Expiration alerts use each certificate's Alert Trigger and Trigger Unit (default: 1 month). Configure delivery, other certificate problems, and repeat timing here. Test buttons save these settings and send a sample, even when the delivery method is disabled.</p>
 {% if other_rule_count %}<div class="alert alert-info">{{ other_rule_count }} additional enabled rules are preserved from existing configuration. <a href="{% url 'plugins:netbox_certificates:alertrule_list' %}">Review additional rules</a> to avoid duplicate notifications. The switch below controls this page's alerts.</div>{% endif %}
 <form method="post">{% csrf_token %}{{ form.non_field_errors }}
 {% for title,fields in sections %}<div class="card mb-3"><h2 class="card-header">{{ title }}</h2><div class="card-body">{% for field in fields %}{% render_field field %}{% endfor %}</div></div>{% endfor %}

@@ -1,6 +1,6 @@
 # Publishing a release
 
-GitHub Actions already creates a GitHub Release and publishes the same wheel/sdist to PyPI when a `v*` tag is pushed. Version 1.1.1 preserves that trusted-publisher workflow and installs the behavioral test dependencies before release builds.
+GitHub Actions already creates a GitHub Release and publishes the same wheel/sdist to PyPI when a `v*` tag is pushed. Version 1.1.2 preserves that trusted-publisher workflow and installs the behavioral test dependencies before release builds.
 
 The repository's `scripts/release.py` makes the local operation repeatable:
 
@@ -25,7 +25,7 @@ Monitor the result:
 ```bash
 gh run list --workflow release.yml
 gh run watch RUN_ID --exit-status
-gh release view v1.1.1
+gh release view v1.1.2
 ```
 
 Replace `RUN_ID` with the actual run ID. A pushed tag is not proof of successful PyPI publication. Inspect the workflow result before giving users the PyPI install command. A failed publish can be rerun in GitHub Actions after correcting the cause; do not overwrite a published package version.

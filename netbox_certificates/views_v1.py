@@ -1,4 +1,5 @@
 from .labels import display_label
+from .finding_display import finding_object_link, finding_data_display
 from collections import defaultdict
 from functools import partial
 
@@ -197,7 +198,7 @@ class CryptographicVaultView(LoginRequiredMixin, View):
             ("Certificates", certificates.count(), reverse("plugins:netbox_certificates:certificate_list")),
             ("Certificate Authorities", certificates.filter(is_ca=True).count(), reverse("plugins:netbox_certificates:certificateauthority_list")),
             ("Private Keys", private_keys.count(), reverse("plugins:netbox_certificates:privatekey_list")),
-            ("CSRS", csrs.count(), reverse("plugins:netbox_certificates:csr_list")),
+            ("CSRs", csrs.count(), reverse("plugins:netbox_certificates:csr_list")),
             ("Bundles", bundles.count(), reverse("plugins:netbox_certificates:bundle_list")),
             ("Services", services.count(), reverse("plugins:netbox_certificates:service_list")),
             ("Active Health Findings", health_active.count(), reverse("plugins:netbox_certificates:health")),
@@ -441,6 +442,11 @@ class HealthFindingListView(LoginRequiredMixin, View):
         context = self.get_extra_context(request)
         context["filter_form"] = HealthFindingFilterForm(request.GET or None)
         context["findings"] = Paginator(filtered.qs if filtered.is_valid() else visible.none(), 50).get_page(request.GET.get("page"))
+        for finding in context["findings"]:
+            finding.affected_link = finding_object_link(finding.affected_object, request.user)
+            finding.related_link = finding_object_link(finding.related_object, request.user)
+            finding.details_display = finding_data_display(finding.details)
+            finding.evidence_display = finding_data_display(finding.evidence)
         query = request.GET.copy()
         query.pop("page", None)
         context["filter_query"] = query.urlencode()
@@ -483,6 +489,20 @@ class HealthFindingView(V1ObjectView):
         "related_object", "details", "evidence", "fingerprint",
         "first_detected", "last_detected", "resolved_at", "owner", "description", "comments",
     )
+
+    def get_extra_context(self, request, instance):
+        context = super().get_extra_context(request, instance)
+        replacements = {
+            "affected_object": finding_object_link(instance.affected_object, request.user),
+            "related_object": finding_object_link(instance.related_object, request.user),
+            "details": finding_data_display(instance.details),
+            "evidence": finding_data_display(instance.evidence),
+        }
+        context["detail_rows"] = [
+            (label, replacements.get(field, value))
+            for field, (label, value) in zip(self.detail_fields, context["detail_rows"])
+        ]
+        return context
 
 
 class FindingWorkflowPermissionMixin:

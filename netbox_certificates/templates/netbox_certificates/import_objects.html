@@ -1,4 +1,4 @@
 {% extends 'generic/object_edit.html' %}
 {% block title %}{% if ca_only %}Import CA Certificates{% else %}Import Objects{% endif %}{% endblock %}
-{% block form %}{% if ca_only %}<p>Only CA certificates are accepted. Requests containing leaf certificates, private keys, or CSRS are rejected in full.</p>{% endif %}{% include 'htmx/form.html' %}{% endblock %}
+{% block form %}{% if ca_only %}<p>Only CA certificates are accepted. Requests containing leaf certificates, private keys, or CSRs are rejected in full.</p>{% endif %}{% include 'htmx/form.html' %}{% endblock %}
 {% block buttons %}<a href="{{ return_url }}" class="btn btn-outline-secondary me-2">Cancel</a><button type="submit" class="btn btn-primary"><i class="mdi mdi-upload me-1"></i> {% if ca_only %}Import CA Certificates{% else %}Import Objects{% endif %}</button>{% endblock %}

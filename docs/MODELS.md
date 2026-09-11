@@ -6,14 +6,14 @@ ArtifactGroup
   ├─ Services
   ├─ Certificates
   ├─ Private Keys
-  ├─ CSRS
+  ├─ CSRs
   └─ Bundles
 
 Service
   ├─ Certificate Policy
   ├─ Certificates
   ├─ Private Keys
-  ├─ CSRS
+  ├─ CSRs
   └─ Bundles
 
 Certificate

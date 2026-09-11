@@ -209,7 +209,7 @@ class CSR(PrimaryModel):
     class Meta:
         ordering = ("name",)
         verbose_name = "CSR"
-        verbose_name_plural = "CSRS"
+        verbose_name_plural = "CSRs"
         permissions = (("download_csr", "Can download CSR material"),)
 
     def __str__(self):

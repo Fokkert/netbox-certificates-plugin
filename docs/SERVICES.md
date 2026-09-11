@@ -42,7 +42,7 @@ Services support many-to-many relationships with:
 - Groups
 - Certificates
 - Private Keys
-- CSRS
+- CSRs
 - Bundles
 
 The same cryptographic object can therefore be used by multiple Services, and one Service can reference multiple cryptographic objects.
@@ -62,8 +62,8 @@ Service endpoint identities are derived from:
 - primary URL hostname
 - additional URL hostnames
 
-The Health engine compares these identities with linked Certificate SANS and reports uncovered names, mismatched keys/CSRS, private-key reuse, and suspicious non-wildcard certificate sharing.
+The Health engine compares these identities with linked Certificate SANS and reports uncovered names, mismatched keys/CSRs, private-key reuse, and suspicious non-wildcard certificate sharing.
 
 ## Editor layout
 
-Every section is visible: Service, Endpoints, Cryptographic artifacts, Organization and policy, and Metadata. Certificates and private keys are adjacent, followed by CSRS and bundles. There is no collapsible Advanced section. Additional URLS use one URL per line, and empty hostname/SNI/port fields derive from the primary URL and protocol.
+Every section is visible: Service, Endpoints, Cryptographic artifacts, Organization and policy, and Metadata. Certificates and private keys are adjacent, followed by CSRs and bundles. There is no collapsible Advanced section. Additional URLS use one URL per line, and empty hostname/SNI/port fields derive from the primary URL and protocol.

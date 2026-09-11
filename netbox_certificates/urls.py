@@ -93,7 +93,7 @@ urlpatterns = (
     path("private-keys/<int:pk>/delete/", views.PrivateKeyDeleteView.as_view(), name="privatekey_delete"),
     path("private-keys/<int:pk>/changelog/", views.ArtifactObjectChangeLogView.as_view(), name="privatekey_changelog", kwargs={"model": models.PrivateKey}),
 
-    # INVENTORY: CSRS
+    # INVENTORY: CSRs
     path("csrs/", views_v1.CSRListView.as_view(), name="csr_list"),
     path("csrs/export-material/", bulk_export.BulkMaterialExportView.as_view(), {"kind": "csr"}, name="csr_material_export"),
     path("csrs/edit/", views.CSRBulkEditView.as_view(), name="csr_bulk_edit"),

@@ -42,7 +42,6 @@ class CertificateForm(AcronymFormMixin, PrimaryModelForm):
         model = Certificate
         fields = ("name", "material", "supersedes", "alert_trigger", "trigger_unit", "owner", "groups", "description", "comments", "tags")
     def __init__(self, *args, user=None, **kwargs):
-        from .models_v1 import Service
         self.user = user
         super().__init__(*args, **kwargs)
         if user is not None:
@@ -231,6 +230,8 @@ class ArtifactGroupForm(AcronymFormMixin, PrimaryModelForm):
         fields = ("name", "parent", "owner", "description", "comments", "tags")
 
     def __init__(self, *args, user=None, **kwargs):
+        from .models_v1 import Service
+
         self.user = user
         super().__init__(*args, **kwargs)
 
@@ -272,7 +273,7 @@ class ArtifactGroupForm(AcronymFormMixin, PrimaryModelForm):
             ("Bundles", [(f"bundle:{obj.pk}", obj.name) for obj in self._member_querysets["bundle"]]),
             ("Certificates", [(f"certificate:{obj.pk}", obj.name) for obj in self._member_querysets["certificate"]]),
             ("Private Keys", [(f"privatekey:{obj.pk}", obj.name) for obj in self._member_querysets["privatekey"]]),
-            ("CSRS", [(f"csr:{obj.pk}", obj.name) for obj in self._member_querysets["csr"]]),
+            ("CSRs", [(f"csr:{obj.pk}", obj.name) for obj in self._member_querysets["csr"]]),
             ("Services", [(f"service:{obj.pk}", obj.name) for obj in self._member_querysets["service"]]),
         ]
 
@@ -523,7 +524,7 @@ class ArtifactGroupFilterForm(CompletePrimaryModelFilterForm):
     children = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Child Groups")
     certificates = DynamicModelMultipleChoiceField(queryset=Certificate.objects.all(), required=False, label="Certificates")
     private_keys = DynamicModelMultipleChoiceField(queryset=PrivateKey.objects.all(), required=False, label="Private Keys")
-    csrs = DynamicModelMultipleChoiceField(queryset=CSR.objects.all(), required=False, label="CSRS")
+    csrs = DynamicModelMultipleChoiceField(queryset=CSR.objects.all(), required=False, label="CSRs")
     bundles = DynamicModelMultipleChoiceField(queryset=Bundle.objects.all(), required=False, label="Bundles")
     fieldsets = (
         FieldSet("q", "id", "name", "parent", "children", name="Hierarchy"),

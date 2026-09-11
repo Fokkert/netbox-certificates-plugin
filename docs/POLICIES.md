@@ -25,7 +25,7 @@ Policies can be associated with:
 
 - Services;
 - Certificates;
-- CSRS;
+- CSRs;
 - Bundles.
 
 A Service policy is applied to effective Service Certificates. A Certificate can also be assigned directly to one or more policies.

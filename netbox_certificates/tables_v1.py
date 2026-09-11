@@ -4,6 +4,7 @@ from netbox.tables import PrimaryModelTable, columns
 from django.urls import reverse
 from django.utils.html import format_html_join
 from .permissions import object_allowed
+from .finding_display import finding_object_link
 
 from .models_v1 import AlertChannel, AlertEvent, AlertRule, CertificatePolicy, HealthFinding, ObjectLink, Service
 
@@ -46,6 +47,13 @@ class HealthFindingTable(AcronymTableMixin, PrimaryModelTable):
     summary = tables.Column(linkify=True)
     affected_object = tables.Column(orderable=False)
     related_object = tables.Column(orderable=False)
+
+    def render_affected_object(self, value):
+        request = getattr(self, "request", None) or getattr(self, "context", {}).get("request")
+        return finding_object_link(value, request.user) if request else None
+
+    def render_related_object(self, value):
+        return self.render_affected_object(value)
 
     class Meta(PrimaryModelTable.Meta):
         model = HealthFinding

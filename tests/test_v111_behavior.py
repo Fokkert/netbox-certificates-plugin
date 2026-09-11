@@ -354,4 +354,4 @@ class PermissionsAndSettings(unittest.TestCase):
     def test_acronym_labels_preserve_api_identifiers(self):
         scope = definitions("netbox_certificates/labels.py", ["display_label"],
                             _ACRONYMS=re.compile(r"\b(csrs?|ssl|urls?|smtp|sni|ca)\b", re.I))
-        self.assertEqual(scope["display_label"]("Csrs / Csr / Ssl / url / Smtp / Sni / Ca"), "CSRS / CSR / SSL / URL / SMTP / SNI / CA")
+        self.assertEqual(scope["display_label"]("Csrs / Csr / Ssl / url / Smtp / Sni / Ca"), "CSRs / CSR / SSL / URL / SMTP / SNI / CA")

@@ -20,7 +20,7 @@
     <div class="col-lg-6"><section class="card h-100"><div class="card-header"><h3 class="card-title mb-0">Service assignments</h3></div><div class="card-body"><p class="text-muted">Objects without a direct service assignment</p><dl class="vault-rows mb-0">
       <div><dt>Certificates</dt><dd>{{ unassigned_certificates }}</dd></div>
       <div><dt>Private keys</dt><dd>{{ unassigned_private_keys }}</dd></div>
-      <div><dt>CSRS</dt><dd>{{ unassigned_csrs }}</dd></div>
+      <div><dt>CSRs</dt><dd>{{ unassigned_csrs }}</dd></div>
       <div><dt>Bundles</dt><dd>{{ unassigned_bundles }}</dd></div>
     </dl></div>{% if perms.netbox_certificates.view_service %}<div class="card-footer"><a href="{% url 'plugins:netbox_certificates:service_list' %}">Manage services <i class="mdi mdi-arrow-right" aria-hidden="true"></i></a></div>{% endif %}</section></div>
     <div class="col-lg-6"><section class="card h-100"><div class="card-header"><h3 class="card-title mb-0">Health overview</h3></div><div class="card-body"><p class="text-muted">Active and acknowledged findings by category</p><dl class="vault-rows mb-0">

@@ -37,7 +37,7 @@
           {% if private_keys %}<ul class="mb-0">{% for obj in private_keys %}<li><a href="{{ obj.get_absolute_url }}">{{ obj }}</a></li>{% endfor %}</ul>{% else %}—{% endif %}
         </div>
         <div>
-          <div class="text-secondary text-uppercase small fw-semibold mb-2">CSRS</div>
+          <div class="text-secondary small fw-semibold mb-2">CSRs</div>
           {% if csrs %}<ul class="mb-0">{% for obj in csrs %}<li><a href="{{ obj.get_absolute_url }}">{{ obj }}</a></li>{% endfor %}</ul>{% else %}—{% endif %}
         </div>
       </div>

@@ -107,15 +107,16 @@ class ExportBehavior(unittest.TestCase):
                                  private_key=SimpleNamespace(name="key", encrypted_material=b"encrypted"),
                                  csr=None, chain_certificates=SimpleNamespace(all=lambda: [ca]))
         scope = definitions("netbox_certificates/bulk_export.py", ["_bundle_members", "_bundle_chain"],
+                            **definitions("netbox_certificates/export_names.py", ["certificate_export_name", "bundle_export_name", "pfx_export_name"], re=__import__("re"), unicodedata=__import__("unicodedata")),
                             _artifact_token=lambda o: "test", _artifact_filename=lambda o, ext: o.name+ext,
                             decrypt_private_key=decrypt, ordered_chain=lambda c: [ca], build_pfx=pfx)
         members = scope["_bundle_members"](bundle, include_chain=False)
-        self.assertEqual([name for name, _, _ in members], ["bundle-test/leaf.crt", "bundle-test/key.key"])
+        self.assertEqual([name for name, _, _ in members], ["leaf's Bundle/leaf.crt", "leaf's Bundle/key.key"])
         members = scope["_bundle_members"](bundle, include_chain=True)
         self.assertEqual(len(members), 3)  # automatic and explicit chain membership is deduplicated
         decrypt.reset_mock()
         members = scope["_bundle_members"](bundle, export_pfx=True, protect_pfx=False, include_chain=False)
-        self.assertEqual([name for name, _, _ in members], ["bundle-test/bundle-test.pfx"])
+        self.assertEqual([name for name, _, _ in members], ["leaf's Bundle/leaf.pfx"])
         decrypt.assert_not_called()
         pfx.assert_called_once_with(bundle, "", [], allow_unencrypted=True)
 

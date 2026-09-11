@@ -3,7 +3,7 @@ from netbox_certificates.services.linker import reconcile_links
 
 
 class Command(BaseCommand):
-    help = "Rebuild automatic links among certificates, CSRS, private keys, and certificate issuers."
+    help = "Rebuild automatic links among certificates, CSRs, private keys, and certificate issuers."
 
     def handle(self, *args, **options):
         reconcile_links()

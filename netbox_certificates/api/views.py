@@ -3,6 +3,7 @@ import tarfile
 import zipfile
 
 from django.http import HttpResponse
+from django.utils.http import content_disposition_header
 from django.db.models import F
 from django.utils import timezone
 from rest_framework import status
@@ -16,6 +17,7 @@ from netbox.api.viewsets import NetBoxModelViewSet
 from users.models import Owner
 
 from netbox_certificates.constants import MAX_UPLOAD_BYTES
+from netbox_certificates.export_names import bundle_export_name, pfx_export_name
 from netbox_certificates.filtersets import ArtifactGroupFilterSet, BundleFilterSet, CertificateAuthorityFilterSet, CertificateFilterSet, CSRFilterSet, PrivateKeyFilterSet
 from netbox_certificates.models import ArtifactGroup, ArtifactLink, Bundle, Certificate, CertificateAuthority, CSR, ExpiryAlertConfiguration, ExpiryAlertEvent, PrivateKey
 from netbox_certificates.permissions import action_queryset, object_allowed
@@ -61,12 +63,12 @@ def _artifact_filename(obj, extension):
     return f"{prefix}-{_artifact_token(obj)}{extension}"
 
 
-def _bundle_filename(obj, extension): return f"bundle-{_artifact_token(obj)}{extension}"
+def _bundle_filename(obj, extension): return bundle_export_name(obj, extension)
 
 
 def _secure_response(data, filename, content_type):
     response = HttpResponse(data, content_type=content_type)
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Content-Disposition"] = content_disposition_header(True, filename)
     response["Cache-Control"] = "no-store, no-cache, must-revalidate, private"; response["Pragma"] = "no-cache"; response["X-Content-Type-Options"] = "nosniff"
     return response
 
@@ -212,7 +214,7 @@ class BundleViewSet(NetBoxModelViewSet):
             try: pfx_data = build_pfx(bundle, str(request.data.get("password", "")), chain_certificates=chain,
                                       allow_unencrypted=_bool_value(request.data.get("allow_unencrypted_pfx"), False))
             except PFXExportError as exc: raise APIException(str(exc)) from exc
-            files = [(_artifact_filename(bundle.certificate, ".pfx"), pfx_data)]
+            files = [(pfx_export_name(bundle), pfx_data)]
             if bundle.csr: files.append((_artifact_filename(bundle.csr, ".csr"), bundle.csr.material.encode("ascii")))
         else:
             files = []

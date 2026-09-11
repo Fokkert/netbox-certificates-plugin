@@ -11,7 +11,7 @@ Material export is available for:
 - Certificates
 - CA Certificates
 - Private Keys
-- CSRS
+- CSRs
 - Bundles
 
 The exporter first restricts the queryset by ObjectPermissions and the applicable sensitive-action checks, then applies the current FilterSet.
@@ -63,3 +63,9 @@ An authorized export with no matching records returns HTTP 200 and a valid archi
 Single and bulk bundle export forms ask whether to convert the certificate and key into PFX, whether to protect the PFX with a password, and whether to include the certificate chain. Unprotected PFX requires explicit selection; a protected PFX needs a password. Single exports offer ZIP/TAR; bulk material exports use ZIP. PFX replaces the separate certificate/key files and still includes the CSR when present. Chain inclusion is honored in both PFX and separate-file modes.
 
 The REST API exposes equivalent filtered exports; see [API](API.md). Material API access requires a write-enabled API token. Plaintext private-key exports additionally require a superuser, including direct UI downloads and bundles containing keys.
+
+## Bundle filenames (1.1.2)
+
+Single Bundle exports use the certificate's name: `example.com's Bundle.zip` or `example.com's Bundle.tar`. The archive directory is `example.com's Bundle/` and its PFX file is `example.com.pfx`. The API Bundle export uses the same archive/PFX naming. Bulk exports keep the outer `bundles-material.zip` filename and use these named directories inside it. Duplicate directory names receive `(2)`, `(3)`, etc., including case-insensitive collisions.
+
+If a Bundle has no certificate, its Bundle name is used. Unsafe path characters are replaced; blank names fall back to the Bundle ID. Standalone certificate/key/CSR filenames, manifests, permission checks, PFX passwords, and chain options keep their existing behavior.

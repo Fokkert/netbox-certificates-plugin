@@ -187,7 +187,7 @@ def send_test_channel(channel):
     """Send a neutral test message without requiring or modifying a HealthFinding."""
     payload = {
         "type": "netbox-certificates-alert-test",
-        "plugin_version": "1.1.1",
+        "plugin_version": "1.1.2",
         "channel": channel.name,
         "timestamp": timezone.now().isoformat(),
     }

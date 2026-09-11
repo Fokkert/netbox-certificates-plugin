@@ -18,6 +18,8 @@ class RevisionUIIntegrationTests(TestCase):
             code="TEST_FINDING", category="validity", severity="critical", summary="Test health finding",
             object_type=ContentType.objects.get_for_model(ArtifactGroup), object_id=cls.parent.pk,
             fingerprint="a" * 64,
+            related_type=ContentType.objects.get_for_model(ArtifactGroup), related_object_id=cls.child.pk,
+            evidence={"days_remaining": 5},
         )
 
     def setUp(self):
@@ -30,7 +32,10 @@ class RevisionUIIntegrationTests(TestCase):
         response = self.client.get(self.url("health"))
         self.assertContains(response, "Test health finding")
         self.assertContains(response, "Certificate expiration")
-        self.assertEqual(self.client.get(self.url("healthfinding", pk=self.finding.pk)).status_code, 200)
+        for response in (response, self.client.get(self.url("healthfinding", pk=self.finding.pk))):
+            self.assertContains(response, f'href="{self.parent.get_absolute_url()}"')
+            self.assertContains(response, f'href="{self.child.get_absolute_url()}"')
+            self.assertContains(response, "Days remaining")
         self.assertEqual(self.client.get(self.url("healthfinding_edit", pk=self.finding.pk)).status_code, 200)
         self.assertRedirects(self.client.get(self.url("expiration_dashboard")), self.url("health"))
 
@@ -52,6 +57,26 @@ class RevisionUIIntegrationTests(TestCase):
         service = Service.objects.get(name="Test HTTPS service")
         self.assertEqual((service.hostname, service.sni_name, service.port),
                          ("service.example.test", "service.example.test", 8443))
+
+    def test_group_add_edit_and_service_membership(self):
+        service = Service.objects.create(name="Group service")
+        for name, kwargs in (("artifactgroup_add", {}), ("artifactgroup_edit", {"pk": self.child.pk})):
+            response = self.client.get(self.url(name, **kwargs))
+            self.assertContains(response, "Group service")
+        response = self.client.post(self.url("artifactgroup_add"), {
+            "name": "New group", "parent": self.parent.pk, "members": [f"service:{service.pk}"],
+        })
+        self.assertEqual(response.status_code, 302)
+        group = ArtifactGroup.objects.get(name="New group")
+        self.assertEqual(group.parent, self.parent)
+        self.assertTrue(group.services.filter(pk=service.pk).exists())
+        response = self.client.post(self.url("artifactgroup_edit", pk=group.pk), {
+            "name": "Renamed group", "parent": self.parent.pk, "members": [f"service:{service.pk}"],
+        })
+        self.assertEqual(response.status_code, 302)
+        group.refresh_from_db()
+        self.assertEqual(group.name, "Renamed group")
+        self.assertTrue(group.services.filter(pk=service.pk).exists())
 
     def test_alert_settings_and_history_render(self):
         response = self.client.get(self.url("alert_settings"))

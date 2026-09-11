@@ -15,7 +15,7 @@ Base path:
 | `bundles/` | Bundles |
 | `certificates/` | Certificates |
 | `private-keys/` | Private Keys |
-| `csrs/` | CSRS |
+| `csrs/` | CSRs |
 | `certificate-authorities/` | CA Certificates |
 | `certificate-policies/` | Certificate Policies |
 | `health-findings/` | Health Findings |
@@ -130,3 +130,7 @@ Group serializers now include `services` alongside the other membership lists, a
 Alert settings accept the fields displayed by the settings form, including `recipients` (an array), `smtp_security` (`starttls`, `ssl`, or `none`), and `smtp_verify_tls` / `webhook_verify_tls`. Password, webhook URL, and webhook headers are write-only; configured flags appear on reads. An empty password or webhook URL preserves the saved value; `clear_smtp_password=true` clears the password and `webhook_headers={}` clears saved headers. Test requests can contain partial settings or `{}` to test saved configuration, and work when a delivery method is disabled. Successful tests return a `detail` message and sample payload. A failed delivery returns HTTP 400 with a sanitized message; saved settings remain saved.
 
 All settings mutations/tests and finding state/scan actions require a write-enabled token. Generated findings/events cannot be created through REST. Event outcome/evidence fields are read-only; descriptive metadata remains editable. Automatic ObjectLinks are excluded from individual and bulk writes. Related object selections require view permission.
+
+## Bundle export filenames in 1.1.2
+
+`POST /bundles/{id}/export/` returns a certificate-named archive, such as `example.com's Bundle.zip`, and PFX conversion produces `example.com.pfx` inside it. Filtered bulk Bundle exports use certificate-named directories and disambiguate collisions. Endpoint paths, request parameters, response formats, token requirements, and permission checks are unchanged. See [Exports](EXPORTS.md).

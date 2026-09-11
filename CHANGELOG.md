@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.2
+
+- Fix the missing Service import that prevented Group add/edit forms from opening; retain membership and hierarchy permission checks.
+- Use CSRs throughout display labels and documentation, including a model-state migration that preserves existing CSR permissions.
+- Name exported Bundle archives and directories after their certificate, with certificate-named PFX files in both UI and API exports. Sanitize filenames and disambiguate duplicate names in bulk exports.
+- Show affected/related object links, finding codes, details, and readable evidence in the Health table and detail view; respect object view permissions and escape displayed values.
+- Remove the introductory Alerts paragraph while preserving sample test buttons and delivery settings.
+- Add targeted regression checks and update release and pip upgrade documentation.
+
 ## 1.1.1
 
 - Reject non-CA certificates, missing CA constraints, and mixed material in dedicated UI/API CA imports; enforce the same rules on CA REST create/update.

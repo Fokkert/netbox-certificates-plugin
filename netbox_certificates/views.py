@@ -1,4 +1,6 @@
 from __future__ import annotations
+from django.utils.http import content_disposition_header
+from .export_names import bundle_export_name, pfx_export_name
 from .labels import display_label
 
 import io
@@ -523,7 +525,7 @@ def _artifact_download_filename(obj, extension):
 def _bundle_download_filename(obj, archive_format="zip"):
     extension = {"zip": ".zip", "tar": ".tar"}.get(archive_format)
     if extension is None: raise Http404("Unsupported archive format.")
-    return f"bundle-{_artifact_token(obj)}{extension}"
+    return bundle_export_name(obj, extension)
 
 
 def _archive_bytes(files, archive_format):
@@ -589,7 +591,7 @@ class BundleExportView(LoginRequiredMixin, View):
                 chain = []
                 if d.get("include_chain"):
                     chain = ordered_chain(bundle.certificate); chain.extend(c for c in bundle.chain_certificates.all() if c.pk not in {x.pk for x in chain})
-                files = [(_artifact_download_filename(bundle.certificate, ".pfx"), build_pfx(bundle, d["pfx_password"], chain_certificates=chain))]
+                files = [(pfx_export_name(bundle), build_pfx(bundle, d["pfx_password"], chain_certificates=chain))]
                 if bundle.csr: files.append((_artifact_download_filename(bundle.csr, ".csr"), bundle.csr.material.encode("ascii")))
             else:
                 files = []
@@ -606,7 +608,7 @@ class BundleExportView(LoginRequiredMixin, View):
         except (PFXExportError, PrivateKeyEncryptionError) as exc:
             form.add_error(None, str(exc)); return render(request, self.template_name, context(bundle))
         response = HttpResponse(data, content_type=content_type)
-        response["Content-Disposition"] = f'attachment; filename="{_bundle_download_filename(bundle, d["archive_format"])}"'
+        response["Content-Disposition"] = content_disposition_header(True, _bundle_download_filename(bundle, d["archive_format"]))
         response["Cache-Control"] = "no-store, no-cache, must-revalidate, private"; response["Pragma"] = "no-cache"; response["X-Content-Type-Options"] = "nosniff"
         return response
 

@@ -16,6 +16,7 @@ from .artifact_filtersets_v1 import (
     PrivateKeyV1FilterSet,
 )
 from .models import Bundle, Certificate, CSR, PrivateKey
+from .export_names import bundle_export_name, pfx_export_name, unique_bundle_directory
 from .permissions import action_queryset, require_action_permission
 from .services.encryption import PrivateKeyEncryptionError, decrypt_private_key
 from .services.chain import ordered_chain
@@ -90,14 +91,14 @@ def _material_for_object(kind, obj):
     raise ValueError(f"Unsupported artifact kind: {kind}")
 
 
-def _bundle_members(bundle, *, include_chain=True, export_pfx=False, password="", protect_pfx=True):
-    prefix = f"bundle-{_artifact_token(bundle)}"
+def _bundle_members(bundle, *, include_chain=True, export_pfx=False, password="", protect_pfx=True, directory=None):
+    prefix = directory or bundle_export_name(bundle)
     members = []
     if export_pfx:
         chain = _bundle_chain(bundle) if include_chain else []
         data = build_pfx(bundle, password if protect_pfx else "", chain,
                          allow_unencrypted=not protect_pfx)
-        members.append((f"{prefix}/{prefix}.pfx", data, bundle.certificate))
+        members.append((f"{prefix}/{pfx_export_name(bundle)}", data, bundle.certificate))
     if bundle.certificate is not None and not export_pfx:
         members.append(
             (f"{prefix}/{_artifact_filename(bundle.certificate, '.crt')}", bundle.certificate.material.encode("ascii"), bundle.certificate)
@@ -253,7 +254,7 @@ class BulkMaterialExportView(LoginRequiredMixin, View):
         manifest = {
             "format": "netbox-certificates-export-manifest",
             "manifest_version": 1,
-            "plugin_version": "1.1.1",
+            "plugin_version": "1.1.2",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "object_kind": kind,
             "filters": {key: filter_data.getlist(key) for key in filter_data.keys()},
@@ -265,10 +266,12 @@ class BulkMaterialExportView(LoginRequiredMixin, View):
         try:
             with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as archive:
                 if kind == "bundle":
+                    used_directories = set()
                     for bundle in queryset.iterator(chunk_size=100):
                         object_entry = _object_manifest(bundle)
                         object_entry["files"] = []
-                        for filename, data, artifact in _bundle_members(bundle, **self.bundle_options):
+                        directory = unique_bundle_directory(bundle, used_directories)
+                        for filename, data, artifact in _bundle_members(bundle, directory=directory, **self.bundle_options):
                             checksum = _write_member(archive, filename, data)
                             file_entry = {
                                 "path": filename,
@@ -336,7 +339,7 @@ class SingleBundleArchiveExportView(LoginRequiredMixin, View):
         manifest = {
             "format": "netbox-certificates-export-manifest",
             "manifest_version": 1,
-            "plugin_version": "1.1.1",
+            "plugin_version": "1.1.2",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "object_kind": "bundle",
             "count": 1,
@@ -367,7 +370,7 @@ class SingleBundleArchiveExportView(LoginRequiredMixin, View):
                 "manifest.json",
                 json.dumps(manifest, indent=2, sort_keys=True, default=str).encode("utf-8"),
             )
-        return _secure_file_response(output, f"bundle-{_artifact_token(bundle)}.zip")
+        return _secure_file_response(output, bundle_export_name(bundle, ".zip"))
 
     def _tar(self, bundle):
         import io
@@ -387,7 +390,7 @@ class SingleBundleArchiveExportView(LoginRequiredMixin, View):
         response = FileResponse(
             output,
             as_attachment=True,
-            filename=f"bundle-{_artifact_token(bundle)}.tar",
+            filename=bundle_export_name(bundle, ".tar"),
             content_type="application/x-tar",
         )
         response["Cache-Control"] = "no-store, no-cache, must-revalidate, private"

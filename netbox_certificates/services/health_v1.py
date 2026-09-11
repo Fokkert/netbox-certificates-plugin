@@ -704,7 +704,7 @@ def _service_findings(service):
             "relationship",
             FindingSeverityChoices.HIGH,
             service,
-            "The Service has linked certificates and CSRS, but none of their public-key identities match.",
+            "The Service has linked certificates and CSRs, but none of their public-key identities match.",
             evidence={
                 "certificate_public_keys": sorted(cert_fingerprints),
                 "csr_public_keys": sorted(csr_fingerprints),
@@ -716,7 +716,7 @@ def _service_findings(service):
             "relationship",
             FindingSeverityChoices.CRITICAL,
             service,
-            "The Service has linked private keys and CSRS, but none of their public-key identities match.",
+            "The Service has linked private keys and CSRs, but none of their public-key identities match.",
             evidence={
                 "private_key_public_keys": sorted(key_fingerprints),
                 "csr_public_keys": sorted(csr_fingerprints),
@@ -778,7 +778,7 @@ def refresh_health_findings():
     ):
         _service_findings(service)
 
-    # Policies may be attached directly to certificates/CSRS/Bundles as well as inherited through Services.
+    # Policies may be attached directly to certificates/CSRs/Bundles as well as inherited through Services.
     for policy in CertificatePolicy.objects.filter(enabled=True).prefetch_related(
         "certificates", "csrs", "bundles__certificate", "bundles__csr"
     ):

@@ -13,9 +13,9 @@ class ReleaseContractTests(unittest.TestCase):
         pyproject = self.read("pyproject.toml")
         plugin = self.read("netbox-plugin.yaml")
         config = self.read("netbox_certificates/__init__.py")
-        self.assertIn('version = "1.1.1"', pyproject)
-        self.assertIn("version: 1.1.1", plugin)
-        self.assertIn('version = "1.1.1"', config)
+        self.assertIn('version = "1.1.2"', pyproject)
+        self.assertIn("version: 1.1.2", plugin)
+        self.assertIn('version = "1.1.2"', config)
         self.assertIn('min_version = "4.5.9"', config)
         self.assertIn('max_version = "4.5.10"', config)
 
@@ -32,7 +32,7 @@ class ReleaseContractTests(unittest.TestCase):
             'link_text="Bundles"',
             'link_text="Certificates"',
             'link_text="Private Keys"',
-            'link_text="CSRS"',
+            'link_text="CSRs"',
             '"Operations"',
             'link_text="Import Objects"',
             'link_text="Generate CSR"',
@@ -113,7 +113,7 @@ class ReleaseContractTests(unittest.TestCase):
         ):
             self.assertIn(heading, readme)
         self.assertIn("NetBox Certificates Plugin", readme)
-        self.assertIn("netbox-certificates-plugin==1.1.1", readme)
+        self.assertIn("netbox-certificates-plugin==1.1.2", readme)
 
 
 

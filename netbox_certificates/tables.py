@@ -115,7 +115,7 @@ class CertificateAuthorityTable(AcronymTableMixin, NetBoxTable):
 class PrivateKeyTable(ArtifactRelationshipTable):
     name = tables.Column(linkify=True)
     certificate = tables.Column(empty_values=(), orderable=False, verbose_name="Certificates")
-    csr = tables.Column(empty_values=(), orderable=False, verbose_name="CSRS")
+    csr = tables.Column(empty_values=(), orderable=False, verbose_name="CSRs")
     bundles = tables.Column(empty_values=(), orderable=False, verbose_name="Bundles")
     groups = tables.Column(empty_values=(), orderable=False, verbose_name="Groups")
 

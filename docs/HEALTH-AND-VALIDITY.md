@@ -56,7 +56,7 @@ Critical
 
 - duplicate Certificates
 - duplicate Private Keys
-- duplicate CSRS
+- duplicate CSRs
 - duplicate Bundle identities
 - weak RSA or elliptic-curve keys
 - DSA private keys
@@ -87,3 +87,7 @@ python manage.py refresh_certificate_health
 Findings that are no longer detected are marked Resolved.
 
 The page combines expiration counts and upcoming/expired certificates with findings and their filters. Findings can be selected for bulk edit/delete. Empty finding exports are valid archives. Changing a finding to acknowledged, ignored, or resolved requires the corresponding custom permission even through bulk edits or REST PATCH. Findings are created by scans; evidence is not editable.
+
+## Reading findings (1.1.2)
+
+The Health table shows severity and status, summary and finding code, affected and related objects, details, evidence, and last detection time. Both object columns link directly to the referenced inventory records when the viewer can view those objects; missing or inaccessible objects show a dash. Detail pages use the same permission-aware links and labeled evidence. Filtering, pagination, scans, and selected-row actions retain their existing behavior.

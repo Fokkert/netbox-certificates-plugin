@@ -10,7 +10,9 @@ _ACRONYMS = re.compile(
 
 
 def display_label(value):
-    return _ACRONYMS.sub(lambda match: match.group().upper(), str(value))
+    return _ACRONYMS.sub(
+        lambda match: "CSRs" if match.group().lower() == "csrs" else match.group().upper(), str(value),
+    )
 
 
 class AcronymFormMixin:
