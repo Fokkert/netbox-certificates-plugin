@@ -5,6 +5,7 @@ from django.db import IntegrityError, transaction
 
 from netbox_certificates.choices import LinkOriginChoices
 from netbox_certificates.models import Certificate, CSR, PrivateKey
+from netbox_certificates.permissions import object_allowed
 from .duplicates import find_duplicate
 from .encryption import encrypt_private_key
 from .ingest import after_artifact_save
@@ -73,6 +74,15 @@ def _assign_groups(objects, groups):
             obj.groups.add(*groups)
 
 
+def _check_reused_group_permissions(reused, groups, user):
+    desired = {group.pk for group in (groups or [])}
+    if user is None or not desired:
+        return
+    for obj in reused:
+        if desired - set(obj.groups.values_list("pk", flat=True)) and not object_allowed(user, obj, "change"):
+            raise PermissionDenied("Change permission is required to assign groups to an existing CA certificate.")
+
+
 def create_or_reuse_chain(parsed_chain, *, filename, user=None, owner=None, groups=None):
     created, reused, objects = [], [], []
     for parsed in parsed_chain:
@@ -90,6 +100,7 @@ def create_or_reuse_chain(parsed_chain, *, filename, user=None, owner=None, grou
             created.append(obj)
             after_artifact_save(obj)
         objects.append(obj)
+    _check_reused_group_permissions(reused, groups, user)
     _assign_groups(objects, groups)
     return objects, created, reused
 
@@ -130,6 +141,7 @@ def import_parsed(parsed_items, *, filename, user=None, import_chain=False, owne
                     bundle.chain_certificates.add(*chain_objs)
                     from .linker import sync_bundle_links
                     sync_bundle_links(bundle)
+            _check_reused_group_permissions(reused, groups, user)
             _assign_groups(created + reused + ([bundle] if bundle else []), groups)
             return {"created": created, "reused": reused, "leaf": leaf_obj, "chain": chain_objs, "bundle": bundle}
     except IntegrityError as exc:

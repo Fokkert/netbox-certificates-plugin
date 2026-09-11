@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.1
+
+- Reject non-CA certificates, missing CA constraints, and mixed material in dedicated UI/API CA imports; enforce the same rules on CA REST create/update.
+- Fix unbound empty filters causing empty export failures and invisible Groups; return valid empty material and metadata archives with manifests.
+- Normalize displayed acronyms, refresh the Vault with a neutral responsive layout, and use Group/Subgroup terminology throughout the hierarchy.
+- Show visible artifacts and Services inside the group tree, add Service membership editing/API support, and expose bulk selection on Groups and Health pages.
+- Use each certificate’s alert trigger/unit, default to 1 calendar month, add table columns, and remove rule-level expiration timing from UI/API controls.
+- Keep all Service fields visible with certificates and private keys together.
+- Make saved SMTP/webhook sample tests available even while disabled; add singleton settings/test REST endpoints and filtered material/metadata export actions.
+- Enforce custom-action object constraints, protect membership removals, make generated evidence read-only, remove inappropriate add permissions, and block automatic-link bulk writes.
+- Add migration 0020, regression checks, and updated release, API, permission, and Linux upgrade documentation.
+
 ## 1.1.0
 
 - Combine Health and Validity with the Expiration Dashboard; retain a redirect from the old dashboard URL.

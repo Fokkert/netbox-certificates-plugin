@@ -5,7 +5,21 @@ from netbox.api.serializers import NetBoxModelSerializer
 
 from netbox_certificates.choices import LinkOriginChoices
 from netbox_certificates.models import ArtifactGroup, ArtifactLink, Bundle, Certificate, CertificateAuthority, CSR, ExpiryAlertConfiguration, ExpiryAlertEvent, PrivateKey
+from netbox_certificates.models_v1 import Service
 from netbox_certificates.permissions import object_allowed
+
+
+class VisibleRelationshipsMixin:
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        request = self.context.get("request")
+        if request:
+            for name, value in attrs.items():
+                for obj in value if isinstance(value, (list, tuple)) else (value,):
+                    if hasattr(obj, "_meta") and hasattr(obj.__class__.objects, "restrict"):
+                        if not object_allowed(request.user, obj, "view"):
+                            raise PermissionDenied(f"View permission is required for the selected {name.replace('_', ' ')}.")
+        return attrs
 from netbox_certificates.services.duplicates import find_duplicate
 from netbox_certificates.services.encryption import encrypt_private_key, encrypt_secret
 from netbox_certificates.services.expiry import remaining_days
@@ -40,9 +54,10 @@ def _group_details(obj, request=None):
     return [{"id": group.pk, "name": group.name, "url": group.get_absolute_url()} for group in groups]
 
 
-class ArtifactGroupSerializer(NetBoxModelSerializer):
+class ArtifactGroupSerializer(VisibleRelationshipsMixin, NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:netbox_certificates-api:artifactgroup-detail")
     parent = serializers.PrimaryKeyRelatedField(queryset=ArtifactGroup.objects.all(), required=False, allow_null=True)
+    services = serializers.PrimaryKeyRelatedField(many=True, queryset=Service.objects.all(), required=False)
     children = serializers.SerializerMethodField()
     members = serializers.SerializerMethodField()
     certificates = serializers.PrimaryKeyRelatedField(many=True, queryset=Certificate.objects.all(), required=False)
@@ -54,7 +69,7 @@ class ArtifactGroupSerializer(NetBoxModelSerializer):
         model = ArtifactGroup
         fields = (
             "id", "url", "display", "name", "parent", "children", "members", "owner", "description", "comments",
-            "certificates", "private_keys", "csrs", "bundles", "tags", "custom_fields", "created", "last_updated",
+            "certificates", "private_keys", "csrs", "bundles", "services", "tags", "custom_fields", "created", "last_updated",
         )
         brief_fields = ("id", "url", "display", "name", "parent")
 
@@ -71,18 +86,21 @@ class ArtifactGroupSerializer(NetBoxModelSerializer):
 
     @staticmethod
     def _memberships(validated_data):
-        return {name: validated_data.pop(name, None) for name in ("certificates", "private_keys", "csrs", "bundles")}
+        return {name: validated_data.pop(name, None) for name in ("certificates", "private_keys", "csrs", "bundles", "services")}
 
     def _validate_members(self, memberships):
         request = self.context.get("request")
         if request is None:
             return
-        for objects in memberships.values():
+        for name, objects in memberships.items():
             if objects is None:
                 continue
-            for obj in objects:
+            affected = list(objects)
+            if self.instance:
+                affected += list(getattr(self.instance, name).exclude(pk__in=[obj.pk for obj in objects]))
+            for obj in affected:
                 if not object_allowed(request.user, obj, "change"):
-                    raise PermissionDenied(f"Changing Group membership for {obj} requires change permission on that object.")
+                    raise PermissionDenied("Changing Group membership requires change permission on every added or removed object.")
 
     @staticmethod
     def _apply_memberships(group, memberships):
@@ -113,6 +131,7 @@ class ArtifactGroupSerializer(NetBoxModelSerializer):
             ("certificate", obj.certificates.all().order_by("name")),
             ("private_key", obj.private_keys.all().order_by("name")),
             ("csr", obj.csrs.all().order_by("name")),
+            ("service", obj.services.all().order_by("name")),
         ):
             result.extend(self._member_item(kind, item) for item in queryset if self._visible(item))
         return result
@@ -151,7 +170,7 @@ class CertificateAuthoritySerializer(NetBoxModelSerializer):
         return Certificate.objects.restrict(request.user, "view").filter(authority=obj).count()
 
 
-class CertificateSerializer(NetBoxModelSerializer):
+class CertificateSerializer(VisibleRelationshipsMixin, NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:netbox_certificates-api:certificate-detail")
     material = serializers.CharField(required=False, allow_blank=False)
     remaining_days = serializers.SerializerMethodField()
@@ -207,7 +226,7 @@ class CertificateSerializer(NetBoxModelSerializer):
             obj = super().update(instance, self._prepare(validated_data)); after_artifact_save(obj); return obj
 
 
-class PrivateKeySerializer(NetBoxModelSerializer):
+class PrivateKeySerializer(VisibleRelationshipsMixin, NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:netbox_certificates-api:privatekey-detail")
     key_material = serializers.CharField(write_only=True, required=False, allow_blank=False)
     input_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
@@ -220,7 +239,7 @@ class PrivateKeySerializer(NetBoxModelSerializer):
         read_only_fields = ("source_format", "material_sha256", "public_key_fingerprint", "key_type", "key_size", "encrypted_on_import", "group_details")
     def get_group_details(self, obj): return _group_details(obj, self.context.get("request"))
     def validate(self, attrs):
-        material = attrs.pop("key_material", None); password = attrs.pop("input_password", None) or None; attrs = super().validate(attrs)
+        material = attrs.pop("key_material", None); password = attrs.pop("input_password", None) or None
         if self.instance is None and not material: raise serializers.ValidationError({"key_material": "Private key material is required."})
         if material:
             _require_superuser_write_token(self.context.get("request"), "Private-key material API access")
@@ -229,7 +248,7 @@ class PrivateKeySerializer(NetBoxModelSerializer):
             duplicate = find_duplicate("private_key", parsed.metadata, exclude_pk=self.instance.pk if self.instance else None)
             if duplicate: raise serializers.ValidationError({"key_material": duplicate.message()})
             self._parsed = parsed
-        return attrs
+        return super().validate(self._prepare(attrs))
     def _prepare(self, data):
         parsed = getattr(self, "_parsed", None)
         if parsed:
@@ -241,7 +260,7 @@ class PrivateKeySerializer(NetBoxModelSerializer):
         with transaction.atomic(): obj = super().update(instance, self._prepare(validated_data)); after_artifact_save(obj); return obj
 
 
-class CSRSerializer(NetBoxModelSerializer):
+class CSRSerializer(VisibleRelationshipsMixin, NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:netbox_certificates-api:csr-detail")
     material = serializers.CharField(required=False, allow_blank=False)
     groups = serializers.PrimaryKeyRelatedField(many=True, queryset=ArtifactGroup.objects.all(), required=False)
@@ -273,7 +292,7 @@ class CSRSerializer(NetBoxModelSerializer):
         with transaction.atomic(): obj = super().update(instance, self._prepare(validated_data)); after_artifact_save(obj); return obj
 
 
-class BundleSerializer(NetBoxModelSerializer):
+class BundleSerializer(VisibleRelationshipsMixin, NetBoxModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name="plugins-api:netbox_certificates-api:bundle-detail")
     certificate = serializers.SerializerMethodField(); private_key = serializers.SerializerMethodField(); csr = serializers.SerializerMethodField(); chain_certificates = serializers.SerializerMethodField()
     groups = serializers.PrimaryKeyRelatedField(many=True, queryset=ArtifactGroup.objects.all(), required=False)

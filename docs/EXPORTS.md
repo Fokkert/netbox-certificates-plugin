@@ -11,7 +11,7 @@ Material export is available for:
 - Certificates
 - CA Certificates
 - Private Keys
-- CSRs
+- CSRS
 - Bundles
 
 The exporter first restricts the queryset by ObjectPermissions and the applicable sensitive-action checks, then applies the current FilterSet.
@@ -53,3 +53,13 @@ Cryptographic material and encrypted secret fields are excluded.
 Authorized Private Key and private-key-containing Bundle exports contain decrypted key material. Downloaded files and archives must be handled as secrets.
 
 Responses use cache-prevention headers and restrictive archive member modes.
+
+## Empty results and validation
+
+An authorized export with no matching records returns HTTP 200 and a valid archive with `count: 0` in the manifest. Metadata archives also contain `objects.json` with `[]`. This applies to an empty CA inventory and an empty Health and Validity inventory. A genuinely invalid filter returns HTTP 400 with field-specific errors; lack of export permission returns HTTP 403.
+
+## Bundle choices
+
+Single and bulk bundle export forms ask whether to convert the certificate and key into PFX, whether to protect the PFX with a password, and whether to include the certificate chain. Unprotected PFX requires explicit selection; a protected PFX needs a password. Single exports offer ZIP/TAR; bulk material exports use ZIP. PFX replaces the separate certificate/key files and still includes the CSR when present. Chain inclusion is honored in both PFX and separate-file modes.
+
+The REST API exposes equivalent filtered exports; see [API](API.md). Material API access requires a write-enabled API token. Plaintext private-key exports additionally require a superuser, including direct UI downloads and bundles containing keys.

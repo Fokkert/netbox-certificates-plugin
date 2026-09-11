@@ -16,7 +16,7 @@ from .artifact_filtersets_v1 import (
     PrivateKeyV1FilterSet,
 )
 from .models import Bundle, Certificate, CSR, PrivateKey
-from .permissions import action_queryset
+from .permissions import action_queryset, require_action_permission
 from .services.encryption import PrivateKeyEncryptionError, decrypt_private_key
 from .services.chain import ordered_chain
 from .services.pkcs12_export import build_pfx
@@ -135,7 +135,7 @@ def _filtered_query_data(filterset_class, request, forced_filters=None):
     Build query data solely from real FilterSet fields.
 
     NetBox list pages add presentation/query-state parameters (sorting, pagination,
-    columns, return URLs, etc.). Passing those raw parameters into the exporter was
+    columns, return URLS, etc.). Passing those raw parameters into the exporter was
     the source of the 0.5.0 "Invalid export filters" failure.
     """
     allowed = set(filterset_class.base_filters.keys()) | {"filter", "filter_id"}
@@ -150,7 +150,7 @@ def _filtered_query_data(filterset_class, request, forced_filters=None):
 
 def apply_current_filters(filterset_class, request, queryset, forced_filters=None):
     data = _filtered_query_data(filterset_class, request, forced_filters=forced_filters)
-    filterset = filterset_class(data or None, queryset=queryset)
+    filterset = filterset_class(data, queryset=queryset, request=request)
     if not filterset.is_valid():
         return None, filterset.errors, data
     return filterset.qs.order_by("pk"), None, data
@@ -183,6 +183,7 @@ class BulkMaterialExportView(LoginRequiredMixin, View):
 
     def get(self, request, kind):
         if kind == "bundle":
+            require_action_permission(Bundle, request.user, "export")
             from .forms import BundleExportForm
             form = BundleExportForm()
             form.fields["archive_format"].choices = (("zip", "ZIP"),)
@@ -211,8 +212,10 @@ class BulkMaterialExportView(LoginRequiredMixin, View):
         if config is None:
             raise Http404("Unknown material export type.")
 
+        require_action_permission(config["model"], request.user, config["action"])
         queryset = action_queryset(config["model"], request.user, config["action"])
         if kind == "bundle" and self.bundle_options.get("export_pfx"):
+            require_action_permission(Bundle, request.user, "export_pfx")
             queryset = queryset.filter(pk__in=action_queryset(Bundle, request.user, "export_pfx"))
         if kind == "bundle":
             queryset = queryset.select_related("certificate", "private_key", "csr").prefetch_related("chain_certificates")
@@ -225,13 +228,10 @@ class BulkMaterialExportView(LoginRequiredMixin, View):
         )
         if errors is not None:
             return HttpResponse(
-                f"Invalid export filters: {errors}",
+                f"Invalid export filters:\n{errors.as_text()}",
                 status=400,
                 content_type="text/plain; charset=utf-8",
             )
-        if not queryset.exists():
-            raise Http404("No objects are available for export with your permissions and current filters.")
-
         # Defense in depth: a material-export permission does not by itself grant
         # bulk extraction of plaintext private keys. Preserve the plugin's
         # sensitive-operation superuser overlay for both direct key exports and
@@ -253,7 +253,7 @@ class BulkMaterialExportView(LoginRequiredMixin, View):
         manifest = {
             "format": "netbox-certificates-export-manifest",
             "manifest_version": 1,
-            "plugin_version": "1.1.0",
+            "plugin_version": "1.1.1",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "object_kind": kind,
             "filters": {key: filter_data.getlist(key) for key in filter_data.keys()},
@@ -336,7 +336,7 @@ class SingleBundleArchiveExportView(LoginRequiredMixin, View):
         manifest = {
             "format": "netbox-certificates-export-manifest",
             "manifest_version": 1,
-            "plugin_version": "1.1.0",
+            "plugin_version": "1.1.1",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "object_kind": "bundle",
             "count": 1,

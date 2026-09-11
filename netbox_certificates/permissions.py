@@ -1,4 +1,11 @@
+from django.core.exceptions import PermissionDenied
+
 STANDARD_ACTIONS = {"view", "add", "change", "delete"}
+
+
+def require_action_permission(model, user, action):
+    if not user.is_authenticated or not (user.is_superuser or user.has_perm(permission_name(model, action))):
+        raise PermissionDenied("You do not have permission for this operation.")
 
 
 def permission_name(model, action):
@@ -23,9 +30,9 @@ def action_queryset(model, user, action="view"):
         return qs
     if not user.has_perm(permission_name(model, action)):
         return qs.none()
-    restrict_action = action if action in STANDARD_ACTIONS else "view"
     if hasattr(qs, "restrict"):
-        return qs.restrict(user, restrict_action)
+        qs = qs.restrict(user, action)
+        return qs.restrict(user, "view") if action not in STANDARD_ACTIONS else qs
     return qs
 
 
@@ -37,8 +44,7 @@ def object_allowed(user, obj, action="view"):
     model = obj.__class__
     if not user.has_perm(permission_name(model, action)):
         return False
-    restrict_action = action if action in STANDARD_ACTIONS else "view"
     manager = getattr(model, "objects", None)
     if manager is not None and hasattr(manager, "restrict"):
-        return manager.restrict(user, restrict_action).filter(pk=obj.pk).exists()
+        return action_queryset(model, user, action).filter(pk=obj.pk).exists()
     return True

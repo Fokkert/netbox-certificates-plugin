@@ -13,6 +13,7 @@ from ..choices_v1 import (
     FindingStatusChoices,
 )
 from ..models_v1 import AlertEvent, AlertRule, HealthFinding
+from .expiry import certificate_alert_due
 
 
 def _matches(rule, finding):
@@ -49,9 +50,8 @@ def _matches(rule, finding):
         if not object_tag_names.intersection({str(value) for value in rule.tag_names}):
             return False
 
-    if rule.expiration_days is not None and finding.code == "CERT_EXPIRING":
-        days_remaining = finding.evidence.get("days_remaining")
-        if days_remaining is None or int(days_remaining) > rule.expiration_days:
+    if finding.code in {"CERT_EXPIRING", "CERT_EXPIRED"} and finding.status != FindingStatusChoices.RESOLVED:
+        if not certificate_alert_due(obj):
             return False
 
     if rule.services.exists():
@@ -187,7 +187,7 @@ def send_test_channel(channel):
     """Send a neutral test message without requiring or modifying a HealthFinding."""
     payload = {
         "type": "netbox-certificates-alert-test",
-        "plugin_version": "1.1.0",
+        "plugin_version": "1.1.1",
         "channel": channel.name,
         "timestamp": timezone.now().isoformat(),
     }

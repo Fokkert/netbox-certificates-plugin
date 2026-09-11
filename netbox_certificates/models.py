@@ -38,6 +38,7 @@ class ArtifactGroup(PrimaryModel):
         ordering = ("name",)
         verbose_name = "group"
         verbose_name_plural = "groups"
+        permissions = (("archive_export_artifactgroup", "Can archive-export groups"),)
 
     def __str__(self):
         return self.name
@@ -138,9 +139,9 @@ class Certificate(PrimaryModel):
         "self", on_delete=models.SET_NULL, blank=True, null=True, related_name="superseded_by"
     )
     trigger_unit = models.CharField(
-        max_length=16, choices=AlertTriggerUnitChoices, blank=True, verbose_name="Trigger Unit"
+        max_length=16, choices=AlertTriggerUnitChoices, blank=True, default="month", verbose_name="Trigger Unit"
     )
-    alert_trigger = models.PositiveIntegerField(blank=True, null=True, verbose_name="Alert Trigger")
+    alert_trigger = models.PositiveIntegerField(blank=True, null=True, default=1, verbose_name="Alert Trigger")
     groups = models.ManyToManyField(ArtifactGroup, blank=True, related_name="certificates")
 
     class Meta:
@@ -208,7 +209,7 @@ class CSR(PrimaryModel):
     class Meta:
         ordering = ("name",)
         verbose_name = "CSR"
-        verbose_name_plural = "CSRs"
+        verbose_name_plural = "CSRS"
         permissions = (("download_csr", "Can download CSR material"),)
 
     def __str__(self):

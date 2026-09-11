@@ -24,12 +24,18 @@ from django.db import transaction
 from django.utils import timezone
 
 if not settings.configured:
-    settings.configure(USE_I18N=False, SECRET_KEY="isolated-test-only", USE_TZ=True)
+    settings.configure(USE_I18N=False, SECRET_KEY="isolated-test-only", USE_TZ=True,
+                       DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}})
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def definitions(path, names, **scope):
+    if path != "netbox_certificates/labels.py":
+        spec = importlib.util.spec_from_file_location("isolated_labels", ROOT / "netbox_certificates/labels.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        scope.setdefault("AcronymFormMixin", module.AcronymFormMixin)
     tree = ast.parse((ROOT / path).read_text(encoding="utf-8"))
     nodes = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef)) and n.name in names]
     assert {node.name for node in nodes} == set(names), "Missing tested definition"
@@ -164,7 +170,7 @@ class HealthBehavior(unittest.TestCase):
 
     def test_expired_and_expiring_findings_are_generated(self):
         scope = definitions("netbox_certificates/services/health_v1.py", ["_value", "_validity", "_certificate_findings"],
-                            timedelta=timedelta, FindingSeverityChoices=SimpleNamespace(CRITICAL="critical", HIGH="high", WARNING="warning", MEDIUM="medium", INFO="info"),
+                            timedelta=timedelta, certificate_alert_due=lambda cert, now=None: False, FindingSeverityChoices=SimpleNamespace(CRITICAL="critical", HIGH="high", WARNING="warning", MEDIUM="medium", INFO="info"),
                             _key_type=lambda o: "RSA", _key_bits=lambda o: 2048, _key_curve=lambda o: "", _weak_curve=lambda c: False,
                             _finding=Mock(), _verify_parent_signature=lambda o: None)
         now = datetime.now(dt_timezone.utc)
@@ -212,7 +218,7 @@ class AlertBehavior(unittest.TestCase):
         scope = definitions("netbox_certificates/alert_settings.py", ["AlertSettingsForm"], forms=forms,
                             LineListField=line_field, FindingSeverityChoices=[("critical", "Critical")], transaction=transaction, validate_email=validate_email)
         form_type = scope["AlertSettingsForm"]
-        base = dict(categories=["validity"], expiration_days=30, cooldown_minutes=60, repeat_minutes=0,
+        base = dict(categories=["validity"], cooldown_minutes=60, repeat_minutes=0,
                     smtp_security="starttls", subject_prefix="Test")
         self.assertTrue(form_type(base).is_valid())
         self.assertFalse(form_type({**base, "enabled": "on"}).is_valid())
@@ -282,7 +288,7 @@ class TemplateBehavior(unittest.TestCase):
         node = dict(id=1, name="Parent <unsafe>", url="/groups/1/", service_count=0, artifact_count=0,
                     children=[dict(id=2, name="Child", url="/groups/2/", children=[])])
         with override_settings(ROOT_URLCONF=url_module, STATIC_URL="/static/"):
-            for name in ("bundle_export", "healthfinding_list", "artifactgroup_tree_list", "alert_settings", "service_edit"):
+            for name in ("bundle_export", "healthfinding_list", "artifactgroup_tree_list", "alert_settings", "service_edit", "vault"):
                 template = engine.get_template(f"netbox_certificates/{name}.html")
                 html = template.render(Context({"form": form_type(), "group_tree": [node]}))
                 self.assertTrue(html.strip())

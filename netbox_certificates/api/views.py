@@ -118,12 +118,12 @@ class CertificateViewSet(NetBoxModelViewSet):
     @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated])
     def download(self, request, pk=None):
         _require_sensitive_token(request)
-        try: obj = action_queryset(Certificate, request.user, "download").get(pk=pk)
+        try: obj = action_queryset(Certificate, request.user, "download").filter(pk__in=self.queryset.values("pk")).get(pk=pk)
         except Certificate.DoesNotExist: raise PermissionDenied("Certificate download permission denied.")
         return _secure_response(obj.material.encode("ascii"), _artifact_filename(obj, ".crt"), "application/x-pem-file")
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated], url_path="expiration-summary")
     def expiration_summary(self, request):
-        qs = action_queryset(Certificate, request.user, "view").order_by("valid_to")
+        qs = action_queryset(Certificate, request.user, "view").filter(pk__in=self.queryset.values("pk")).order_by("valid_to")
         states = [(cert, expiry_state(cert)) for cert in qs]
         counts = {key: sum(1 for _, state in states if state["level"] == key) for key in ("healthy", "warning", "critical", "expired", "unknown")}
         upcoming = [{"certificate": CertificateSerializer(cert, context={"request": request}).data, "expiry": state} for cert, state in states if state["level"] in {"warning", "critical"}][:50]
@@ -295,6 +295,7 @@ class ArtifactLinkViewSet(NetBoxModelViewSet):
 
 
 class UnifiedImportAPIView(APIView):
+    ca_only = False
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
     def post(self, request):
@@ -314,7 +315,7 @@ class UnifiedImportAPIView(APIView):
         owner = Owner.objects.filter(pk=request.data.get("owner")).first() if request.data.get("owner") else None
         items = [UploadItem(upload.name, upload.read()) for upload in uploads]
         try:
-            result = import_objects(uploads=items, allowed_kinds=allowed_kinds, user=request.user, owner=owner, groups=groups, password=request.data.get("password") or None, archive_password=request.data.get("archive_password") or None, import_chain=_bool_value(request.data.get("import_chain"), True), preserve_archive=_bool_value(request.data.get("preserve_archive"), True), description=str(request.data.get("description", "")), comments=str(request.data.get("comments", "")))
+            result = import_objects(ca_only=self.ca_only or _bool_value(request.data.get("ca_only"), False), uploads=items, allowed_kinds=allowed_kinds, user=request.user, owner=owner, groups=groups, password=request.data.get("password") or None, archive_password=request.data.get("archive_password") or None, import_chain=_bool_value(request.data.get("import_chain"), True), preserve_archive=_bool_value(request.data.get("preserve_archive"), True), description=str(request.data.get("description", "")), comments=str(request.data.get("comments", "")))
         except UnifiedImportError as exc:
             raise ValidationError({"files": [str(exc)]}) from exc
         if result["mode"] == "bundle":
@@ -323,6 +324,7 @@ class UnifiedImportAPIView(APIView):
         for obj in result.get("created", []):
             if isinstance(obj, Certificate): data = CertificateSerializer(obj, context={"request": request}).data
             elif isinstance(obj, PrivateKey): data = PrivateKeySerializer(obj, context={"request": request}).data
+            elif isinstance(obj, Bundle): data = BundleSerializer(obj, context={"request": request}).data
             else: data = CSRSerializer(obj, context={"request": request}).data
             created.append({"type": obj._meta.model_name, "object": data})
         return Response({"mode": "objects", "created": created, "reused_ca_ids": [obj.pk for obj in result.get("reused", [])], "bundle_ids": [obj.pk for obj in result.get("bundles", [])]}, status=status.HTTP_201_CREATED)

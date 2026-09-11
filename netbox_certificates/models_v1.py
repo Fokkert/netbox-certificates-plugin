@@ -1,7 +1,7 @@
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from django.core.validators import URLValidator
+from django.core.validators import URLValidator, validate_email
 from django.db import models
 from taggit.managers import TaggableManager
 from extras.managers import NetBoxTaggableManager
@@ -24,6 +24,17 @@ from .choices_v1 import (
 
 def default_alert_statuses():
     return [FindingStatusChoices.ACTIVE]
+
+
+def validate_list_fields(instance, names):
+    errors = {}
+    for name in names:
+        values = getattr(instance, name)
+        permitted = (str, int) if name == "owner_ids" else (str,)
+        if not isinstance(values, list) or any(not isinstance(value, permitted) for value in values):
+            errors[name] = "Enter a JSON list of values." if name == "owner_ids" else "Enter a JSON list of strings."
+    if errors:
+        raise ValidationError(errors)
 
 
 class CertificatePolicy(PrimaryModel):
@@ -81,6 +92,10 @@ class CertificatePolicy(PrimaryModel):
 
     def get_absolute_url(self):
         return reverse("plugins:netbox_certificates:certificatepolicy", args=[self.pk])
+
+    def clean(self):
+        super().clean()
+        validate_list_fields(self, ("allowed_key_types", "allowed_signature_algorithms", "allowed_curves", "allowed_issuers"))
 
 
 class Service(PrimaryModel):
@@ -188,10 +203,10 @@ class Service(PrimaryModel):
         super().clean()
         if self.service_type == ServiceTypeChoices.OTHER and not self.other_type.strip():
             raise ValidationError({"other_type": "Specify a type when Service Type is Other."})
-        if self.port and self.port > 65535:
+        if self.port is not None and not 1 <= self.port <= 65535:
             raise ValidationError({"port": "Port must be between 1 and 65535."})
         if not isinstance(self.additional_urls, list):
-            raise ValidationError({"additional_urls": "Additional URLs must be a JSON list."})
+            raise ValidationError({"additional_urls": "Additional URLS must be a JSON list."})
         if not isinstance(self.deployment_metadata, dict):
             raise ValidationError({"deployment_metadata": "Deployment metadata must be a JSON object."})
         validate_url = URLValidator()
@@ -326,6 +341,7 @@ class HealthFinding(PrimaryModel):
 
     class Meta:
         ordering = ("status", "-severity", "-last_detected")
+        default_permissions = ("view", "change", "delete")
         indexes = (
             models.Index(fields=("object_type", "object_id"), name="nbcert_v1_health_obj_idx"),
             models.Index(fields=("status", "severity"), name="nbcert_v1_health_state_idx"),
@@ -343,6 +359,12 @@ class HealthFinding(PrimaryModel):
 
     def get_absolute_url(self):
         return reverse("plugins:netbox_certificates:healthfinding", args=[self.pk])
+
+    def save(self, *args, **kwargs):
+        self.resolved_at = (self.resolved_at or timezone.now()) if self.status == "resolved" else None
+        if kwargs.get("update_fields") is not None:
+            kwargs["update_fields"] = set(kwargs["update_fields"]) | {"resolved_at"}
+        return super().save(*args, **kwargs)
 
 
 class AlertChannel(PrimaryModel):
@@ -375,15 +397,21 @@ class AlertChannel(PrimaryModel):
 
     def clean(self):
         super().clean()
+        validate_list_fields(self, ("recipients",))
         if self.channel_type == AlertChannelTypeChoices.EMAIL:
             errors = {}
+            for address in self.recipients:
+                try:
+                    validate_email(address)
+                except ValidationError:
+                    errors["recipients"] = "Every recipient must be a valid email address."
             if not self.recipients:
                 errors["recipients"] = "At least one recipient is required for an email channel."
             if not self.smtp_host:
                 errors["smtp_host"] = "SMTP host is required for an email channel."
             if self.smtp_use_tls and self.smtp_use_ssl:
                 errors["smtp_use_ssl"] = "TLS and SSL cannot both be enabled."
-            if self.smtp_port and self.smtp_port > 65535:
+            if self.smtp_port is not None and not 1 <= self.smtp_port <= 65535:
                 errors["smtp_port"] = "SMTP port must be between 1 and 65535."
             if errors:
                 raise ValidationError(errors)
@@ -432,6 +460,10 @@ class AlertRule(PrimaryModel):
     def get_absolute_url(self):
         return reverse("plugins:netbox_certificates:alertrule", args=[self.pk])
 
+    def clean(self):
+        super().clean()
+        validate_list_fields(self, ("finding_codes", "categories", "severities", "statuses", "object_types", "tag_names", "owner_ids"))
+
 
 class AlertSettings(models.Model):
     """Private singleton linking the settings page to the existing alert engine."""
@@ -458,6 +490,7 @@ class AlertEvent(PrimaryModel):
 
     class Meta:
         ordering = ("-created",)
+        default_permissions = ("view", "change", "delete")
         permissions = (
             ("archive_export_alertevent", "Can archive-export alert events"),
         )

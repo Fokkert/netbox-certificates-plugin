@@ -1,4 +1,5 @@
 from __future__ import annotations
+from .labels import display_label
 
 import io
 import tarfile
@@ -87,7 +88,7 @@ def _linked_context(obj, user):
             continue
         seen.add(key)
         can_remove = link.origin == LinkOriginChoices.MANUAL and _object_allowed(user, link, "delete")
-        item = {"link": link, "other": other, "type_label": str(other._meta.verbose_name).title(), "relation_label": _relationship_label(other, link, is_source), "can_remove": can_remove}
+        item = {"link": link, "other": other, "type_label": display_label(str(other._meta.verbose_name).title()), "relation_label": _relationship_label(other, link, is_source), "can_remove": can_remove}
         (cryptographic_links if link.relation in crypto_relations and isinstance(other, crypto_models) else generic_links).append(item)
     return {"linked_objects": cryptographic_links + generic_links, "cryptographic_links": cryptographic_links, "generic_links": generic_links, "can_add_link": user.has_perm("netbox_certificates.add_artifactlink")}
 
@@ -186,7 +187,7 @@ class PrivateKeyView(LinkedObjectView):
     queryset = PrivateKey.objects.select_related("owner").prefetch_related("groups")
     def get_extra_context(self, request, instance):
         context = super().get_extra_context(request, instance)
-        context["can_download"] = _object_allowed(request.user, instance, "download")
+        context["can_download"] = request.user.is_superuser and _object_allowed(request.user, instance, "download")
         context["related_bundles"] = _action_queryset(Bundle, request.user, "view").filter(private_key=instance).order_by("name")
         return context
 
@@ -339,6 +340,7 @@ class ArtifactGroupView(generic.ObjectView):
             "certificates": _action_queryset(Certificate, request.user, "view").filter(groups=instance).order_by("name"),
             "private_keys": _action_queryset(PrivateKey, request.user, "view").filter(groups=instance).order_by("name"),
             "csrs": _action_queryset(CSR, request.user, "view").filter(groups=instance).order_by("name"),
+            "services": instance.services.restrict(request.user, "view").order_by("name"),
         }
 
 
@@ -399,9 +401,11 @@ class ArtifactGroupBulkDeleteView(SmartBulkDeleteView):
 
 
 class UnifiedImportView(LoginRequiredMixin, View):
+    ca_only = False
     template_name = "netbox_certificates/import_objects.html"
     def _context(self, request, form=None):
-        return {"form": form or UnifiedImportForm(user=request.user), "return_url": request.GET.get("return_url") or reverse("plugins:netbox_certificates:vault")}
+        return {"form": form or UnifiedImportForm(user=request.user), "ca_only": self.ca_only,
+                "return_url": reverse("plugins:netbox_certificates:certificateauthority_list" if self.ca_only else "plugins:netbox_certificates:vault")}
     def get(self, request):
         return render(request, self.template_name, self._context(request))
     def post(self, request):
@@ -425,6 +429,7 @@ class UnifiedImportView(LoginRequiredMixin, View):
         items = [UploadItem(upload.name, upload.read()) for upload in uploads]
         try:
             result = import_objects(
+                ca_only=self.ca_only,
                 uploads=items,
                 allowed_kinds=allowed_kinds,
                 user=request.user,
@@ -446,11 +451,18 @@ class UnifiedImportView(LoginRequiredMixin, View):
         created = result.get("created", [])
         reused = result.get("reused", [])
         messages.success(request, f"Imported {len(created)} new object(s) and reused {len(reused)} existing CA certificate(s).")
+        if self.ca_only:
+            return redirect("plugins:netbox_certificates:certificateauthority_list")
         kinds = {obj.__class__ for obj in created}
         if kinds == {Certificate}: return redirect("plugins:netbox_certificates:certificate_list")
         if kinds == {PrivateKey}: return redirect("plugins:netbox_certificates:privatekey_list")
         if kinds == {CSR}: return redirect("plugins:netbox_certificates:csr_list")
         return redirect("plugins:netbox_certificates:vault")
+
+
+class CACertificateImportView(PermissionRequiredMixin, UnifiedImportView):
+    ca_only = True
+    permission_required = "netbox_certificates.add_certificate"
 
 
 class CSRGenerateView(PermissionRequiredMixin, View):
@@ -534,6 +546,8 @@ def _archive_bytes(files, archive_format):
 class DownloadArtifactView(LoginRequiredMixin, View):
     def get(self, request, kind, pk):
         if kind not in {"certificate", "privatekey", "csr"}: raise Http404("Unknown downloadable artifact type.")
+        if kind == "privatekey" and not request.user.is_superuser:
+            raise PermissionDenied("Private-key material export requires a NetBox superuser.")
         model = ARTIFACT_MODELS[kind]
         try: obj = _action_queryset(model, request.user, "download").get(pk=pk)
         except model.DoesNotExist: raise Http404("Object not found.")

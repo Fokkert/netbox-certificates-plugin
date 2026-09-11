@@ -1,10 +1,12 @@
 from __future__ import annotations
+from .labels import AcronymFormMixin
 
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from core.models import ObjectType
 from users.models import Owner
+from utilities.forms import add_blank_choice
 from utilities.forms.fields import DynamicModelChoiceField, DynamicModelMultipleChoiceField
 from utilities.forms.rendering import FieldSet
 from netbox.forms import PrimaryModelForm, PrimaryModelBulkEditForm, PrimaryModelFilterSetForm
@@ -28,7 +30,7 @@ from .services.linker import ensure_automatic_bundle, resolve_certificate_parent
 from .services.parser import ArtifactParseError, parse_blob
 
 
-class CertificateForm(PrimaryModelForm):
+class CertificateForm(AcronymFormMixin, PrimaryModelForm):
     material = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 18, "autocomplete": "off"}))
     import_chain = forms.BooleanField(required=False, initial=False, label="Import certificate chain")
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Groups")
@@ -40,6 +42,7 @@ class CertificateForm(PrimaryModelForm):
         model = Certificate
         fields = ("name", "material", "supersedes", "alert_trigger", "trigger_unit", "owner", "groups", "description", "comments", "tags")
     def __init__(self, *args, user=None, **kwargs):
+        from .models_v1 import Service
         self.user = user
         super().__init__(*args, **kwargs)
         if user is not None:
@@ -105,7 +108,7 @@ class CertificateForm(PrimaryModelForm):
         return obj
 
 
-class CSRForm(PrimaryModelForm):
+class CSRForm(AcronymFormMixin, PrimaryModelForm):
     material = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 18, "autocomplete": "off"}))
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Groups")
     fieldsets = (FieldSet("name", "groups", "description", "tags", name="CSR"), FieldSet("material", name="CSR Material"))
@@ -145,7 +148,7 @@ class CSRForm(PrimaryModelForm):
         return obj
 
 
-class PrivateKeyForm(PrimaryModelForm):
+class PrivateKeyForm(AcronymFormMixin, PrimaryModelForm):
     key_material = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 18, "autocomplete": "off"}))
     input_password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "new-password"}))
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Groups")
@@ -182,7 +185,7 @@ class PrivateKeyForm(PrimaryModelForm):
         return obj
 
 
-class BundleForm(PrimaryModelForm):
+class BundleForm(AcronymFormMixin, PrimaryModelForm):
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Groups")
     fieldsets = (FieldSet("groups", "description", "tags", name="Bundle Metadata"),)
     class Meta:
@@ -194,7 +197,7 @@ class BundleForm(PrimaryModelForm):
             self.fields["groups"].queryset = ArtifactGroup.objects.restrict(user, "view")
 
 
-class CertificateAuthorityForm(PrimaryModelForm):
+class CertificateAuthorityForm(AcronymFormMixin, PrimaryModelForm):
     # The identity name is derived from the stored self-signed root CA and is
     # therefore intentionally read-only. Native NetBox owner/comments handling
     # remains available through the normal PrimaryModel form machinery.
@@ -207,7 +210,7 @@ class CertificateAuthorityForm(PrimaryModelForm):
         fields = ("owner", "description", "comments", "tags")
 
 
-class ArtifactGroupForm(PrimaryModelForm):
+class ArtifactGroupForm(AcronymFormMixin, PrimaryModelForm):
     parent = DynamicModelChoiceField(
         queryset=ArtifactGroup.objects.all(),
         required=False,
@@ -237,6 +240,7 @@ class ArtifactGroupForm(PrimaryModelForm):
         private_key_qs = PrivateKey.objects.all()
         csr_qs = CSR.objects.all()
         bundle_qs = Bundle.objects.all()
+        service_qs = Service.objects.all()
 
         if user is not None:
             parent_qs = ArtifactGroup.objects.restrict(user, "view")
@@ -245,6 +249,7 @@ class ArtifactGroupForm(PrimaryModelForm):
             private_key_qs = PrivateKey.objects.restrict(user, "change")
             csr_qs = CSR.objects.restrict(user, "change")
             bundle_qs = Bundle.objects.restrict(user, "change")
+            service_qs = Service.objects.restrict(user, "change")
 
         if self.instance.pk:
             excluded_parent_ids = {self.instance.pk, *self.instance.descendant_ids()}
@@ -260,13 +265,15 @@ class ArtifactGroupForm(PrimaryModelForm):
             "certificate": certificate_qs.order_by("name"),
             "privatekey": private_key_qs.order_by("name"),
             "csr": csr_qs.order_by("name"),
+            "service": service_qs.order_by("name"),
         }
         self.fields["members"].choices = [
             ("Groups", [(f"group:{obj.pk}", obj.name) for obj in self._member_querysets["group"]]),
             ("Bundles", [(f"bundle:{obj.pk}", obj.name) for obj in self._member_querysets["bundle"]]),
             ("Certificates", [(f"certificate:{obj.pk}", obj.name) for obj in self._member_querysets["certificate"]]),
             ("Private Keys", [(f"privatekey:{obj.pk}", obj.name) for obj in self._member_querysets["privatekey"]]),
-            ("CSRs", [(f"csr:{obj.pk}", obj.name) for obj in self._member_querysets["csr"]]),
+            ("CSRS", [(f"csr:{obj.pk}", obj.name) for obj in self._member_querysets["csr"]]),
+            ("Services", [(f"service:{obj.pk}", obj.name) for obj in self._member_querysets["service"]]),
         ]
 
         if self.instance.pk:
@@ -276,6 +283,7 @@ class ArtifactGroupForm(PrimaryModelForm):
             initial.extend(f"certificate:{pk}" for pk in self._member_querysets["certificate"].filter(groups=self.instance).values_list("pk", flat=True))
             initial.extend(f"privatekey:{pk}" for pk in self._member_querysets["privatekey"].filter(groups=self.instance).values_list("pk", flat=True))
             initial.extend(f"csr:{pk}" for pk in self._member_querysets["csr"].filter(groups=self.instance).values_list("pk", flat=True))
+            initial.extend(f"service:{pk}" for pk in self._member_querysets["service"].filter(groups=self.instance).values_list("pk", flat=True))
             self.fields["members"].initial = initial
 
     def clean(self):
@@ -331,6 +339,7 @@ class ArtifactGroupForm(PrimaryModelForm):
                 ("certificate", "certificates"),
                 ("privatekey", "private_keys"),
                 ("csr", "csrs"),
+                ("service", "services"),
             ):
                 selected_ids = set(self._selected_ids(selected, kind))
                 mutable_qs = self._member_querysets[kind]
@@ -347,7 +356,7 @@ class ArtifactGroupForm(PrimaryModelForm):
 BOOLEAN_FILTER_CHOICES = (("", "---------"), ("true", "Yes"), ("false", "No"))
 
 
-class CompletePrimaryModelFilterForm(PrimaryModelFilterSetForm):
+class CompletePrimaryModelFilterForm(AcronymFormMixin, PrimaryModelFilterSetForm):
     """Common PrimaryModel fields exposed on every plugin object list filter."""
 
     id = forms.IntegerField(required=False, min_value=1, label="ID")
@@ -514,7 +523,7 @@ class ArtifactGroupFilterForm(CompletePrimaryModelFilterForm):
     children = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Child Groups")
     certificates = DynamicModelMultipleChoiceField(queryset=Certificate.objects.all(), required=False, label="Certificates")
     private_keys = DynamicModelMultipleChoiceField(queryset=PrivateKey.objects.all(), required=False, label="Private Keys")
-    csrs = DynamicModelMultipleChoiceField(queryset=CSR.objects.all(), required=False, label="CSRs")
+    csrs = DynamicModelMultipleChoiceField(queryset=CSR.objects.all(), required=False, label="CSRS")
     bundles = DynamicModelMultipleChoiceField(queryset=Bundle.objects.all(), required=False, label="Bundles")
     fieldsets = (
         FieldSet("q", "id", "name", "parent", "children", name="Hierarchy"),
@@ -524,9 +533,9 @@ class ArtifactGroupFilterForm(CompletePrimaryModelFilterForm):
     )
 
 
-class CertificateBulkEditForm(PrimaryModelBulkEditForm):
+class CertificateBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
     alert_trigger = forms.IntegerField(min_value=1, required=False, label="Alert Trigger")
-    trigger_unit = forms.ChoiceField(choices=AlertTriggerUnitChoices, required=False, label="Trigger Unit")
+    trigger_unit = forms.ChoiceField(choices=add_blank_choice(AlertTriggerUnitChoices), required=False, label="Trigger Unit")
     owner = DynamicModelChoiceField(queryset=Owner.objects.all(), required=False)
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Groups")
     model = Certificate
@@ -534,7 +543,7 @@ class CertificateBulkEditForm(PrimaryModelBulkEditForm):
     nullable_fields = ("alert_trigger", "trigger_unit", "owner", "groups", "description", "comments")
 
 
-class PrivateKeyBulkEditForm(PrimaryModelBulkEditForm):
+class PrivateKeyBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
     owner = DynamicModelChoiceField(queryset=Owner.objects.all(), required=False)
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Groups")
     model = PrivateKey
@@ -542,7 +551,7 @@ class PrivateKeyBulkEditForm(PrimaryModelBulkEditForm):
     nullable_fields = ("owner", "groups", "description", "comments")
 
 
-class CSRBulkEditForm(PrimaryModelBulkEditForm):
+class CSRBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
     owner = DynamicModelChoiceField(queryset=Owner.objects.all(), required=False)
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Groups")
     model = CSR
@@ -550,7 +559,7 @@ class CSRBulkEditForm(PrimaryModelBulkEditForm):
     nullable_fields = ("owner", "groups", "description", "comments")
 
 
-class BundleBulkEditForm(PrimaryModelBulkEditForm):
+class BundleBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
     owner = DynamicModelChoiceField(queryset=Owner.objects.all(), required=False)
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Groups")
     model = Bundle
@@ -558,7 +567,7 @@ class BundleBulkEditForm(PrimaryModelBulkEditForm):
     nullable_fields = ("owner", "groups", "description", "comments")
 
 
-class ArtifactGroupBulkEditForm(PrimaryModelBulkEditForm):
+class ArtifactGroupBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
     parent = DynamicModelChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Parent Group")
     owner = DynamicModelChoiceField(queryset=Owner.objects.all(), required=False)
     model = ArtifactGroup
@@ -579,7 +588,7 @@ class MultipleFileField(forms.FileField):
         return [single_clean(data, initial)]
 
 
-class UnifiedImportForm(forms.Form):
+class UnifiedImportForm(AcronymFormMixin, forms.Form):
     files = MultipleFileField(label="Objects or archive")
     password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False), label="Object Password")
     archive_password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False), label="Archive Password")
@@ -596,7 +605,7 @@ class UnifiedImportForm(forms.Form):
             self.fields["groups"].queryset = ArtifactGroup.objects.restrict(user, "view")
 
 
-class BundleExportForm(forms.Form):
+class BundleExportForm(AcronymFormMixin, forms.Form):
     archive_format = forms.ChoiceField(choices=(("zip", "ZIP"), ("tar", "TAR")), initial="zip")
     export_pfx = forms.BooleanField(required=False, initial=False, label="Export as PFX")
     protect_pfx = forms.BooleanField(required=False, initial=True, label="Protect PFX with a password",
@@ -615,7 +624,7 @@ class BundleExportForm(forms.Form):
         return cleaned
 
 
-class CSRGenerateForm(forms.Form):
+class CSRGenerateForm(AcronymFormMixin, forms.Form):
     name = forms.CharField(max_length=200, required=False)
     owner = forms.ModelChoiceField(queryset=Owner.objects.none(), required=False)
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Groups")
@@ -678,7 +687,7 @@ class CSRGenerateForm(forms.Form):
         return "\n".join(entries)
 
 
-class ExpiryAlertConfigurationForm(forms.ModelForm):
+class ExpiryAlertConfigurationForm(AcronymFormMixin, forms.ModelForm):
     smtp_password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "new-password"}), label="SMTP password")
     webhook_url = forms.URLField(required=False, label="Webhook URL")
     webhook_bearer_token = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "new-password"}), label="Webhook bearer token")
@@ -749,11 +758,11 @@ class ExpiryAlertConfigurationForm(forms.ModelForm):
         return obj
 
 
-class ArtifactLinkTypeForm(forms.Form):
+class ArtifactLinkTypeForm(AcronymFormMixin, forms.Form):
     target_type = forms.ModelChoiceField(queryset=ObjectType.objects.filter(public=True), label="NetBox object type")
 
 
-class ArtifactLinkForm(forms.Form):
+class ArtifactLinkForm(AcronymFormMixin, forms.Form):
     target_type = forms.IntegerField(widget=forms.HiddenInput())
     target = DynamicModelChoiceField(queryset=Certificate.objects.none(), required=True)
     relation = forms.ChoiceField(choices=LinkRelationChoices, required=True, initial="related")

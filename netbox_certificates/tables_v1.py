@@ -1,10 +1,14 @@
+from .labels import AcronymTableMixin
 import django_tables2 as tables
 from netbox.tables import PrimaryModelTable, columns
+from django.urls import reverse
+from django.utils.html import format_html_join
+from .permissions import object_allowed
 
 from .models_v1 import AlertChannel, AlertEvent, AlertRule, CertificatePolicy, HealthFinding, ObjectLink, Service
 
 
-class ServiceTable(PrimaryModelTable):
+class ServiceTable(AcronymTableMixin, PrimaryModelTable):
     actions = columns.ActionsColumn(actions=("edit", "delete"))
     name = tables.Column(linkify=True)
     policy = tables.Column(linkify=True)
@@ -23,7 +27,7 @@ class ServiceTable(PrimaryModelTable):
         )
 
 
-class CertificatePolicyTable(PrimaryModelTable):
+class CertificatePolicyTable(AcronymTableMixin, PrimaryModelTable):
     actions = columns.ActionsColumn(actions=("edit", "delete"))
     name = tables.Column(linkify=True)
 
@@ -37,7 +41,7 @@ class CertificatePolicyTable(PrimaryModelTable):
         default_columns = ("pk", "name", "enabled", "minimum_rsa_bits", "max_validity_days", "allow_wildcards", "allow_ca")
 
 
-class HealthFindingTable(PrimaryModelTable):
+class HealthFindingTable(AcronymTableMixin, PrimaryModelTable):
     actions = columns.ActionsColumn(actions=("edit", "delete"))
     summary = tables.Column(linkify=True)
     affected_object = tables.Column(orderable=False)
@@ -56,10 +60,21 @@ class HealthFindingTable(PrimaryModelTable):
         )
 
 
-class ObjectLinkTable(PrimaryModelTable):
+class ObjectLinkTable(AcronymTableMixin, PrimaryModelTable):
     actions = columns.ActionsColumn(actions=("edit", "delete"))
     source = tables.Column(orderable=False)
     target = tables.Column(orderable=False)
+
+    def render_actions(self, record):
+        request = getattr(self, "request", None) or getattr(self, "context", {}).get("request")
+        if record.automatic or request is None:
+            return ""
+        buttons = []
+        for action, permission, icon, label in (("edit", "change", "pencil", "Edit link"),
+                                                 ("delete", "delete", "trash-can-outline", "Delete link")):
+            if object_allowed(request.user, record, permission):
+                buttons.append((reverse(f"plugins:netbox_certificates:objectlink_{action}", args=[record.pk]), label, icon))
+        return format_html_join(" ", '<a class="btn btn-sm btn-outline-secondary" href="{}" title="{}"><i class="mdi mdi-{}"></i></a>', buttons)
 
     class Meta(PrimaryModelTable.Meta):
         model = ObjectLink
@@ -70,7 +85,7 @@ class ObjectLinkTable(PrimaryModelTable):
         default_columns = ("pk", "source", "target", "relationship", "label", "automatic", "enabled")
 
 
-class AlertChannelTable(PrimaryModelTable):
+class AlertChannelTable(AcronymTableMixin, PrimaryModelTable):
     actions = columns.ActionsColumn(actions=("edit", "delete"))
     name = tables.Column(linkify=True)
 
@@ -83,7 +98,7 @@ class AlertChannelTable(PrimaryModelTable):
         default_columns = ("pk", "name", "enabled", "channel_type", "subject_prefix")
 
 
-class AlertRuleTable(PrimaryModelTable):
+class AlertRuleTable(AcronymTableMixin, PrimaryModelTable):
     actions = columns.ActionsColumn(actions=("edit", "delete"))
     name = tables.Column(linkify=True)
     channels = columns.ManyToManyColumn(linkify_item=True)
@@ -95,13 +110,13 @@ class AlertRuleTable(PrimaryModelTable):
         model = AlertRule
         fields = (
             "pk", "id", "name", "enabled", "channels", "services", "policies", "groups",
-            "expiration_days", "cooldown_minutes", "repeat_minutes", "notify_on_recovery",
+            "cooldown_minutes", "repeat_minutes", "notify_on_recovery",
             "description", "owner", "tags", "last_updated",
         )
         default_columns = ("pk", "name", "enabled", "channels", "cooldown_minutes", "repeat_minutes")
 
 
-class AlertEventTable(PrimaryModelTable):
+class AlertEventTable(AcronymTableMixin, PrimaryModelTable):
     actions = columns.ActionsColumn(actions=())
     class Meta(PrimaryModelTable.Meta):
         model = AlertEvent

@@ -3,14 +3,19 @@
 {% block title %}Groups{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap gap-2 mb-3">
-{% if perms.netbox_certificates.add_artifactgroup %}<a class="btn btn-primary" href="{% url 'plugins:netbox_certificates:artifactgroup_add' %}">New folder</a>{% endif %}
-{% if perms.netbox_certificates.view_artifactgroup %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_archive_export' %}?{{ request.GET.urlencode }}">Export groups</a>{% endif %}
+{% if perms.netbox_certificates.add_artifactgroup %}<a class="btn btn-primary" href="{% url 'plugins:netbox_certificates:artifactgroup_add' %}">Create group</a>{% endif %}
+{% if perms.netbox_certificates.archive_export_artifactgroup %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_archive_export' %}?{{ request.GET.urlencode }}">Export groups</a>{% endif %}
 <button type="button" class="btn btn-outline-secondary" data-expand-all="true">Expand all</button><button type="button" class="btn btn-outline-secondary" data-expand-all="false">Collapse all</button>
 </div>
-<form method="get" class="d-flex gap-2 mb-3"><label for="group-search" class="visually-hidden">Search groups</label><input id="group-search" class="form-control" name="q" value="{{ request.GET.q }}" placeholder="Find a folder"><button class="btn btn-outline-primary">Search</button><a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_list' %}">Clear</a></form>
-<div class="card"><h2 class="card-header">Certificate folders</h2><div class="card-body">
-<p class="text-muted">Expand folders to browse subgroups. Open a folder to see its certificates, keys, CSRs, and bundles.</p>
-<ul class="list-unstyled" id="certificate-group-tree">{% include 'netbox_certificates/inc/group_tree_nodes.html' with nodes=group_tree %}</ul>
+<form method="get" class="d-flex gap-2 mb-3"><label for="group-search" class="visually-hidden">Search groups</label><input id="group-search" class="form-control" name="q" value="{{ request.GET.q }}" placeholder="Find a group"><button class="btn btn-outline-primary">Search</button><a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_list' %}">Clear</a></form>
+{% if filter_errors %}<div class="alert alert-danger">{{ filter_errors }}</div>{% endif %}
+<div class="card"><h2 class="card-header">Group hierarchy</h2><div class="card-body">
+<p class="text-muted">Expand groups to browse subgroups and their objects. Open a group to manage membership.</p>
+<form method="post">{% csrf_token %}<ul class="list-unstyled" id="certificate-group-tree">{% include 'netbox_certificates/inc/group_tree_nodes.html' with nodes=group_tree %}</ul>
+<div class="d-flex gap-2 mt-3">
+{% if perms.netbox_certificates.change_artifactgroup %}<button class="btn btn-outline-secondary" formaction="{% url 'plugins:netbox_certificates:artifactgroup_bulk_edit' %}">Edit selected</button><button class="btn btn-outline-secondary" formaction="{% url 'plugins:netbox_certificates:artifactgroup_bulk_rename' %}">Rename selected</button>{% endif %}
+{% if perms.netbox_certificates.delete_artifactgroup %}<button class="btn btn-outline-danger" formaction="{% url 'plugins:netbox_certificates:artifactgroup_bulk_delete' %}">Delete selected</button>{% endif %}
+</div></form>
 {% if not group_tree %}<p>No groups match your search.</p>{% endif %}
 </div></div>
 <script src="{% static 'netbox_certificates/groups.js' %}" defer></script>

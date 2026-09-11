@@ -1,6 +1,6 @@
-# Upgrade to 1.1.0
+# Upgrade to 1.1.1
 
-This revision upgrades 1.0.5 in place on NetBox 4.5.9 or 4.5.10. No uninstall is needed. The commands below assume the standard `/opt/netbox` installation, local PostgreSQL database `netbox`, and systemd services `netbox` and `netbox-rq`. Adjust these names for your VM; Docker installations should rebuild their image instead.
+This revision upgrades 1.1.0 in place on NetBox 4.5.9 or 4.5.10. No uninstall is needed. The commands below assume the standard `/opt/netbox` installation, local PostgreSQL database `netbox`, and systemd services `netbox` and `netbox-rq`. Adjust these names for your VM; Docker installations should rebuild their image instead.
 
 ## Before upgrading
 
@@ -11,30 +11,30 @@ Run on the Linux VM, not on the development Windows computer:
 ```bash
 sudo systemctl stop netbox netbox-rq
 umask 077
-sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.1.0.dump"
-sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.1.0
+sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.1.1.dump"
+sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.1.1
 ```
 
 If the database is remote or has a different name, use your usual database backup command. Confirm the backup succeeded before continuing.
 
 ## Install the new package
 
-After GitHub's release workflow has successfully published **1.1.0** to PyPI:
+After GitHub's release workflow has successfully published **1.1.1** to PyPI:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.1.0'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.1.1'
 ```
 
-Before publication, copy the built `netbox_certificates_plugin-1.1.0-py3-none-any.whl` to the VM, for example `/tmp/`, and use this command instead:
+Before publication, copy the built `netbox_certificates_plugin-1.1.1-py3-none-any.whl` to the VM, for example `/tmp/`, and use this command instead:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade /tmp/netbox_certificates_plugin-1.1.0-py3-none-any.whl
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade /tmp/netbox_certificates_plugin-1.1.1-py3-none-any.whl
 ```
 
 Edit `/opt/netbox/local_requirements.txt` with `sudoedit` and replace the existing plugin entry with the following single line. This preserves the version when NetBox's upgrade script recreates its environment:
 
 ```text
-netbox-certificates-plugin==1.1.0
+netbox-certificates-plugin==1.1.1
 ```
 
 Then run:
@@ -53,25 +53,29 @@ sudo systemctl start netbox netbox-rq
 sudo systemctl status netbox netbox-rq --no-pager
 ```
 
-The installed version should be `1.1.0`. If a migration or check fails, investigate that error before restarting; do not skip it.
+The installed version should be `1.1.1`. If a migration or check fails, investigate that error before restarting; do not skip it.
 
 ## After restarting
 
 - Hard-refresh the browser to load the new static files.
 - Open **Health and Validity**, inspect expiration counts and findings, and open a finding detail page.
-- Expand a group, add a subfolder, and check existing membership.
+- Expand a group, create a subgroup, and check existing membership.
 - Export a bundle as separate files and as PFX, with and without password protection and chain inclusion.
-- Open **Alerts Configuration** as a superuser. The new default configuration starts disabled; existing 1.0.x rules remain active and accessible through the additional-rules link. Review them before enabling overlapping alerts.
-- Configure and save email/webhook settings, then use the explicit test buttons if desired. Turning off the appropriate **Verify TLS certificate** checkbox permits an untrusted destination certificate.
+- Open **Alerts Configuration** as a superuser. Existing settings and rules remain active; a new configuration starts disabled and accessible through the additional-rules link. Review them before enabling overlapping alerts.
+- Use **Save and send test email** or **Save and send test webhook** to save and test the form, including when a delivery method is disabled. Turning off the appropriate **Verify TLS certificate** checkbox permits an untrusted destination certificate.
 - NetBox's RQ worker must be running; the existing health/alert system job runs every 15 minutes. Repeat time `0` means once per occurrence, with a separate recovery notification if selected.
 
 ## Data migration
 
-Migration `0019_alert_settings` adds two TLS verification fields (both default to true) and an internal singleton configuration table. Certificates, keys, CSRs, bundles, groups, services, policies, existing rules/channels, and delivery history are retained.
+Migration `0020_certificate_alert_defaults` defaults new certificate alerts to 1 month and initializes existing certificates only when both trigger fields were unset. Custom timing is retained. It also adds Group archive-export permission, corrects the CSR plural label, and removes obsolete add permissions for generated findings/events. The earlier `0019_alert_settings` migration remains in the chain for older installations. Certificates, keys, CSRS, bundles, groups, services, policies, existing rules/channels, and delivery history are retained.
+
+The one-time initialization enables per-certificate expiration timing for previously unconfigured certificates, but alerts still require an enabled rule and delivery channel. Existing rule-level `expiration_days` values are ignored. Review the two certificate columns after upgrading; clear both to disable expiration alerts for an individual certificate.
+
+Non-superusers who export Groups need Additional action `archive_export` on Group, along with view permission. Custom-action ObjectPermission constraints now apply to the action itself as well as visibility.
 
 ## API and URL changes
 
-| Previous | 1.1.0 |
+| Existing interface | Behavior in 1.1.1 |
 | --- | --- |
 | `/expiration-dashboard/` | Redirects to combined `/health/` |
 | `/alerts/` rule list | Single alert settings page (superuser) |
@@ -79,10 +83,12 @@ Migration `0019_alert_settings` adds two TLS verification fields (both default t
 | Bundle material GET | Options form; submit POST to download |
 | PFX API | `allow_unencrypted_pfx=true` explicitly permits an empty password |
 
-SMTP/webhook API channels add `smtp_verify_tls` and `webhook_verify_tls`, both true by default. Service JSON API fields retain their existing types; the UI accepts additional URLs one per line.
+SMTP/webhook API channels retain `smtp_verify_tls` and `webhook_verify_tls`, both true by default. Service JSON API fields retain their existing types; the UI accepts additional URLS one per line.
+
+New endpoints cover CA-only import, singleton alert settings and sample tests, filtered metadata archives, and filtered material exports. See [API](docs/API.md). Empty authorized exports return valid archives, not 404 responses.
 
 For upgrades from 0.5.0: `/inventory/` was replaced by `/vault/`, the legacy ArtifactLink API by `object-links/`, and CA identity resources by CA Certificate views. Legacy expiration-alert records remain stored but are not automatically converted; configure the new alert settings. The migration sequence retains older artifact data.
 
 ## Rollback
 
-Stop NetBox and the worker, restore the pre-upgrade PostgreSQL backup and configuration/local requirements, reinstall `netbox-certificates-plugin==1.0.5`, run `manage.py collectstatic --no-input` and `manage.py check`, then restart. Keep the original encryption key. Reinstalling an older package alone does not roll back the database or changed alert settings.
+Stop NetBox and the worker, restore the pre-upgrade PostgreSQL backup and configuration/local requirements, reinstall `netbox-certificates-plugin==1.1.0`, run `manage.py collectstatic --no-input` and `manage.py check`, then restart. Keep the original encryption key. Reinstalling an older package alone does not roll back the database or changed alert settings.

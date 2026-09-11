@@ -2,15 +2,15 @@
 {% load form_helpers %}
 {% block title %}Alerts Configuration{% endblock %}
 {% block content %}
-<p>Configure certificate alerts, delivery methods, and repeat timing in one place. Save settings before sending a test.</p>
+<p>Expiration alerts use each certificate's Alert Trigger and Trigger Unit (default: 1 month). Configure delivery, other certificate problems, and repeat timing here. Test buttons save these settings and send a sample, even when the delivery method is disabled.</p>
 {% if other_rule_count %}<div class="alert alert-info">{{ other_rule_count }} additional enabled rules are preserved from existing configuration. <a href="{% url 'plugins:netbox_certificates:alertrule_list' %}">Review additional rules</a> to avoid duplicate notifications. The switch below controls this page's alerts.</div>{% endif %}
 <form method="post">{% csrf_token %}{{ form.non_field_errors }}
 {% for title,fields in sections %}<div class="card mb-3"><h2 class="card-header">{{ title }}</h2><div class="card-body">{% for field in fields %}{% render_field field %}{% endfor %}</div></div>{% endfor %}
-<button type="submit" class="btn btn-primary mb-4">Save alert settings</button>
-</form>
 <div class="d-flex gap-2 mb-4">
-{% if form.config.email_channel.enabled %}<form method="post" action="{% url 'plugins:netbox_certificates:alertchannel_test' pk=form.config.email_channel_id %}">{% csrf_token %}<input type="hidden" name="return_to_settings" value="1"><button class="btn btn-outline-primary">Send test email</button></form>{% endif %}
-{% if form.config.webhook_channel.enabled %}<form method="post" action="{% url 'plugins:netbox_certificates:alertchannel_test' pk=form.config.webhook_channel_id %}">{% csrf_token %}<input type="hidden" name="return_to_settings" value="1"><button class="btn btn-outline-primary">Send test webhook</button></form>{% endif %}
+<button type="submit" name="_action" value="save" class="btn btn-primary">Save alert settings</button>
+<button type="submit" name="_action" value="test_email" class="btn btn-outline-secondary">Save and send test email</button>
+<button type="submit" name="_action" value="test_webhook" class="btn btn-outline-secondary">Save and send test webhook</button>
 </div>
+</form>
 <details class="card"><summary class="card-header">Recent delivery history</summary><div class="table-responsive"><table class="table"><thead><tr><th>Time</th><th>Method</th><th>Result</th><th>Finding / error</th></tr></thead><tbody>{% for event in recent_events %}<tr><td>{{ event.created }}</td><td>{{ event.channel.get_channel_type_display }}</td><td>{{ event.get_status_display }}</td><td>{{ event.finding.summary }} {{ event.error }}</td></tr>{% empty %}<tr><td colspan="4">No deliveries yet. NetBox's worker processes alerts every 15 minutes.</td></tr>{% endfor %}</tbody></table></div><div class="card-footer"><a href="{% url 'plugins:netbox_certificates:alertevent_list' %}">All delivery history</a></div></details>
 {% endblock %}

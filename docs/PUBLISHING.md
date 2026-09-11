@@ -1,46 +1,21 @@
-# Publishing 1.0.5
+# Publishing 1.1.1
 
-## Preconditions
+The existing tag-triggered GitHub Action builds the distribution, creates the GitHub Release, and publishes the package through PyPI trusted publishing. No new credentials are needed for this revision.
 
-Before publishing:
-
-1. apply the supplied update to a clean 0.5.0 clone;
-2. allow the updater's static tests/compile checks to complete;
-3. review `git status`;
-4. push `main`;
-5. let GitHub Actions complete successfully.
-
-## Commit and push
-
-```powershell
-cd "$HOME\Desktop\test\netbox-certificates-plugin"
-
-git add -A
-git commit -m "feat: release certificate management 1.0"
-git push origin main
-```
-
-## Tag
-
-After the main-branch workflow succeeds:
-
-```powershell
-git tag -a v1.0.5 -m "NetBox Certificates Plugin 1.0.5"
-git push origin v1.0.5
-```
-
-The repository's release workflow should build/validate the wheel and source distribution, create/update the GitHub Release and publish to PyPI according to its existing trusted-publishing configuration.
-
-Do not publish a second manually-built distribution with different bytes under the same version.
-
-## PyPI verification
-
-After publication:
+After reviewing the changes, commit them on `main` and run the existing publishing helper:
 
 ```bash
-python -m pip index versions netbox-certificates-plugin \
-  --index-url https://pypi.org/simple \
-  --no-cache-dir
+git add netbox_certificates tests scripts docs README.md UPGRADE.md VALIDATION.md CHANGELOG.md pyproject.toml netbox-plugin.yaml
+git commit -m "Release 1.1.1: validation, exports, groups, alerts, and permissions"
+python scripts/release.py --publish
 ```
 
-Confirm `1.0.5` is visible before changing production `local_requirements.txt`.
+On Windows with this repository's virtual environment, use `.venv/Scripts/python.exe` instead of `python`. The helper checks the package version, tests, and build, then atomically pushes `main` and `v1.1.1`. It does not force or overwrite a published tag.
+
+```bash
+gh run list --workflow release.yml
+gh run watch RUN_ID --exit-status
+gh release view v1.1.1
+```
+
+Use the actual run ID returned by the first command. Check that the PyPI job completed before installing `netbox-certificates-plugin==1.1.1` on the VM. See [Releasing](RELEASING.md) for the helper behavior and [Upgrade](../UPGRADE.md) for Linux installation commands.

@@ -1,11 +1,13 @@
+from .labels import display_label
 from collections import defaultdict
+from functools import partial
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -54,7 +56,7 @@ from .forms_v1 import (
     ServiceForm,
 )
 from .models import ArtifactGroup, Bundle, Certificate, CSR, PrivateKey
-from .permissions import action_queryset
+from .permissions import action_queryset, object_allowed
 from .models_v1 import (
     AlertChannel,
     AlertEvent,
@@ -189,13 +191,13 @@ class CryptographicVaultView(LoginRequiredMixin, View):
         csrs = self._visible(CSR.objects.all(), request.user)
         bundles = self._visible(Bundle.objects.all(), request.user)
         services = self._visible(Service.objects.all(), request.user)
-        health_active = self._visible(HealthFinding.objects.exclude(status="resolved"), request.user)
+        health_active = self._visible(HealthFinding.objects.filter(status__in=("active", "acknowledged")), request.user)
 
         cards = (
             ("Certificates", certificates.count(), reverse("plugins:netbox_certificates:certificate_list")),
             ("Certificate Authorities", certificates.filter(is_ca=True).count(), reverse("plugins:netbox_certificates:certificateauthority_list")),
             ("Private Keys", private_keys.count(), reverse("plugins:netbox_certificates:privatekey_list")),
-            ("CSRs", csrs.count(), reverse("plugins:netbox_certificates:csr_list")),
+            ("CSRS", csrs.count(), reverse("plugins:netbox_certificates:csr_list")),
             ("Bundles", bundles.count(), reverse("plugins:netbox_certificates:bundle_list")),
             ("Services", services.count(), reverse("plugins:netbox_certificates:service_list")),
             ("Active Health Findings", health_active.count(), reverse("plugins:netbox_certificates:health")),
@@ -227,7 +229,7 @@ class CertificateAuthorityListView(generic.ObjectListView):
 
     def get_extra_context(self, request):
         visible = self.queryset.restrict(request.user, "view") if hasattr(self.queryset, "restrict") else self.queryset
-        filterset = CertificateV1FilterSet(request.GET or None, queryset=visible)
+        filterset = CertificateV1FilterSet(request.GET, queryset=visible, request=request)
         if filterset.is_valid():
             visible = filterset.qs
         return {
@@ -251,7 +253,7 @@ class ArtifactGroupTreeListView(LoginRequiredMixin, View):
         context = {}
 
         visible = self.queryset.restrict(request.user, "view") if hasattr(self.queryset, "restrict") else self.queryset
-        tree_filter = ArtifactGroupV1FilterSet(request.GET or None, queryset=visible)
+        tree_filter = ArtifactGroupV1FilterSet(request.GET, queryset=visible, request=request)
         visible = tree_filter.qs if tree_filter.is_valid() else visible.none()
         groups = list(visible.select_related("parent").distinct().order_by("name"))
         children = defaultdict(list)
@@ -259,12 +261,17 @@ class ArtifactGroupTreeListView(LoginRequiredMixin, View):
         for group in groups:
             children[group.parent_id].append(group)
 
-        # Aggregate only visible objects, without issuing queries per folder.
-        counts = {}
+        # One query per object type; list only members the user can view.
+        counts, members = {}, defaultdict(list)
         for name, model in (("certificates", Certificate), ("private_keys", PrivateKey),
                             ("csrs", CSR), ("bundles", Bundle), ("services", Service)):
-            rows = action_queryset(model, request.user, "view").filter(groups__in=by_id).values("groups").annotate(total=Count("pk", distinct=True))
-            counts[name] = {row["groups"]: row["total"] for row in rows}
+            counts[name] = defaultdict(int)
+            rows = action_queryset(model, request.user, "view").filter(groups__in=by_id).values("pk", "name", "groups").distinct().order_by("name")
+            for row in rows:
+                obj = model(pk=row["pk"], name=row["name"])
+                counts[name][row["groups"]] += 1
+                members[row["groups"]].append({"name": obj.name, "url": obj.get_absolute_url(),
+                                              "type": display_label(str(model._meta.verbose_name).title())})
 
         def relation_count(group, name):
             return counts[name].get(group.pk, 0)
@@ -282,9 +289,11 @@ class ArtifactGroupTreeListView(LoginRequiredMixin, View):
                 "children": [node(child) for child in sorted(children[group.pk], key=lambda item: str(item).lower())],
                 "service_count": relation_count(group, "services"),
                 "artifact_count": artifact_count,
+                "members": members[group.pk],
             }
 
         roots = [group for group in groups if not group.parent_id or group.parent_id not in by_id]
+        context["filter_errors"] = tree_filter.errors
         context["group_tree"] = [node(group) for group in sorted(roots, key=lambda item: str(item).lower())]
         return context
 
@@ -298,12 +307,17 @@ class V1ObjectView(generic.ObjectView):
         for field_name in self.detail_fields:
             try:
                 field = instance._meta.get_field(field_name)
-                label = str(field.verbose_name).title()
+                label = display_label(str(field.verbose_name).title())
             except Exception:
-                label = field_name.replace("_", " ").title()
+                label = display_label(field_name.replace("_", " ").title())
             value = getattr(instance, field_name, None)
             if hasattr(value, "all"):
-                value = ", ".join(str(item) for item in value.all())
+                items = value.all()
+                if hasattr(items, "restrict"):
+                    items = items.restrict(request.user, "view")
+                value = ", ".join(str(item) for item in items)
+            elif hasattr(value, "_meta") and not object_allowed(request.user, value):
+                value = None
             rows.append((label, value))
         return {"detail_rows": rows}
 
@@ -423,7 +437,7 @@ class HealthFindingListView(LoginRequiredMixin, View):
                 request.user.has_perm("netbox_certificates.view_certificate")):
             raise PermissionDenied
         visible = action_queryset(HealthFinding, request.user, "view")
-        filtered = HealthFindingFilterSet(request.GET or None, queryset=visible)
+        filtered = HealthFindingFilterSet(request.GET, queryset=visible, request=request)
         context = self.get_extra_context(request)
         context["filter_form"] = HealthFindingFilterForm(request.GET or None)
         context["findings"] = Paginator(filtered.qs if filtered.is_valid() else visible.none(), 50).get_page(request.GET.get("page"))
@@ -471,7 +485,16 @@ class HealthFindingView(V1ObjectView):
     )
 
 
-class HealthFindingEditView(generic.ObjectEditView):
+class FindingWorkflowPermissionMixin:
+    def dispatch(self, request, *args, **kwargs):
+        action = {"acknowledged": "acknowledge", "ignored": "ignore", "resolved": "resolve"}.get(request.POST.get("status"))
+        if request.method == "POST" and action:
+            allowed = action_queryset(HealthFinding, request.user, action)
+            self.queryset = self.queryset.filter(Q(status=request.POST["status"]) | Q(pk__in=allowed))
+        return super().dispatch(request, *args, **kwargs)
+
+
+class HealthFindingEditView(FindingWorkflowPermissionMixin, generic.ObjectEditView):
     queryset = HealthFinding.objects.all()
     from .forms_v1 import HealthFindingForm as form
 
@@ -480,7 +503,7 @@ class HealthFindingDeleteView(generic.ObjectDeleteView):
     queryset = HealthFinding.objects.all()
 
 
-class HealthFindingBulkEditView(generic.BulkEditView):
+class HealthFindingBulkEditView(FindingWorkflowPermissionMixin, generic.BulkEditView):
     queryset = HealthFinding.objects.all()
     filterset = HealthFindingFilterSet
     table = HealthFindingTable
@@ -526,6 +549,10 @@ class ObjectLinkEditView(generic.ObjectEditView):
     queryset = ObjectLink.objects.filter(automatic=False)
     form = ObjectLinkForm
 
+    def dispatch(self, request, *args, **kwargs):
+        self.form = partial(ObjectLinkForm, user=request.user)
+        return super().dispatch(request, *args, **kwargs)
+
 
 class ObjectLinkDeleteView(generic.ObjectDeleteView):
     queryset = ObjectLink.objects.filter(automatic=False)
@@ -557,7 +584,7 @@ class AlertRuleView(V1ObjectView):
     queryset = AlertRule.objects.all()
     detail_fields = (
         "name", "enabled", "finding_codes", "categories", "severities", "statuses",
-        "object_types", "tag_names", "owner_ids", "expiration_days",
+        "object_types", "tag_names", "owner_ids",
         "cooldown_minutes", "repeat_minutes", "notify_on_recovery", "channels",
         "services", "policies", "groups", "owner", "description", "comments",
     )

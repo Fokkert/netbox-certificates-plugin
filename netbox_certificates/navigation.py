@@ -48,7 +48,7 @@ menu = PluginMenu(
                 ),
                 PluginMenuItem(
                     link="plugins:netbox_certificates:csr_list",
-                    link_text="CSRs",
+                    link_text="CSRS",
                 ),
             ),
         ),

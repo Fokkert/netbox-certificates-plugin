@@ -10,6 +10,7 @@ urlpatterns = (
     # OVERVIEW
     path("expiration-dashboard/", RedirectView.as_view(pattern_name="plugins:netbox_certificates:health", query_string=True), name="expiration_dashboard"),
     path("certificate-authorities/", views_v1.CertificateAuthorityListView.as_view(), name="certificateauthority_list"),
+    path("certificate-authorities/import/", views.CACertificateImportView.as_view(), name="certificateauthority_import"),
     path("certificate-authorities/export-material/", bulk_export.CertificateAuthorityMaterialExportView.as_view(), name="certificateauthority_material_export"),
     path("vault/", views_v1.CryptographicVaultView.as_view(), name="vault"),
     path("health/", views_v1.HealthFindingListView.as_view(), name="health"),
@@ -92,7 +93,7 @@ urlpatterns = (
     path("private-keys/<int:pk>/delete/", views.PrivateKeyDeleteView.as_view(), name="privatekey_delete"),
     path("private-keys/<int:pk>/changelog/", views.ArtifactObjectChangeLogView.as_view(), name="privatekey_changelog", kwargs={"model": models.PrivateKey}),
 
-    # INVENTORY: CSRs
+    # INVENTORY: CSRS
     path("csrs/", views_v1.CSRListView.as_view(), name="csr_list"),
     path("csrs/export-material/", bulk_export.BulkMaterialExportView.as_view(), {"kind": "csr"}, name="csr_material_export"),
     path("csrs/edit/", views.CSRBulkEditView.as_view(), name="csr_bulk_edit"),

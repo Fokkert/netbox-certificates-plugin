@@ -1,3 +1,4 @@
+from .labels import AcronymTableMixin
 import django_tables2 as tables
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
@@ -7,9 +8,9 @@ from netbox.tables import NetBoxTable, columns
 from .models import ArtifactGroup, ArtifactLink, Bundle, Certificate, CertificateAuthority, CSR, PrivateKey
 
 
-class ArtifactRelationshipTable(NetBoxTable):
+class ArtifactRelationshipTable(AcronymTableMixin, NetBoxTable):
     def _can_view(self, obj):
-        request = getattr(self, "request", None)
+        request = getattr(self, "request", None) or getattr(self, "context", {}).get("request")
         user = getattr(request, "user", None)
         if user is None:
             return True
@@ -47,6 +48,8 @@ class ArtifactRelationshipTable(NetBoxTable):
 
 class CertificateTable(ArtifactRelationshipTable):
     name = tables.Column(linkify=True)
+    alert_trigger = tables.Column(verbose_name="Alert Trigger")
+    trigger_unit = columns.ChoiceFieldColumn(verbose_name="Trigger Unit")
     status = columns.ChoiceFieldColumn(
         verbose_name="Status",
         color=lambda record: {
@@ -83,16 +86,16 @@ class CertificateTable(ArtifactRelationshipTable):
     class Meta(NetBoxTable.Meta):
         model = Certificate
         fields = (
-            "pk", "name", "status", "valid_from", "valid_to", "authority", "issuer", "is_ca",
+            "pk", "name", "status", "valid_from", "valid_to", "alert_trigger", "trigger_unit", "authority", "issuer", "is_ca",
             "parent_certificate", "private_key", "csr", "bundles", "groups", "description", "actions",
         )
         default_columns = (
-            "pk", "name", "status", "valid_from", "valid_to", "authority", "parent_certificate",
+            "pk", "name", "status", "valid_from", "valid_to", "alert_trigger", "trigger_unit", "authority", "parent_certificate",
             "private_key", "csr", "bundles", "groups",
         )
 
 
-class CertificateAuthorityTable(NetBoxTable):
+class CertificateAuthorityTable(AcronymTableMixin, NetBoxTable):
     name = tables.Column(linkify=True)
     certificates = tables.Column(empty_values=(), orderable=False, verbose_name="Certificates")
 
@@ -112,7 +115,7 @@ class CertificateAuthorityTable(NetBoxTable):
 class PrivateKeyTable(ArtifactRelationshipTable):
     name = tables.Column(linkify=True)
     certificate = tables.Column(empty_values=(), orderable=False, verbose_name="Certificates")
-    csr = tables.Column(empty_values=(), orderable=False, verbose_name="CSRs")
+    csr = tables.Column(empty_values=(), orderable=False, verbose_name="CSRS")
     bundles = tables.Column(empty_values=(), orderable=False, verbose_name="Bundles")
     groups = tables.Column(empty_values=(), orderable=False, verbose_name="Groups")
 

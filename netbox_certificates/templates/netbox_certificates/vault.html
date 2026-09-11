@@ -1,59 +1,31 @@
-{% extends 'base/layout.html' %}
-{% load helpers %}
-
+{% extends 'generic/_base.html' %}
+{% load static %}
 {% block title %}Cryptographic Vault{% endblock %}
-
 {% block content %}
-<div class="row mb-3">
-  <div class="col">
-    <h1>Cryptographic Vault</h1>
-    <p class="text-muted mb-0">Consolidated cryptographic inventory, service assignment, and health overview.</p>
-  </div>
-</div>
-
-<div class="row g-3">
-  {% for label, value, url in vault_cards %}
-    <div class="col-sm-6 col-xl-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <div class="text-muted">{{ label }}</div>
-          <div class="display-6 mb-2">{{ value }}</div>
-          {% if url %}<a href="{{ url }}">Open</a>{% endif %}
-        </div>
-      </div>
-    </div>
-  {% empty %}
-    <div class="col-12"><div class="alert alert-info">No Vault data is visible with your current permissions.</div></div>
-  {% endfor %}
-</div>
-
-<div class="row g-3 mt-1">
-  <div class="col-lg-6">
-    <div class="card h-100">
-      <h5 class="card-header">Unassigned Cryptographic Objects</h5>
-      <div class="card-body">
-        <dl class="row mb-0">
-          <dt class="col-sm-8">Certificates without a Service</dt><dd class="col-sm-4 text-end">{{ unassigned_certificates }}</dd>
-          <dt class="col-sm-8">Private Keys without a Service</dt><dd class="col-sm-4 text-end">{{ unassigned_private_keys }}</dd>
-          <dt class="col-sm-8">CSRs without a Service</dt><dd class="col-sm-4 text-end">{{ unassigned_csrs }}</dd>
-          <dt class="col-sm-8">Bundles without a Service</dt><dd class="col-sm-4 text-end">{{ unassigned_bundles }}</dd>
-        </dl>
-      </div>
+<link rel="stylesheet" href="{% static 'netbox_certificates/vault.css' %}">
+<div class="nbcert-vault">
+  <div class="vault-intro">
+    <div><span class="vault-eyebrow">CERTIFICATE MANAGEMENT</span><h2>Your cryptographic inventory</h2><p class="text-muted mb-0">Certificates, keys, and the services that depend on them.</p></div>
+    <div class="d-flex flex-wrap gap-2">
+      {% if perms.netbox_certificates.add_certificate or perms.netbox_certificates.add_privatekey or perms.netbox_certificates.add_csr %}<a class="btn btn-primary" href="{% url 'plugins:netbox_certificates:import_objects' %}"><i class="mdi mdi-upload me-1" aria-hidden="true"></i> Import material</a>{% endif %}
+      {% if perms.netbox_certificates.view_artifactgroup %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_list' %}">Browse groups</a>{% endif %}
     </div>
   </div>
-  <div class="col-lg-6">
-    <div class="card h-100">
-      <h5 class="card-header">Active Health Finding Categories</h5>
-      <div class="card-body">
-        {% for row in vault_health_categories %}
-          <div class="d-flex justify-content-between border-bottom py-1">
-            <span>{{ row.category|title }}</span><strong>{{ row.total }}</strong>
-          </div>
-        {% empty %}
-          <span class="text-muted">No active findings.</span>
-        {% endfor %}
-      </div>
-    </div>
+  <div class="vault-inventory">
+    {% for label, value, url in vault_cards %}
+    <a class="vault-tile card" href="{{ url }}"><div class="card-body"><div class="vault-tile-label">{{ label }}<i class="mdi mdi-arrow-top-right" aria-hidden="true"></i></div><div class="vault-value">{{ value }}</div><span class="text-muted small">View inventory</span></div></a>
+    {% empty %}<p class="text-muted">No inventory is visible with your current permissions.</p>{% endfor %}
+  </div>
+  <div class="row g-4 mt-1">
+    <div class="col-lg-6"><section class="card h-100"><div class="card-header"><h3 class="card-title mb-0">Service assignments</h3></div><div class="card-body"><p class="text-muted">Objects without a direct service assignment</p><dl class="vault-rows mb-0">
+      <div><dt>Certificates</dt><dd>{{ unassigned_certificates }}</dd></div>
+      <div><dt>Private keys</dt><dd>{{ unassigned_private_keys }}</dd></div>
+      <div><dt>CSRS</dt><dd>{{ unassigned_csrs }}</dd></div>
+      <div><dt>Bundles</dt><dd>{{ unassigned_bundles }}</dd></div>
+    </dl></div>{% if perms.netbox_certificates.view_service %}<div class="card-footer"><a href="{% url 'plugins:netbox_certificates:service_list' %}">Manage services <i class="mdi mdi-arrow-right" aria-hidden="true"></i></a></div>{% endif %}</section></div>
+    <div class="col-lg-6"><section class="card h-100"><div class="card-header"><h3 class="card-title mb-0">Health overview</h3></div><div class="card-body"><p class="text-muted">Active and acknowledged findings by category</p><dl class="vault-rows mb-0">
+      {% for row in vault_health_categories %}<div><dt>{{ row.category|title }}</dt><dd>{{ row.total }}</dd></div>{% empty %}<div class="vault-empty"><i class="mdi mdi-check-circle-outline" aria-hidden="true"></i><p class="mb-0">No active findings in your visible inventory.</p><small class="text-muted">Run a health scan to refresh the analysis.</small></div>{% endfor %}
+    </dl></div>{% if perms.netbox_certificates.view_healthfinding %}<div class="card-footer"><a href="{% url 'plugins:netbox_certificates:health' %}">Health and Validity <i class="mdi mdi-arrow-right" aria-hidden="true"></i></a></div>{% endif %}</section></div>
   </div>
 </div>
 {% endblock %}

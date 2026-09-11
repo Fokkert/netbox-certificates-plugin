@@ -3,21 +3,26 @@
 {% block form %}
 {{ form.non_field_errors }}
 {% for field in form.hidden_fields %}{{ field }}{% endfor %}
-<div class="card mb-3"><h2 class="card-header">Service and endpoint</h2><div class="card-body">
+<div class="card mb-3"><h2 class="card-header">Service</h2><div class="card-body">
 {% render_field form.name %}{% render_field form.service_type %}{% render_field form.status %}{% render_field form.environment %}
+{% render_field form.enabled %}{% render_field form.criticality %}{% render_field form.other_type %}
 {% render_field form.deployment %}{% render_field form.custom_deployment %}
+</div></div>
+<div class="card mb-3"><h2 class="card-header">Endpoints</h2><div class="card-body">
 {% render_field form.primary_url %}{% render_field form.protocol %}{% render_field form.port %}
+{% render_field form.hostname %}{% render_field form.sni_name %}{% render_field form.additional_urls %}
 </div></div>
-<div class="card mb-3"><h2 class="card-header">Certificates and groups</h2><div class="card-body">
-{% render_field form.bundles %}{% render_field form.certificates %}{% render_field form.groups %}{% render_field form.policy %}
+<div class="card mb-3"><h2 class="card-header">Cryptographic artifacts</h2><div class="card-body">
+{% render_field form.certificates %}{% render_field form.private_keys %}{% render_field form.csrs %}{% render_field form.bundles %}
 </div></div>
-<details class="card mb-3" {% if form.errors %}open{% endif %}><summary class="card-header">Advanced options and metadata</summary><div class="card-body">
-{% render_field form.enabled %}{% render_field form.criticality %}{% render_field form.hostname %}{% render_field form.sni_name %}
-{% render_field form.additional_urls %}{% render_field form.other_type %}{% render_field form.deployment_metadata %}
-{% render_field form.private_keys %}{% render_field form.csrs %}{% render_field form.contact %}{% render_field form.external_reference %}
+<div class="card mb-3"><h2 class="card-header">Organization and policy</h2><div class="card-body">
+{% render_field form.groups %}{% render_field form.policy %}{% render_field form.contact %}{% render_field form.external_reference %}
 {% if form.owner_group %}{% render_field form.owner_group %}{% endif %}
-{% render_field form.owner %}{% render_field form.description %}{% render_field form.comments %}{% render_field form.tags %}
+{% render_field form.owner %}
+</div></div>
+<div class="card mb-3"><h2 class="card-header">Metadata</h2><div class="card-body">
+{% render_field form.deployment_metadata %}{% render_field form.description %}{% render_field form.comments %}{% render_field form.tags %}
 {% if form.custom_fields %}{% render_custom_fields form %}{% endif %}
 {% if form.changelog_message %}{% render_field form.changelog_message %}{% endif %}
-</div></details>
+</div></div>
 {% endblock %}

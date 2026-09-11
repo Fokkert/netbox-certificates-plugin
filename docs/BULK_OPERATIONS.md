@@ -22,3 +22,5 @@ Loose Bundle grouping uses public-key fingerprint. Ambiguous candidates are reje
 Custom material/archive export operates on the complete permission-restricted filtered queryset, not only the current pagination page.
 
 See [EXPORTS.md](EXPORTS.md).
+
+In 1.1.1, Groups and Health and Validity support selected-row bulk actions from their main pages. Automatic ObjectLinks are excluded from bulk edits/deletes. Invalid export filters produce readable field errors; an empty matching queryset exports a valid zero-count manifest. Group metadata export requires the `archive_export` action.

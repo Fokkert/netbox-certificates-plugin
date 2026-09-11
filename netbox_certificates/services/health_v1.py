@@ -9,12 +9,13 @@ from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from django.db.models import Max, Q
+from django.db.models import Q
 from django.utils import timezone
 
 from ..choices_v1 import FindingSeverityChoices, FindingStatusChoices
 from ..models import Bundle, Certificate, CSR, PrivateKey
 from ..models_v1 import AlertRule, CertificatePolicy, HealthFinding, Service
+from .expiry import certificate_alert_due
 
 
 ACTIVE = FindingStatusChoices.ACTIVE
@@ -210,7 +211,7 @@ def _evaluate_policy(policy, certificate):
     if policy.require_san and not sans:
         violations.append("Subject Alternative Name is required.")
     if not policy.allow_wildcards and any(_normalize_identity(x).startswith("*.") for x in sans):
-        violations.append("Wildcard SANs are not allowed.")
+        violations.append("Wildcard SANS are not allowed.")
     if is_ca and not policy.allow_ca:
         violations.append("CA certificates are not allowed by this policy.")
     if policy.allowed_issuers and issuer and issuer not in set(policy.allowed_issuers):
@@ -255,7 +256,7 @@ def _verify_parent_signature(cert):
         return False
 
 
-def _certificate_findings(cert, now, expiry_horizon_days=90):
+def _certificate_findings(cert, now):
     not_before, not_after = _validity(cert)
     if not_before and now < not_before:
         _finding("CERT_NOT_YET_VALID", "validity", FindingSeverityChoices.HIGH, cert, "Certificate is not yet valid.")
@@ -270,7 +271,7 @@ def _certificate_findings(cert, now, expiry_horizon_days=90):
                 sev = FindingSeverityChoices.MEDIUM
             elif remaining <= timedelta(days=90):
                 sev = FindingSeverityChoices.WARNING
-            elif remaining <= timedelta(days=expiry_horizon_days):
+            elif certificate_alert_due(cert, now=now):
                 sev = FindingSeverityChoices.INFO
             else:
                 sev = None
@@ -703,7 +704,7 @@ def _service_findings(service):
             "relationship",
             FindingSeverityChoices.HIGH,
             service,
-            "The Service has linked certificates and CSRs, but none of their public-key identities match.",
+            "The Service has linked certificates and CSRS, but none of their public-key identities match.",
             evidence={
                 "certificate_public_keys": sorted(cert_fingerprints),
                 "csr_public_keys": sorted(csr_fingerprints),
@@ -715,7 +716,7 @@ def _service_findings(service):
             "relationship",
             FindingSeverityChoices.CRITICAL,
             service,
-            "The Service has linked private keys and CSRs, but none of their public-key identities match.",
+            "The Service has linked private keys and CSRS, but none of their public-key identities match.",
             evidence={
                 "private_key_public_keys": sorted(key_fingerprints),
                 "csr_public_keys": sorted(csr_fingerprints),
@@ -763,16 +764,8 @@ def refresh_health_findings():
     started = timezone.now()
     now = timezone.now()
 
-    configured_horizon = (
-        AlertRule.objects.filter(enabled=True, expiration_days__isnull=False)
-        .aggregate(value=Max("expiration_days"))
-        .get("value")
-        or 0
-    )
-    expiry_horizon_days = max(90, configured_horizon)
-
     for cert in Certificate.objects.all():
-        _certificate_findings(cert, now, expiry_horizon_days=expiry_horizon_days)
+        _certificate_findings(cert, now)
         _certificate_service_reuse_findings(cert)
     for key in PrivateKey.objects.all():
         _private_key_findings(key, now)
@@ -785,7 +778,7 @@ def refresh_health_findings():
     ):
         _service_findings(service)
 
-    # Policies may be attached directly to certificates/CSRs/Bundles as well as inherited through Services.
+    # Policies may be attached directly to certificates/CSRS/Bundles as well as inherited through Services.
     for policy in CertificatePolicy.objects.filter(enabled=True).prefetch_related(
         "certificates", "csrs", "bundles__certificate", "bundles__csr"
     ):

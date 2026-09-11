@@ -5,7 +5,7 @@ import zipfile
 from datetime import datetime, timezone
 
 from django.core.serializers.json import DjangoJSONEncoder
-from django.http import FileResponse, Http404, QueryDict
+from django.http import FileResponse, Http404, QueryDict, JsonResponse
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
 
@@ -21,11 +21,11 @@ from .filtersets_v1 import (
 )
 from .models import ArtifactGroup
 from .models_v1 import AlertChannel, AlertEvent, AlertRule, CertificatePolicy, HealthFinding, ObjectLink, Service
-from .permissions import action_queryset
+from .permissions import action_queryset, require_action_permission
 
 
 CONFIG = {
-    "artifactgroup": (ArtifactGroup, ArtifactGroupV1FilterSet, "view", "groups-export.zip"),
+    "artifactgroup": (ArtifactGroup, ArtifactGroupV1FilterSet, "archive_export", "groups-export.zip"),
     "service": (Service, ServiceFilterSet, "archive_export", "services-export.zip"),
     "certificatepolicy": (CertificatePolicy, CertificatePolicyFilterSet, "archive_export", "certificate-policies-export.zip"),
     "healthfinding": (HealthFinding, HealthFindingFilterSet, "archive_export", "health-findings-export.zip"),
@@ -105,21 +105,19 @@ class MetadataArchiveExportView(LoginRequiredMixin, View):
         except KeyError:
             raise Http404("Unknown archive export type.")
 
+        require_action_permission(model, request.user, action)
         queryset = action_queryset(model, request.user, action)
         filter_data = _filtered_data(filterset_class, request)
-        filterset = filterset_class(filter_data or None, queryset=queryset)
+        filterset = filterset_class(filter_data, queryset=queryset, request=request)
         if not filterset.is_valid():
-            raise Http404("The current object filter is invalid.")
+            return JsonResponse({"detail": "Invalid export filters.", "errors": filterset.errors.get_json_data()}, status=400)
         objects = list(filterset.qs.order_by("pk"))
-        if not objects:
-            raise Http404("No objects are available for export with your permissions and current filters.")
-
         records = [serialize_object(obj) for obj in objects]
         data = json.dumps(records, indent=2, sort_keys=True, cls=DjangoJSONEncoder).encode("utf-8")
         manifest = {
             "format": "netbox-certificates-export-manifest",
             "manifest_version": 1,
-            "plugin_version": "1.1.0",
+            "plugin_version": "1.1.1",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "object_kind": kind,
             "count": len(records),

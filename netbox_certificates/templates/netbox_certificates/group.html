@@ -1,5 +1,5 @@
 {% extends 'generic/object.html' %}
-{% block content %}
+{% block content %}<div class="card mb-3"><h2 class="card-header">Services</h2><div class="card-body">{% for service in services %}<a class="me-3" href="{{ service.get_absolute_url }}">{{ service }}</a>{% empty %}<span class="text-muted">No services assigned.</span>{% endfor %}</div></div>
 <div class="row">
   <div class="col-md-5">
     <div class="card mb-3">
@@ -37,7 +37,7 @@
           {% if private_keys %}<ul class="mb-0">{% for obj in private_keys %}<li><a href="{{ obj.get_absolute_url }}">{{ obj }}</a></li>{% endfor %}</ul>{% else %}—{% endif %}
         </div>
         <div>
-          <div class="text-secondary text-uppercase small fw-semibold mb-2">CSRs</div>
+          <div class="text-secondary text-uppercase small fw-semibold mb-2">CSRS</div>
           {% if csrs %}<ul class="mb-0">{% for obj in csrs %}<li><a href="{{ obj.get_absolute_url }}">{{ obj }}</a></li>{% endfor %}</ul>{% else %}—{% endif %}
         </div>
       </div>

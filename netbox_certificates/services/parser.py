@@ -264,9 +264,9 @@ def parse_blob(data: bytes, password: str | bytes | None = None, filename: str =
     if password_b is not None:
         raise ArtifactParseError(
             "Unsupported or invalid cryptographic file, or the supplied password is incorrect. Supported content includes "
-            "X.509 certificates, CSRs, private keys, PKCS#7 certificate containers, and PKCS#12/PFX containers."
+            "X.509 certificates, CSRS, private keys, PKCS#7 certificate containers, and PKCS#12/PFX containers."
         )
     raise ArtifactParseError(
-        "Unsupported or invalid cryptographic file. Supported content includes X.509 certificates, CSRs, private keys, "
+        "Unsupported or invalid cryptographic file. Supported content includes X.509 certificates, CSRS, private keys, "
         "PKCS#7 certificate containers, and PKCS#12/PFX containers."
     )

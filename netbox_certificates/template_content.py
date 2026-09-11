@@ -2,6 +2,7 @@ from django.contrib.contenttypes.models import ContentType
 from netbox.plugins import PluginTemplateExtension
 
 from .models_v1 import ObjectLink
+from .permissions import action_queryset, object_allowed
 
 
 PLUGIN_RELATIONSHIP_MODELS = [
@@ -58,9 +59,12 @@ class ServiceAssignmentsExtension(PluginTemplateExtension):
         services = getattr(obj, "services", None)
         if services is None:
             return ""
+        request = self.context.get("request")
+        if request is None:
+            return ""
         return self.render(
             "netbox_certificates/inc/service_assignments.html",
-            extra_context={"linked_services": services.all().order_by("name")},
+            extra_context={"linked_services": services.restrict(request.user, "view").order_by("name")},
         )
 
 
@@ -71,13 +75,16 @@ class ObjectLinksExtension(PluginTemplateExtension):
         obj = self.context.get("object")
         if obj is None or not getattr(obj, "pk", None):
             return ""
+        request = self.context.get("request")
+        if request is None:
+            return ""
         content_type = ContentType.objects.get_for_model(obj, for_concrete_model=False)
-        links = ObjectLink.objects.filter(
+        links = action_queryset(ObjectLink, request.user, "view").filter(
             source_type=content_type,
             source_object_id=obj.pk,
             enabled=True,
         ).select_related("target_type")
-        reverse_links = ObjectLink.objects.filter(
+        reverse_links = action_queryset(ObjectLink, request.user, "view").filter(
             target_type=content_type,
             target_object_id=obj.pk,
             enabled=True,
@@ -85,8 +92,8 @@ class ObjectLinksExtension(PluginTemplateExtension):
         return self.render(
             "netbox_certificates/inc/object_links.html",
             extra_context={
-                "object_links": links,
-                "reverse_object_links": reverse_links,
+                "object_links": [link for link in links if object_allowed(request.user, link.target)],
+                "reverse_object_links": [link for link in reverse_links if object_allowed(request.user, link.source)],
                 "source_content_type": content_type,
             },
         )

@@ -293,7 +293,6 @@ class AlertRuleFilterSet(PrimaryModelFilterSet):
             "id",
             "name",
             "enabled",
-            "expiration_days",
             "cooldown_minutes",
             "repeat_minutes",
             "notify_on_recovery",

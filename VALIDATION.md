@@ -1,11 +1,13 @@
-# Validation for 1.1.0
+# Validation for 1.1.1
 
 ## Completed in the Windows development workspace
 
-- Verified local HEAD matches GitHub main and the v1.0.5 release baseline.
-- 53 standalone tests passed under Python 3.12 and Django 5.2.
+- Verified the starting revision is GitHub main / v1.1.0 (`2e2f6f2`); preparing v1.1.1.
+- 73 standalone tests passed under Python 3.12 and Django 5.2.
 - Real cryptographic PFX round trips: encrypted, unencrypted opt-in, incorrect password, mismatched key, and chain selection.
-- Real Django form validation, template rendering with an isolated layout, and route/action consistency checks.
+- Real Django forms, REST serializers, SQLite-backed group/filter regressions, template rendering with an isolated layout, and route/action consistency checks.
+- Empty material/metadata archives, meaningful invalid-filter errors, CA Basic Constraints checks using real certificates, per-certificate calendar-month timing, secret preparation before NetBox validation, and custom-action scope checks.
+- SMTP/webhook sample delivery tested with mocked transports; no real messages were sent from this workspace.
 - Service endpoint inference and explicit overrides, actual certificate validity/SAN field handling, SMTP TLS contexts, alert timing, and recovery deduplication.
 - Python compilation, release metadata checks, repository source scan, and diff whitespace checks.
 - Wheel and sdist build; distribution metadata checked with twine.
@@ -22,11 +24,11 @@ python scripts/release.py
 
 The helper validates and builds without pushing unless `--publish` is explicitly supplied.
 
-## NetBox runtime validation still required
+## NetBox runtime verification
 
 This workspace does not have a running NetBox/PostgreSQL/Redis test stack. No claim of a completed live VM integration test is made.
 
-On a disposable NetBox 4.5.9/4.5.10 test installation with this plugin installed:
+The user will verify behavior after installation on the VM. Optional full integration commands for a disposable NetBox 4.5.9/4.5.10 installation are:
 
 ```bash
 python manage.py check
@@ -35,7 +37,7 @@ python manage.py makemigrations --check --dry-run netbox_certificates
 python manage.py test netbox_certificates.tests
 ```
 
-The integration suite exercises populated health/detail/edit pages, the old-dashboard redirect, folder hierarchy rendering, service creation with endpoint inference, alert configuration, and denial of unprivileged settings access. Django's test runner requires permission to create a test database; do not point an ad hoc test setup at production data.
+The integration suite exercises populated health/detail/edit pages, the old-dashboard redirect, group hierarchy rendering, service creation with endpoint inference, alert configuration, and denial of unprivileged settings access. Django's test runner requires permission to create a test database; do not point an ad hoc test setup at production data.
 
 Also verify on the test VM:
 

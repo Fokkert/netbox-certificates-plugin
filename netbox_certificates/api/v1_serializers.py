@@ -14,10 +14,20 @@ from ..models_v1 import (
     ObjectLink,
     Service,
 )
-from ..services.secret_v1 import encrypt_json, encrypt_text
+from ..services.secret_v1 import SecretConfigurationError, encrypt_json, encrypt_text
+from ..permissions import action_queryset, object_allowed
+from .serializers import CertificateSerializer, VisibleRelationshipsMixin
 
 
-class ServiceSerializer(PrimaryModelSerializer):
+class CACertificateSerializer(CertificateSerializer):
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if not attrs.get("is_ca", getattr(self.instance, "is_ca", False)):
+            raise serializers.ValidationError({"material": "Only CA certificates (Basic Constraints CA=true) are accepted."})
+        return attrs
+
+
+class ServiceSerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):
     class Meta:
         model = Service
         fields = (
@@ -31,7 +41,7 @@ class ServiceSerializer(PrimaryModelSerializer):
         brief_fields = ("id", "url", "display_url", "display", "name", "status", "service_type", "hostname")
 
 
-class CertificatePolicySerializer(PrimaryModelSerializer):
+class CertificatePolicySerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):
     class Meta:
         model = CertificatePolicy
         fields = (
@@ -45,7 +55,7 @@ class CertificatePolicySerializer(PrimaryModelSerializer):
         brief_fields = ("id", "url", "display_url", "display", "name", "enabled")
 
 
-class ObjectLinkSerializer(PrimaryModelSerializer):
+class ObjectLinkSerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):
     source_display = serializers.SerializerMethodField()
     target_display = serializers.SerializerMethodField()
 
@@ -61,13 +71,15 @@ class ObjectLinkSerializer(PrimaryModelSerializer):
         read_only_fields = ("automatic",)
 
     def get_source_display(self, obj):
-        return str(obj.source) if obj.source is not None else None
+        return str(obj.source) if object_allowed(self.context["request"].user, obj.source) else None
 
     def get_target_display(self, obj):
-        return str(obj.target) if obj.target is not None else None
+        return str(obj.target) if object_allowed(self.context["request"].user, obj.target) else None
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
+        if self.instance and self.instance.automatic:
+            raise serializers.ValidationError("Automatic cryptographic links are managed by reconciliation.")
         source_type = attrs.get("source_type", getattr(self.instance, "source_type", None))
         source_object_id = attrs.get("source_object_id", getattr(self.instance, "source_object_id", None))
         target_type = attrs.get("target_type", getattr(self.instance, "target_type", None))
@@ -88,8 +100,8 @@ class ObjectLinkSerializer(PrimaryModelSerializer):
             ):
                 errors[f"{prefix}_type"] = "Select a public NetBox/plugin object model."
                 continue
-            if not object_id or not model._default_manager.filter(pk=object_id).exists():
-                errors[f"{prefix}_object_id"] = "The selected object does not exist."
+            if not object_id or not action_queryset(model, self.context["request"].user).filter(pk=object_id).exists():
+                errors[f"{prefix}_object_id"] = "The selected object does not exist or is not visible to you."
 
         if (
             source_type is not None
@@ -104,9 +116,16 @@ class ObjectLinkSerializer(PrimaryModelSerializer):
         return attrs
 
 
-class HealthFindingSerializer(PrimaryModelSerializer):
+class HealthFindingSerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):
     affected_display = serializers.SerializerMethodField()
     related_display = serializers.SerializerMethodField()
+
+    def validate(self, attrs):
+        if self.instance and "status" in attrs and attrs["status"] != self.instance.status:
+            action = {"acknowledged": "acknowledge", "ignored": "ignore", "resolved": "resolve", "active": "change"}[attrs["status"]]
+            if not object_allowed(self.context["request"].user, self.instance, action):
+                raise serializers.ValidationError({"status": f"{action.capitalize()} permission is required for this finding."})
+        return super().validate(attrs)
 
     class Meta:
         model = HealthFinding
@@ -127,13 +146,13 @@ class HealthFindingSerializer(PrimaryModelSerializer):
         )
 
     def get_affected_display(self, obj):
-        return str(obj.affected_object) if obj.affected_object is not None else None
+        return str(obj.affected_object) if object_allowed(self.context["request"].user, obj.affected_object) else None
 
     def get_related_display(self, obj):
-        return str(obj.related_object) if obj.related_object is not None else None
+        return str(obj.related_object) if object_allowed(self.context["request"].user, obj.related_object) else None
 
 
-class AlertChannelSerializer(PrimaryModelSerializer):
+class AlertChannelSerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):
     smtp_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     smtp_password_configured = serializers.SerializerMethodField()
     webhook_url = serializers.URLField(write_only=True, required=False, allow_blank=True)
@@ -159,66 +178,49 @@ class AlertChannelSerializer(PrimaryModelSerializer):
         return bool(obj.webhook_url_encrypted)
 
     def validate(self, attrs):
-        attrs = super().validate(attrs)
+        # NetBox runs model.full_clean() here, so write-only transport inputs
+        # must become real encrypted model fields before delegating to it.
+        smtp_password = attrs.pop("smtp_password", None)
+        webhook_url = attrs.pop("webhook_url", None)
+        webhook_headers = attrs.pop("webhook_headers", None)
         channel_type = attrs.get("channel_type", getattr(self.instance, "channel_type", None))
         recipients = attrs.get("recipients", getattr(self.instance, "recipients", []))
-        webhook_url = attrs.get("webhook_url", None)
-        configured_webhook = bool(getattr(self.instance, "webhook_url_encrypted", ""))
-
-        if channel_type == "email":
-            errors = {}
-            if not recipients:
-                errors["recipients"] = "At least one recipient is required for an email channel."
-            smtp_host = attrs.get("smtp_host", getattr(self.instance, "smtp_host", ""))
-            if not smtp_host:
-                errors["smtp_host"] = "SMTP host is required for an email channel."
-            use_tls = attrs.get("smtp_use_tls", getattr(self.instance, "smtp_use_tls", True))
-            use_ssl = attrs.get("smtp_use_ssl", getattr(self.instance, "smtp_use_ssl", False))
-            if use_tls and use_ssl:
-                errors["smtp_use_ssl"] = "TLS and SSL cannot both be enabled."
-            if errors:
-                raise serializers.ValidationError(errors)
-        if channel_type == "webhook" and webhook_url in (None, "") and not configured_webhook:
+        if channel_type == "email" and not recipients:
+            raise serializers.ValidationError({"recipients": "At least one recipient is required for an email channel."})
+        if channel_type == "webhook" and not (webhook_url or getattr(self.instance, "webhook_url_encrypted", "")):
             raise serializers.ValidationError({"webhook_url": "Webhook URL is required for a webhook channel."})
-        return attrs
+        if webhook_headers is not None and (not isinstance(webhook_headers, dict) or any(
+            not isinstance(k, str) or not isinstance(v, str) or "\n" in k + v or "\r" in k + v
+            for k, v in webhook_headers.items()
+        )):
+            raise serializers.ValidationError({"webhook_headers": "Enter an object of header names and string values without newlines."})
+        try:
+            if smtp_password:
+                attrs["smtp_password_encrypted"] = encrypt_text(smtp_password)
+            if webhook_url:
+                attrs["webhook_url_encrypted"] = encrypt_text(webhook_url)
+            if webhook_headers is not None:
+                attrs["webhook_headers_encrypted"] = encrypt_json(webhook_headers)
+        except SecretConfigurationError as exc:
+            raise serializers.ValidationError({"detail": str(exc)}) from exc
+        return super().validate(attrs)
 
     def create(self, validated_data):
-        smtp_password = validated_data.pop("smtp_password", "")
-        webhook_url = validated_data.pop("webhook_url", "")
-        webhook_headers = validated_data.pop("webhook_headers", {})
         with transaction.atomic():
-            instance = super().create(validated_data)
-            instance.smtp_password_encrypted = encrypt_text(smtp_password)
-            instance.webhook_url_encrypted = encrypt_text(webhook_url)
-            instance.webhook_headers_encrypted = encrypt_json(webhook_headers)
-            instance.full_clean()
-            instance.save()
-        return instance
+            return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        smtp_password = validated_data.pop("smtp_password", None)
-        webhook_url = validated_data.pop("webhook_url", None)
-        webhook_headers = validated_data.pop("webhook_headers", None)
         with transaction.atomic():
-            instance = super().update(instance, validated_data)
-            if smtp_password not in (None, ""):
-                instance.smtp_password_encrypted = encrypt_text(smtp_password)
-            if webhook_url is not None:
-                instance.webhook_url_encrypted = encrypt_text(webhook_url)
-            if webhook_headers is not None:
-                instance.webhook_headers_encrypted = encrypt_json(webhook_headers)
-            instance.full_clean()
-            instance.save()
-        return instance
+            return super().update(instance, validated_data)
 
 
-class AlertRuleSerializer(PrimaryModelSerializer):
+class AlertRuleSerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):
     class Meta:
         model = AlertRule
         fields = (
             "id", "url", "display_url", "display", "name", "enabled", "finding_codes", "categories",
             "severities", "statuses", "object_types", "tag_names", "owner_ids",
-            "expiration_days", "cooldown_minutes", "repeat_minutes",
+            "cooldown_minutes", "repeat_minutes",
             "notify_on_recovery", "channels", "services", "policies", "groups",
             "owner", "description", "comments", "tags", "custom_fields",
             "created", "last_updated",
@@ -226,7 +228,7 @@ class AlertRuleSerializer(PrimaryModelSerializer):
         brief_fields = ("id", "url", "display_url", "display", "name", "enabled")
 
 
-class AlertEventSerializer(PrimaryModelSerializer):
+class AlertEventSerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):
     class Meta:
         model = AlertEvent
         fields = (
@@ -235,3 +237,4 @@ class AlertEventSerializer(PrimaryModelSerializer):
             "comments", "tags", "custom_fields", "created", "last_updated",
         )
         brief_fields = ("id", "url", "display_url", "display", "status", "rule", "channel", "finding", "created")
+        read_only_fields = ("rule", "channel", "finding", "status", "delivered_at", "error", "payload_summary")

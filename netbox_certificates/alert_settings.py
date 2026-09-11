@@ -10,13 +10,14 @@ from django.db import transaction
 from django.shortcuts import redirect, render
 from django.views import View
 
+from .labels import AcronymFormMixin
 from .choices_v1 import FindingSeverityChoices
 from .forms_v1 import LineListField
 from .models_v1 import AlertChannel, AlertEvent, AlertRule, AlertSettings
 from .services.secret_v1 import SecretConfigurationError, encrypt_text, encrypt_json
 
 
-class AlertSettingsForm(forms.Form):
+class AlertSettingsForm(AcronymFormMixin, forms.Form):
     enabled = forms.BooleanField(required=False, label="Enable certificate alerts")
     categories = forms.MultipleChoiceField(required=True, choices=[
         ("validity", "Expiration and validity"), ("chain", "Certificate chain"),
@@ -26,7 +27,6 @@ class AlertSettingsForm(forms.Form):
     ], initial=["validity", "chain", "security", "relationship", "duplicate", "service", "policy"])
     severities = forms.MultipleChoiceField(required=False, choices=FindingSeverityChoices,
                                          help_text="Leave empty to include every severity.")
-    expiration_days = forms.IntegerField(min_value=1, initial=30, label="Alert this many days before expiration")
     cooldown_minutes = forms.IntegerField(min_value=15, initial=60, label="Minimum minutes between alerts")
     repeat_minutes = forms.IntegerField(min_value=0, initial=1440, label="Repeat unresolved alerts after minutes",
                                        help_text="0 sends once per occurrence. Delivery runs on NetBox's 15-minute job cycle.")
@@ -39,7 +39,7 @@ class AlertSettingsForm(forms.Form):
     smtp_password = forms.CharField(required=False, strip=False, widget=forms.PasswordInput(render_value=False),
                                     help_text="Leave blank to keep the saved password.")
     clear_smtp_password = forms.BooleanField(required=False, label="Clear saved SMTP password")
-    smtp_security = forms.ChoiceField(choices=[("starttls", "STARTTLS"), ("ssl", "Implicit TLS / SSL"), ("none", "No TLS")])
+    smtp_security = forms.ChoiceField(initial="starttls", choices=[("starttls", "STARTTLS"), ("ssl", "Implicit TLS / SSL"), ("none", "No TLS")])
     smtp_verify_tls = forms.BooleanField(required=False, initial=True, label="Verify SMTP TLS certificate",
                                        help_text="Turn off to allow self-signed or otherwise untrusted SMTP certificates.")
     from_email = forms.EmailField(required=False)
@@ -52,13 +52,14 @@ class AlertSettingsForm(forms.Form):
     webhook_verify_tls = forms.BooleanField(required=False, initial=True, label="Verify webhook TLS certificate",
                                           help_text="Turn off to allow self-signed or otherwise untrusted HTTPS certificates.")
 
-    def __init__(self, *args, config=None, **kwargs):
+    def __init__(self, *args, config=None, test_method=None, **kwargs):
         self.config = config
+        self.test_method = test_method
         initial = {}
         if config:
             rule, email, webhook = config.rule, config.email_channel, config.webhook_channel
             if rule:
-                for field in ("enabled", "categories", "severities", "expiration_days", "cooldown_minutes", "repeat_minutes", "notify_on_recovery"):
+                for field in ("enabled", "categories", "severities", "cooldown_minutes", "repeat_minutes", "notify_on_recovery"):
                     initial[field] = getattr(rule, field)
             if email:
                 for field in ("recipients", "smtp_host", "smtp_port", "smtp_username", "smtp_verify_tls", "from_email", "subject_prefix"):
@@ -78,12 +79,12 @@ class AlertSettingsForm(forms.Form):
                 validate_email(address)
             except forms.ValidationError:
                 self.add_error("recipients", f"Invalid email address: {address}")
-        if data.get("email_enabled"):
+        if data.get("email_enabled") or self.test_method == "email":
             for field in ("recipients", "smtp_host", "smtp_port", "from_email"):
                 if not data.get(field):
-                    self.add_error(field, "Required when email alerts are enabled.")
+                    self.add_error(field, "Required to enable or test email alerts.")
         saved_webhook = self.config and self.config.webhook_channel and self.config.webhook_channel.webhook_url_encrypted
-        if data.get("webhook_enabled") and not (data.get("webhook_url") or saved_webhook):
+        if (data.get("webhook_enabled") or self.test_method == "webhook") and not (data.get("webhook_url") or saved_webhook):
             self.add_error("webhook_url", "Enter the webhook URL.")
         headers = data.get("webhook_headers")
         if headers is not None and (not isinstance(headers, dict) or any(
@@ -103,8 +104,9 @@ class AlertSettingsForm(forms.Form):
         rule = config.rule or AlertRule(name=f"Certificate alert settings {uuid.uuid4().hex[:8]}")
         email = config.email_channel or AlertChannel(name=f"Settings email {uuid.uuid4().hex[:8]}", channel_type="email")
         webhook = config.webhook_channel or AlertChannel(name=f"Settings webhook {uuid.uuid4().hex[:8]}", channel_type="webhook")
-        for field in ("enabled", "categories", "severities", "expiration_days", "cooldown_minutes", "repeat_minutes", "notify_on_recovery"):
+        for field in ("enabled", "categories", "severities", "cooldown_minutes", "repeat_minutes", "notify_on_recovery"):
             setattr(rule, field, data[field])
+        rule.expiration_days = None  # Deprecated; each certificate supplies its own lead time.
         rule.full_clean()
         rule.save()
         email.enabled = data["email_enabled"]
@@ -148,7 +150,7 @@ class AlertSettingsView(LoginRequiredMixin, View):
 
     def page(self, request, form):
         sections = [
-            ("When and what to send", ("enabled", "categories", "severities", "expiration_days", "cooldown_minutes", "repeat_minutes", "notify_on_recovery")),
+            ("When and what to send", ("enabled", "categories", "severities", "cooldown_minutes", "repeat_minutes", "notify_on_recovery")),
             ("Email alerts", ("email_enabled", "recipients", "smtp_host", "smtp_port", "smtp_username", "smtp_password", "clear_smtp_password", "smtp_security", "smtp_verify_tls", "from_email", "subject_prefix")),
             ("Webhook alerts", ("webhook_enabled", "webhook_url", "webhook_headers", "webhook_verify_tls")),
         ]
@@ -161,15 +163,26 @@ class AlertSettingsView(LoginRequiredMixin, View):
 
     def post(self, request):
         config = AlertSettings.objects.select_related("rule", "email_channel", "webhook_channel").first()
-        form = AlertSettingsForm(request.POST, config=config)
+        action = request.POST.get("_action", "save")
+        test_method = {"test_email": "email", "test_webhook": "webhook"}.get(action)
+        form = AlertSettingsForm(request.POST, config=config, test_method=test_method)
         if form.is_valid():
             try:
-                form.save()
+                config = form.save()
             except SecretConfigurationError as exc:
                 form.add_error(None, str(exc))
             except ValidationError as exc:
                 form.add_error(None, exc.messages)
             else:
                 messages.success(request, "Alert settings saved.")
+                if test_method:
+                    from .services.alerts_v1 import send_test_channel
+                    channel = config.email_channel if test_method == "email" else config.webhook_channel
+                    try:
+                        send_test_channel(channel)
+                    except Exception as exc:
+                        messages.error(request, f"Test {test_method} failed ({type(exc).__name__}). Check the destination, credentials, and TLS settings.")
+                    else:
+                        messages.success(request, f"Test {test_method} sent successfully.")
                 return redirect("plugins:netbox_certificates:alert_settings")
         return self.page(request, form)

@@ -6,7 +6,7 @@ import zipfile
 from collections import defaultdict
 from dataclasses import dataclass
 
-from django.db import transaction
+from django.db import transaction, IntegrityError
 
 from .bundles import (
     CRYPTO_EXTENSIONS,
@@ -16,7 +16,7 @@ from .bundles import (
     import_bundle,
     is_archive,
 )
-from .importing import ArtifactImportError, import_parsed
+from .importing import ArtifactImportError, import_parsed, create_or_reuse_chain
 from .parser import ArtifactParseError, parse_blob
 
 
@@ -223,6 +223,7 @@ def import_objects(
     preserve_archive=True,
     description="",
     comments="",
+    ca_only=False,
 ):
     items = [UploadItem(upload.name, upload.data if isinstance(upload.data, bytes) else bytes(upload.data)) for upload in uploads]
     if not items:
@@ -250,6 +251,7 @@ def import_objects(
                         preserve_archive=preserve_archive,
                         description=description,
                         comments=comments,
+                        ca_only=ca_only,
                     )
                     _merge_result(result, created, reused, bundles)
 
@@ -266,6 +268,7 @@ def import_objects(
                         preserve_archive=preserve_archive,
                         description=description,
                         comments=comments,
+                        ca_only=ca_only,
                     )
                     _merge_result(result, created, reused, bundles)
         except (BundleImportError, BundleImportPermissionError, ArtifactImportError) as exc:
@@ -304,6 +307,22 @@ def import_objects(
         raise UnifiedImportError("; ".join(parse_errors))
     if not parsed_records:
         raise UnifiedImportError("No supported certificate, private key, CSR, or Bundle content was found.")
+
+    validate_import_records(parsed_records, allowed_kinds, ca_only=ca_only)
+    if ca_only:
+        try:
+            with transaction.atomic():
+                created, reused = [], []
+                for filename, parsed in parsed_records:
+                    _, new, existing = create_or_reuse_chain([parsed], filename=filename, user=user, owner=owner, groups=groups)
+                    created.extend(new)
+                    reused.extend(existing)
+                from .linker import resolve_certificate_parent
+                for certificate in created:
+                    resolve_certificate_parent(certificate)
+        except (ArtifactImportError, IntegrityError) as exc:
+            raise UnifiedImportError("CA import failed; no changes were saved.") from exc
+        return {"mode": "objects", "created": created, "reused": reused, "bundles": []}
 
     try:
         loose_bundle_groups = _loose_bundle_groups(parsed_records) if archive_source is None else []
@@ -405,3 +424,11 @@ def import_objects(
         return {"mode": "objects", "created": created, "reused": reused, "bundles": bundles}
     except (BundleImportError, BundleImportPermissionError, ArtifactImportError) as exc:
         raise UnifiedImportError(str(exc)) from exc
+
+
+def validate_import_records(records, allowed_kinds, *, ca_only=False):
+    for filename, parsed in records:
+        if ca_only and (parsed.kind != "certificate" or not parsed.metadata.get("is_ca", False)):
+            raise UnifiedImportError(f"{filename}: only CA certificates (Basic Constraints CA=true) are accepted. Nothing was imported.")
+        if parsed.kind not in allowed_kinds:
+            raise UnifiedImportError(f"{filename}: you do not have permission to import this artifact type.")
