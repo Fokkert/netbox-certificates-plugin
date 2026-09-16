@@ -16,7 +16,7 @@ from ..models_v1 import (
 )
 from ..services.secret_v1 import SecretConfigurationError, encrypt_json, encrypt_text
 from ..permissions import action_queryset, object_allowed
-from .serializers import CertificateSerializer, VisibleRelationshipsMixin
+from .base_serializers import CertificateSerializer, VisibleRelationshipsMixin
 
 
 class CACertificateSerializer(CertificateSerializer):
@@ -57,10 +57,10 @@ class ObjectLinkSerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):
         read_only_fields = ("automatic",)
 
     def get_source_display(self, obj):
-        return str(obj.source) if object_allowed(self.context["request"].user, obj.source) else None
+        return str(obj.source) if object_allowed(getattr(self.context.get("request"), "user", None), obj.source) else None
 
     def get_target_display(self, obj):
-        return str(obj.target) if object_allowed(self.context["request"].user, obj.target) else None
+        return str(obj.target) if object_allowed(getattr(self.context.get("request"), "user", None), obj.target) else None
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -132,10 +132,10 @@ class HealthFindingSerializer(VisibleRelationshipsMixin, PrimaryModelSerializer)
         )
 
     def get_affected_display(self, obj):
-        return str(obj.affected_object) if object_allowed(self.context["request"].user, obj.affected_object) else None
+        return str(obj.affected_object) if object_allowed(getattr(self.context.get("request"), "user", None), obj.affected_object) else None
 
     def get_related_display(self, obj):
-        return str(obj.related_object) if object_allowed(self.context["request"].user, obj.related_object) else None
+        return str(obj.related_object) if object_allowed(getattr(self.context.get("request"), "user", None), obj.related_object) else None
 
 
 class AlertChannelSerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):

@@ -159,3 +159,19 @@ The response contains CSR/key metadata, never private material. Signing with an 
 Other choices are `objectlink`, `healthfinding`, `alertrule`, `alertchannel`, `alertevent`. The response is a ZIP containing selected crypto material and metadata snapshots. Each type requires its existing export/download permission and view scope; keys require a superuser. A write-enabled token is required. Secrets from alert configuration are excluded. Metadata snapshots are not automatically recreated by the crypto importer.
 
 All empty authorized material/metadata/inventory exports now return HTTP 200 JSON `{"warning": "There are no objects available to export with the current filters and permissions.", "count": 0}` without an attachment. Clients must inspect Content-Type before treating the response as ZIP. UI exports display the same warning as a page. Non-empty exports keep their normal formats.
+
+## 1.3.0 preferences and derived fields
+
+`GET preferences/` returns seven operational settings and read-only `last_health_scan` / `last_alert_evaluation` timestamps. `PATCH` and `PUT preferences/` merge supplied fields with existing settings; both require a superuser and a write-enabled token. Example:
+
+```json
+{"health_scan_enabled": true, "health_scan_interval_minutes": 30, "alert_interval_minutes": 15,
+ "expiration_warning_days": 90, "import_chain_default": true, "preserve_archive_default": true,
+ "csr_rsa_bits": 3072}
+```
+
+Supported intervals are 5, 15, 30, 60, 180, 360, 720, and 1440 minutes; the warning window is 30–3650 days, and RSA sizes are 2048, 3072, 4096, and 8192. Unknown cryptographic derived values must not be supplied to artifact writes: subject/CN, SANs, issuer, fingerprints, validity, algorithms, CA status, parent certificate, Supersedes, and Bundle membership are read-only. Submitting those fields returns a field-level HTTP 400 response. Metadata updates remain supported, including Bundle names and Groups.
+
+Existing Certificate/CSR/Private Key material cannot be replaced with different cryptographic identity. Import renewal/replacement material as a new object. Creating/importing artifacts still parses material automatically; CSR generation still accepts the requested subject and SANs before signing. Manual ObjectLinks cannot claim `key_match`, `csr_match`, `issuer`, `bundle_member`, or `supersedes` relationships. Automatic links remain excluded from manual updates/deletes.
+
+CA REST endpoints are retained. The removed UI page redirects to `certificates/?is_ca=true`; the Vault uses that filtered URL. All public model serializers are exported from the canonical module required by NetBox event serialization, including cascaded delete events with no HTTP request.

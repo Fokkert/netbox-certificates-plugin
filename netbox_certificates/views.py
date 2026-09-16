@@ -348,7 +348,7 @@ class ArtifactGroupView(generic.ObjectView):
 class ArtifactGroupEditView(generic.ObjectEditView):
     queryset = ArtifactGroup.objects.all()
     form = ArtifactGroupForm
-    template_name = "generic/object_edit.html"
+    template_name = "netbox_certificates/group_edit.html"
     def dispatch(self, request, *args, **kwargs):
         self.form = partial(ArtifactGroupForm, user=request.user)
         return super().dispatch(request, *args, **kwargs)

@@ -35,17 +35,19 @@ class CertificateForm(AcronymFormMixin, PrimaryModelForm):
     import_chain = forms.BooleanField(required=False, initial=False, label="Import certificate chain")
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Groups")
     fieldsets = (
-        FieldSet("name", "supersedes", "alert_trigger", "trigger_unit", "groups", "description", "tags", name="Certificate"),
+        FieldSet("name", "alert_trigger", "trigger_unit", "groups", "description", "tags", name="Certificate"),
         FieldSet("material", "import_chain", name="Certificate Material"),
     )
     class Meta:
         model = Certificate
-        fields = ("name", "material", "supersedes", "alert_trigger", "trigger_unit", "owner", "groups", "description", "comments", "tags")
+        fields = ("name", "material", "alert_trigger", "trigger_unit", "owner", "groups", "description", "comments", "tags")
     def __init__(self, *args, user=None, **kwargs):
         self.user = user
         super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields["material"].disabled = True
+            self.fields["material"].help_text = "Stored cryptographic material is immutable. Import renewed or replacement material as a new object."
         if user is not None:
-            self.fields["supersedes"].queryset = Certificate.objects.restrict(user, "view")
             self.fields["groups"].queryset = ArtifactGroup.objects.restrict(user, "view")
     def clean(self):
         super().clean()
@@ -116,6 +118,9 @@ class CSRForm(AcronymFormMixin, PrimaryModelForm):
         fields = ("name", "material", "owner", "groups", "description", "comments", "tags")
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields["material"].disabled = True
+            self.fields["material"].help_text = "Stored cryptographic material is immutable. Import renewed or replacement material as a new object."
         if user is not None:
             self.fields["groups"].queryset = ArtifactGroup.objects.restrict(user, "view")
     def clean(self):
@@ -157,6 +162,10 @@ class PrivateKeyForm(AcronymFormMixin, PrimaryModelForm):
         fields = ("name", "owner", "groups", "description", "comments", "tags")
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields["key_material"].disabled = True
+            self.fields["input_password"].disabled = True
+            self.fields["key_material"].help_text = "Stored cryptographic material is immutable. Import renewed or replacement material as a new object."
         if user is not None:
             self.fields["groups"].queryset = ArtifactGroup.objects.restrict(user, "view")
     def clean(self):
@@ -186,10 +195,10 @@ class PrivateKeyForm(AcronymFormMixin, PrimaryModelForm):
 
 class BundleForm(AcronymFormMixin, PrimaryModelForm):
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Groups")
-    fieldsets = (FieldSet("groups", "description", "tags", name="Bundle Metadata"),)
+    fieldsets = (FieldSet("name", "groups", "description", "tags", name="Bundle Metadata"),)
     class Meta:
         model = Bundle
-        fields = ("owner", "groups", "description", "comments", "tags")
+        fields = ("name", "owner", "groups", "description", "comments", "tags")
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         if user is not None:
@@ -218,8 +227,9 @@ class ArtifactGroupForm(AcronymFormMixin, PrimaryModelForm):
     members = forms.MultipleChoiceField(
         required=False,
         label="Members",
-        widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 14}),
+        widget=forms.SelectMultiple(attrs={"class": "form-select"}),
     )
+    members.widget.template_name = "netbox_certificates/widgets/group_members.html"
     fieldsets = (
         FieldSet("name", "parent", "description", "tags", name="Group"),
         FieldSet("members", name="Members"),
@@ -601,6 +611,10 @@ class UnifiedImportForm(AcronymFormMixin, forms.Form):
     comments = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 3}))
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        from .preferences import get_preferences
+        defaults = get_preferences()
+        self.fields["import_chain"].initial = defaults.import_chain_default
+        self.fields["preserve_archive"].initial = defaults.preserve_archive_default
         if user:
             self.fields["owner"].queryset = Owner.objects.all() if user.is_superuser else Owner.objects.filter(users=user)
             self.fields["groups"].queryset = ArtifactGroup.objects.restrict(user, "view")
@@ -632,7 +646,7 @@ class CSRGenerateForm(AcronymFormMixin, forms.Form):
     owner = forms.ModelChoiceField(queryset=Owner.objects.none(), required=False)
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Groups")
     common_name = forms.CharField(max_length=255, label="Common Name (CN)")
-    sans = forms.CharField(required=False, widget=forms.HiddenInput())
+    sans = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 4, "placeholder": "DNS:example.com\nIP:192.0.2.1"}), label="SANs")
     country = forms.CharField(max_length=2, required=False, label="Country (C)")
     state = forms.CharField(max_length=128, required=False, label="State / Province (ST)")
     locality = forms.CharField(max_length=128, required=False, label="Locality (L)")
@@ -671,6 +685,8 @@ class CSRGenerateForm(AcronymFormMixin, forms.Form):
     )
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        from .preferences import get_preferences
+        self.fields["rsa_bits"].initial = get_preferences().csr_rsa_bits
         if user:
             from .permissions import action_queryset
             self.fields["existing_private_key"].queryset = action_queryset(PrivateKey, user, "use")

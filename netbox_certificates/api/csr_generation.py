@@ -55,7 +55,8 @@ class CSRGenerationSerializer(serializers.Serializer):
             if name in data:
                 for item in data.pop(name):
                     data[prefix + item] = True
-        for name, value in (("key_algorithm", "rsa"), ("rsa_bits", 3072), ("ec_curve", "secp256r1"), ("signature_hash", "sha256"), ("rsa_signature", "pkcs1v15")):
+        from ..preferences import get_preferences
+        for name, value in (("key_algorithm", "rsa"), ("rsa_bits", get_preferences().csr_rsa_bits), ("ec_curve", "secp256r1"), ("signature_hash", "sha256"), ("rsa_signature", "pkcs1v15")):
             data.setdefault(name, value)
         form = CSRGenerateForm(data, user=self.context["request"].user)
         if not form.is_valid():

@@ -293,6 +293,8 @@ class ObjectLink(PrimaryModel):
 
     def clean(self):
         super().clean()
+        if not self.automatic and self.relationship in {"key_match", "csr_match", "issuer", "bundle_member", "supersedes"}:
+            raise ValidationError({"relationship": "Cryptographic relationships are calculated by the plugin."})
         if (
             self.source_type_id == self.target_type_id
             and self.source_object_id == self.target_object_id
@@ -500,6 +502,16 @@ class AlertSettings(models.Model):
     """Private singleton linking the settings page to the existing alert engine."""
     _netbox_private = True
 
+    health_scan_enabled = models.BooleanField(default=True)
+    health_scan_interval_minutes = models.PositiveIntegerField(default=15)
+    alert_interval_minutes = models.PositiveIntegerField(default=15)
+    expiration_warning_days = models.PositiveIntegerField(default=90)
+    import_chain_default = models.BooleanField(default=True)
+    preserve_archive_default = models.BooleanField(default=True)
+    csr_rsa_bits = models.PositiveIntegerField(default=3072)
+    last_health_scan = models.DateTimeField(null=True, blank=True, editable=False)
+    last_alert_evaluation = models.DateTimeField(null=True, blank=True, editable=False)
+
     minimum_rsa_bits = models.PositiveIntegerField(default=2048)
     max_validity_days = models.PositiveIntegerField(null=True, blank=True)
     require_san = models.BooleanField(default=True)
@@ -513,6 +525,13 @@ class AlertSettings(models.Model):
 
     def clean(self):
         super().clean()
+        for name in ("health_scan_interval_minutes", "alert_interval_minutes"):
+            if getattr(self, name) not in (5, 15, 30, 60, 180, 360, 720, 1440):
+                raise ValidationError({name: "Select a supported processing interval."})
+        if not 30 <= self.expiration_warning_days <= 3650:
+            raise ValidationError({"expiration_warning_days": "Enter 30 to 3650 days."})
+        if self.csr_rsa_bits not in (2048, 3072, 4096, 8192):
+            raise ValidationError({"csr_rsa_bits": "Select a supported RSA key size."})
         if self.minimum_rsa_bits not in (2048, 3072, 4096, 8192):
             raise ValidationError({"minimum_rsa_bits": "Select a supported RSA key size."})
         if self.max_validity_days is not None and not 1 <= self.max_validity_days <= 365000:

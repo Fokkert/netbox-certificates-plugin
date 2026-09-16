@@ -36,7 +36,7 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
                                          help_text="Leave empty to include every severity.")
     cooldown_minutes = forms.IntegerField(min_value=15, max_value=5256000, initial=60, label="Minimum minutes between alerts")
     repeat_minutes = forms.IntegerField(min_value=0, max_value=5256000, initial=1440, label="Repeat unresolved alerts after minutes",
-                                       help_text="0 sends once per occurrence. Delivery runs on NetBox's 15-minute job cycle.")
+                                       help_text="0 sends once per occurrence. Evaluation frequency is configured in Preferences.")
     notify_on_recovery = forms.BooleanField(required=False, label="Notify when a problem is resolved")
     email_enabled = forms.BooleanField(required=False, label="Enable email alerts")
     recipients = LineListField(required=False, widget=forms.Textarea(attrs={"rows": 3}), help_text="One email address per line.")

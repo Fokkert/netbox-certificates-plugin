@@ -3,6 +3,7 @@ from __future__ import annotations
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from cryptography import x509
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
 
 from netbox_certificates.choices import BundleFormatChoices, BundleStatusChoices, LinkOriginChoices, LinkRelationChoices
 from netbox_certificates.models import ArtifactLink, Bundle, Certificate, CSR, PrivateKey
@@ -58,31 +59,43 @@ def link_matching_artifacts(obj, origin=LinkOriginChoices.AUTOMATIC):
 
 
 def resolve_certificate_parent(certificate: Certificate):
+    selected = None
     try:
         child = x509.load_pem_x509_certificate(certificate.material.encode())
-    except Exception:
-        return None
-    if child.subject == child.issuer:
+    except (ValueError, TypeError, UnsupportedAlgorithm):
+        child = None
+    self_signed = False
+    if child is not None and child.subject == child.issuer:
         try:
             child.verify_directly_issued_by(child)
-        except Exception:
-            return None
-        if certificate.parent_certificate_id:
-            certificate.parent_certificate = None
-            certificate.save(update_fields=("parent_certificate",))
-        return None
-    for candidate in Certificate.objects.exclude(pk=certificate.pk):
-        try:
-            issuer = x509.load_pem_x509_certificate(candidate.material.encode())
-            child.verify_directly_issued_by(issuer)
-        except Exception:
-            continue
-        if certificate.parent_certificate_id != candidate.pk:
-            certificate.parent_certificate = candidate
-            certificate.save(update_fields=("parent_certificate",))
-        create_link(certificate, candidate, LinkRelationChoices.ISSUER)
-        return candidate
-    return None
+            self_signed = True
+        except (ValueError, TypeError, InvalidSignature, UnsupportedAlgorithm):
+            pass
+    if child is not None and not self_signed:
+        for candidate in Certificate.objects.filter(is_ca=True).exclude(pk=certificate.pk).order_by("-valid_to", "pk"):
+            try:
+                issuer = x509.load_pem_x509_certificate(candidate.material.encode())
+                if not issuer.extensions.get_extension_for_class(x509.BasicConstraints).value.ca:
+                    continue
+                child.verify_directly_issued_by(issuer)
+            except (ValueError, TypeError, InvalidSignature, UnsupportedAlgorithm, x509.ExtensionNotFound):
+                continue
+            selected = candidate
+            break
+    selected_id = selected.pk if selected else None
+    if certificate.parent_certificate_id != selected_id:
+        certificate.parent_certificate = selected
+        certificate.save(update_fields=("parent_certificate",))
+    links = ArtifactLink.objects.filter(source_type=_ct(certificate), source_id=certificate.pk,
+                                        relation=LinkRelationChoices.ISSUER, active=True)
+    if selected is not None:
+        links = links.exclude(target_type=_ct(selected), target_id=selected.pk)
+    for link in links:
+        link.active = False
+        link.save(update_fields=("active",))
+    if selected is not None:
+        create_link(certificate, selected, LinkRelationChoices.ISSUER, reactivate=True, update_origin=True)
+    return selected
 
 
 def _bundle_members_for_fingerprint(fingerprint):
@@ -189,7 +202,6 @@ def ensure_automatic_bundle(obj, origin=LinkOriginChoices.AUTOMATIC):
         changed = []
         for field, value in (
             ("identity_fingerprint", fingerprint),
-            ("name", name),
             ("certificate", certificate),
             ("private_key", private_key),
             ("csr", csr),

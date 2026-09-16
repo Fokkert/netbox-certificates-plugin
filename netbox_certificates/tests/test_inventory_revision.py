@@ -10,6 +10,7 @@ from cryptography.x509.oid import NameOID
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.apps import apps
 
 from netbox_certificates.models import Bundle, Certificate, CSR, PrivateKey
 from netbox_certificates.services.unified_import import UnifiedImportError, UploadItem, import_objects
@@ -43,6 +44,9 @@ class InventoryRevisionTests(TestCase):
     def test_mixed_import_reuses_objects_and_preserves_relationships(self):
         result = self.import_batch()
         self.assertEqual(len(result["created"]), 3)
+        from netbox_certificates.models_v1 import ObjectLink
+        self.assertTrue(ObjectLink.objects.filter(automatic=True, relationship="key_match").exists())
+        self.assertFalse(ObjectLink.objects.filter(automatic=False).exists())
         bundle = Bundle.objects.get()
         self.assertEqual(bundle.certificate_id, Certificate.objects.get().pk)
         self.assertEqual(bundle.private_key_id, PrivateKey.objects.get().pk)
@@ -78,3 +82,66 @@ class InventoryRevisionTests(TestCase):
         self.assertNotIn("Content-Disposition", response)
         self.assertRedirects(self.client.get(reverse("plugins:netbox_certificates:certificatepolicy_list")),
                              reverse("plugins:netbox_certificates:alert_settings"))
+
+    def test_all_public_serializers_support_netbox_lookup(self):
+        from utilities.api import get_serializer_for_model
+        from netbox.models.features import model_is_public
+        for model in apps.get_app_config("netbox_certificates").get_models():
+            if model_is_public(model):
+                with self.subTest(model=model.__name__):
+                    self.assertIs(get_serializer_for_model(model).Meta.model, model)
+
+    def test_delete_event_serialization_accepts_no_request(self):
+        from extras.events import serialize_for_event
+        from netbox_certificates.models_v1 import ObjectLink
+        self.import_batch()
+        for obj in list(ObjectLink.objects.all()) + [Certificate.objects.get(), PrivateKey.objects.get(), CSR.objects.get(), Bundle.objects.get()]:
+            with self.subTest(model=type(obj).__name__):
+                self.assertEqual(serialize_for_event(obj)["id"], obj.pk)
+
+    def test_single_and_bulk_deletion_with_generated_links(self):
+        from netbox_certificates.models_v1 import ObjectLink
+        self.import_batch()
+        certificate = Certificate.objects.get()
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(reverse("plugins:netbox_certificates:certificate_delete", args=[certificate.pk]),
+                                        {"confirm": True})
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Certificate.objects.exists())
+        # Reimport, then exercise bulk confirmation through the actual NetBox view.
+        self.import_batch()
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(reverse("plugins:netbox_certificates:certificate_bulk_delete"),
+                                        {"pk": list(Certificate.objects.values_list("pk", flat=True)), "_confirm": True})
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Certificate.objects.exists())
+        self.assertFalse(ObjectLink.objects.filter(source_type__model="certificate").exists())
+        self.assertFalse(ObjectLink.objects.filter(target_type__model="certificate").exists())
+
+    def test_supersedes_and_subject_are_not_writable(self):
+        from netbox_certificates.api.serializers import CertificateSerializer
+        from netbox_certificates.forms import CertificateForm
+        self.import_batch()
+        certificate = Certificate.objects.get()
+        for field in ("supersedes", "parent_certificate", "subject", "is_ca"):
+            serializer = CertificateSerializer(certificate, data={field: 1}, partial=True)
+            self.assertFalse(serializer.is_valid())
+            self.assertIn(field, serializer.errors)
+        form = CertificateForm(instance=certificate, user=self.user)
+        self.assertNotIn("supersedes", form.fields)
+        self.assertTrue(form.fields["material"].disabled)
+
+    def test_preferences_validate_and_restrict_access(self):
+        url = reverse("plugins:netbox_certificates:preferences")
+        self.assertContains(self.client.get(url), "Health scan frequency")
+        response = self.client.post(url, {"health_scan_enabled": True, "health_scan_interval_minutes": 30,
+            "alert_interval_minutes": 15, "expiration_warning_days": 90, "csr_rsa_bits": 3072,
+            "import_chain_default": True, "preserve_archive_default": True})
+        self.assertEqual(response.status_code, 302)
+        user = get_user_model().objects.create_user(username="preferences-no-permission")
+        self.client.force_login(user)
+        self.assertEqual(self.client.get(url).status_code, 403)
+
+    def test_ca_bookmark_uses_filtered_certificates(self):
+        self.assertRedirects(self.client.get(reverse("plugins:netbox_certificates:certificateauthority_list")),
+                             reverse("plugins:netbox_certificates:certificate_list") + "?is_ca=true")

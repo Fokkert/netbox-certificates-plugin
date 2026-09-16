@@ -6,7 +6,7 @@
 
 Open Alerts Configuration as a superuser. Select problem categories and severities, cooldown, repeats, and recovery notifications. Configure email and/or webhook delivery. **Save and send test email** and **Save and send test webhook** are available even before alerts are enabled. They save the form, validate the selected destination, send a sample, and display success or a sanitized connection/delivery error. Testing does not enable a disabled delivery method. SMTP supports STARTTLS, implicit TLS, or no TLS. SMTP and webhook certificate verification are enabled by default and independently configurable.
 
-A zero repeat interval means once per occurrence. Recovery notifications are separate and sent once; recurrence starts a new occurrence. Delivery follows the 15-minute NetBox system job cycle.
+A zero repeat interval means once per occurrence. Recovery notifications are separate and sent once; recurrence starts a new occurrence. Evaluation frequency is configured in Preferences (15 minutes by default), independently of health scan frequency. A five-minute system job checks when each operation is due. Repeat and cooldown settings remain here.
 
 Existing rules and channels are preserved. The page reports additional enabled rules; review those to avoid duplicate notifications. The enable switch controls the settings-page rule.
 

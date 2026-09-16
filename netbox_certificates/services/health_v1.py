@@ -240,7 +240,7 @@ def _verify_parent_signature(cert):
         return False
 
 
-def _certificate_findings(cert, now):
+def _certificate_findings(cert, now, warning_days=90):
     not_before, not_after = _validity(cert)
     if not_before and now < not_before:
         _finding("CERT_NOT_YET_VALID", "validity", FindingSeverityChoices.HIGH, cert, "Certificate is not yet valid.")
@@ -253,7 +253,7 @@ def _certificate_findings(cert, now):
                 sev = FindingSeverityChoices.HIGH
             elif remaining <= timedelta(days=30):
                 sev = FindingSeverityChoices.MEDIUM
-            elif remaining <= timedelta(days=90):
+            elif remaining <= timedelta(days=warning_days):
                 sev = FindingSeverityChoices.WARNING
             elif certificate_alert_due(cert, now=now):
                 sev = FindingSeverityChoices.INFO
@@ -733,8 +733,14 @@ def refresh_health_findings():
     started = timezone.now()
     now = timezone.now()
 
+    from ..models_v1 import AlertSettings
+    settings = AlertSettings.objects.first() or AlertSettings()
+    from .renewal import reconcile_supersedes
+    reconcile_supersedes()
+    from .linker import resolve_certificate_parent
     for cert in Certificate.objects.all():
-        _certificate_findings(cert, now)
+        resolve_certificate_parent(cert)
+        _certificate_findings(cert, now, warning_days=settings.expiration_warning_days)
         _certificate_service_reuse_findings(cert)
     for key in PrivateKey.objects.all():
         _private_key_findings(key, now)
@@ -747,8 +753,6 @@ def refresh_health_findings():
     ):
         _service_findings(service)
 
-    from ..models_v1 import AlertSettings
-    settings = AlertSettings.objects.first() or AlertSettings()
     for model in (Certificate, CSR):
         for artifact in model.objects.all().iterator(chunk_size=200):
             violations = _evaluate_checks(settings, artifact)

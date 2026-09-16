@@ -49,7 +49,7 @@ class VersionOneFeatureContracts(unittest.TestCase):
     def test_ca_page_and_api_use_actual_ca_certificates(self):
         views = self.read("netbox_certificates/views_v1.py")
         api = self.read("netbox_certificates/api/v1_views.py")
-        self.assertIn("Certificate.objects.filter(is_ca=True)", views)
+        self.assertIn('reverse("plugins:netbox_certificates:certificate_list") + "?is_ca=true"', views)
         self.assertIn("Certificate.objects.filter(is_ca=True)", api)
 
     def test_health_engine_covers_requested_problem_classes(self):

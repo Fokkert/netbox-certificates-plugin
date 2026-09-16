@@ -8,8 +8,8 @@ menu = PluginMenu(
             "Overview",
             (
                 PluginMenuItem(
-                    link="plugins:netbox_certificates:certificateauthority_list",
-                    link_text="Certificate Authorities",
+                    link="plugins:netbox_certificates:preferences",
+                    link_text="Preferences",
                 ),
                 PluginMenuItem(
                     link="plugins:netbox_certificates:vault",

@@ -67,9 +67,9 @@ def _legacy_link_values(instance):
         "target_type",
     )
     target_id_field = _field_name(LegacyArtifactLink, "target_object_id", "target_id")
-    relationship_field = _field_name(LegacyArtifactLink, "relationship", "link_type", "kind")
-    label_field = _field_name(LegacyArtifactLink, "label", "name")
-    enabled_field = _field_name(LegacyArtifactLink, "enabled")
+    relationship_field = _field_name(LegacyArtifactLink, "relation", "relationship", "link_type", "kind")
+    label_field = _field_name(LegacyArtifactLink, "note", "label", "name")
+    enabled_field = _field_name(LegacyArtifactLink, "active", "enabled")
     automatic_field = _field_name(LegacyArtifactLink, "automatic", "is_automatic", "managed")
 
     if not all((source_type_field, source_id_field, target_type_field, target_id_field)):
@@ -89,7 +89,10 @@ def _legacy_link_values(instance):
     )
     label = str(getattr(instance, label_field, "") or "")[:160] if label_field else ""
     enabled = bool(getattr(instance, enabled_field, True)) if enabled_field else True
-    automatic = bool(getattr(instance, automatic_field, False)) if automatic_field else False
+    automatic = bool(getattr(instance, automatic_field, False)) if automatic_field else getattr(instance, "origin", "manual") != "manual"
+    if not automatic and relationship in {"key_match", "csr_match", "issuer", "bundle_member", "supersedes"}:
+        # Historic manual claims are not evidence of a cryptographic match.
+        automatic, enabled = True, False
 
     return {
         "source_type": source_type,

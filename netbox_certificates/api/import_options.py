@@ -21,6 +21,11 @@ class ImportOptionsSerializer(serializers.Serializer):
         request = self.context.get("request")
         if request is None:
             return
+        from ..preferences import get_preferences
+        defaults = get_preferences()
+        for name, value in (("import_chain", defaults.import_chain_default), ("preserve_archive", defaults.preserve_archive_default)):
+            self.fields[name].default = value
+            self.fields[name].default_empty_html = value
         user = request.user
         self.fields["owner"].queryset = Owner.objects.all() if user.is_superuser else Owner.objects.filter(users=user)
         self.fields["groups"].child_relation.queryset = action_queryset(ArtifactGroup, user, "view")

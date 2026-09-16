@@ -1,0 +1,19 @@
+{% extends 'generic/object_edit.html' %}
+{% load form_helpers static %}
+{% block head %}{{ block.super }}<link rel="stylesheet" href="{% static 'netbox_certificates/editors.css' %}">{% endblock %}
+{% block form %}
+{{ form.non_field_errors }}{% for field in form.hidden_fields %}{{ field }}{% endfor %}
+<section class="card mb-4"><h2 class="card-header">Group details</h2><div class="card-body">
+{% render_field form.name %}{% render_field form.parent %}{% render_field form.description %}
+{% if form.owner_group %}{% render_field form.owner_group %}{% endif %}{% render_field form.owner %}
+</div></section>
+<section class="card mb-4"><h2 class="card-header">Group membership</h2><div class="card-body">
+<p class="text-muted">Manage each object type separately. Only objects you can change are shown; other memberships are preserved. In a list, hold Ctrl (Command on macOS) to select multiple entries.</p>
+{{ form.members.errors }}{{ form.members }}
+</div></section>
+<section class="card mb-4"><h2 class="card-header">Metadata</h2><div class="card-body">
+{% render_field form.comments %}{% render_field form.tags %}
+{% if form.custom_fields %}{% render_custom_fields form %}{% endif %}
+{% if form.changelog_message %}{% render_field form.changelog_message %}{% endif %}
+</div></section>
+{% endblock %}

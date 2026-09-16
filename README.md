@@ -9,8 +9,8 @@ NetBox Certificates Plugin adds certificate inventory and lifecycle management t
 | NetBox | 4.5.9, 4.5.10 |
 | Python | 3.12+ |
 | `cryptography` | 42+ |
-| Release | 1.2.0 |
-| Upgrade source | 1.1.2 (older migrations retained) |
+| Release | 1.3.0 |
+| Upgrade source | 1.2.0 (older migrations retained) |
 
 ## Features
 
@@ -18,7 +18,7 @@ NetBox Certificates Plugin adds certificate inventory and lifecycle management t
 - encrypted private-key storage
 - CSR inventory and generation using a new or existing private key
 - certificate/key/CSR bundles with cryptographic identity validation
-- Certificate Authorities view for imported CA certificates
+- CA certificates accessible from the Vault through a filtered Certificates list
 - hierarchical Groups with expandable subgroups and visible member objects, plus selection for bulk operations
 - Services for modeling certificate consumers and deployment metadata
 - many-to-many Service relationships to Certificates, Private Keys, CSRs, Bundles, and Groups
@@ -34,7 +34,7 @@ NetBox Certificates Plugin adds certificate inventory and lifecycle management t
 
 ```text
 OVERVIEW
-├── Certificate Authorities
+├── Preferences
 ├── Cryptographic Vault
 └── Health and Validity
 
@@ -62,11 +62,15 @@ Service metadata includes status, type, environment, deployment, deployment meta
 
 ## Certificate Authorities
 
-The Certificate Authorities view lists imported `Certificate` objects with X.509 `CA=true`, including roots, intermediates, and subordinate CAs. The dedicated **Import CA Certificates** action accepts only X.509 Basic Constraints `CA=true`. Leaf certificates, certificates without that extension, keys, CSRs, and mixed CA/non-CA uploads are rejected before saving anything. Root and chain resolution are maintained internally from certificate relationships.
+Select **Certificate Authorities** in the Cryptographic Vault to open Certificates filtered to X.509 `CA=true`, including roots, intermediates, and subordinate CAs. The separate CA page has been removed; its old URL redirects to this filtered list. The dedicated **Import CA Certificates** action accepts only X.509 Basic Constraints `CA=true`. Leaf certificates, certificates without that extension, keys, CSRs, and mixed CA/non-CA uploads are rejected before saving anything. Root and chain resolution are maintained internally from certificate relationships.
 
 ## Cryptographic Vault
 
 Cryptographic Vault uses a responsive, neutral layout with clickable inventory cards, service-assignment counts, and health categories. It provides a consolidated overview of Certificates, CA Certificates, Private Keys, CSRs, Bundles, Services, unassigned objects, and active Health findings.
+
+## Preferences
+
+**Overview → Preferences** lets superusers configure health scanning, independent alert evaluation intervals, upcoming-expiration findings, chain/archive import defaults, and the default RSA size for new CSR keys. Scan and alert intervals default to 15 minutes and support 5 minutes through 24 hours. Notification destinations, TLS options, certificate checks, and repeat rules remain in Alerts Configuration. See [Preferences](docs/PREFERENCES.md).
 
 ## Health and Validity
 
@@ -89,6 +93,10 @@ Checks include:
 - private-key reuse across Services
 - non-wildcard certificate reuse across unrelated Service endpoints
 - configured certificate requirement violations
+
+## Cryptographic information
+
+Subjects (including CN), SANs, fingerprints, validity, algorithms, CA status, issuer chains, artifact matches, and Supersedes are calculated from stored material. These values cannot be edited in forms or the API. Existing certificate, CSR, and private-key material is immutable; import replacement material as a new object. Names, descriptions, Groups, Services, and per-certificate alert timing remain editable. CSR generation accepts the requested subject and SANs before signing; the resulting CSR attributes are parsed from the signed request.
 
 ## Certificate checks
 
@@ -167,7 +175,7 @@ See [docs/API.md](docs/API.md).
 Add the package to `/opt/netbox/local_requirements.txt`:
 
 ```text
-netbox-certificates-plugin==1.2.0
+netbox-certificates-plugin==1.3.0
 ```
 
 Enable the plugin:
@@ -231,6 +239,7 @@ See [SECURITY.md](SECURITY.md).
 - [Retired policy migration](docs/POLICIES.md)
 - [Imports](docs/IMPORTS.md)
 - [Alerts](docs/ALERTS.md)
+- [Preferences](docs/PREFERENCES.md)
 - [Exports](docs/EXPORTS.md)
 - [Permissions](docs/PERMISSIONS.md)
 - [Bulk Operations](docs/BULK_OPERATIONS.md)
@@ -243,6 +252,6 @@ See [SECURITY.md](SECURITY.md).
 
 Apache-2.0. See `LICENSE` and `NOTICE`.
 
-## Release 1.2.0
+## Release 1.3.0
 
-This release consolidates certificate checks into Alerts Configuration, validates email/endpoint/port/CSR inputs in the UI and API, supports signing CSRs with an existing authorized key, improves Group spacing and action buttons, replaces empty downloads with warnings, and adds mixed inventory export. Large mixed imports detect content, reuse existing objects, and reconcile cryptographic relationships atomically. REST, GraphQL, search, permissions, migrations, and documentation reflect the retired policy model. See [Upgrade](UPGRADE.md) before installing.
+This release fixes NetBox serializer discovery during individual and bulk deletion, introduces operational Preferences, replaces the standalone CA page with a Vault filter link, and protects derived cryptographic fields and relationships. CSR generation has structured SAN rows, and Group membership has separate sections for each object type. See [Upgrade](UPGRADE.md) for pip-only deployment and [Validation](VALIDATION.md) for checks and runtime limitations.

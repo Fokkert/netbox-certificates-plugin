@@ -63,7 +63,6 @@ from .models_v1 import (
     ObjectLink,
     Service,
 )
-from .tables import CertificateTable
 from .tables_v1 import (
     AlertChannelTable,
     AlertEventTable,
@@ -180,7 +179,7 @@ class CryptographicVaultView(LoginRequiredMixin, View):
 
         cards = (
             ("Certificates", certificates.count(), reverse("plugins:netbox_certificates:certificate_list")),
-            ("Certificate Authorities", certificates.filter(is_ca=True).count(), reverse("plugins:netbox_certificates:certificateauthority_list")),
+            ("Certificate Authorities", certificates.filter(is_ca=True).count(), reverse("plugins:netbox_certificates:certificate_list") + "?is_ca=true"),
             ("Private Keys", private_keys.count(), reverse("plugins:netbox_certificates:privatekey_list")),
             ("CSRs", csrs.count(), reverse("plugins:netbox_certificates:csr_list")),
             ("Bundles", bundles.count(), reverse("plugins:netbox_certificates:bundle_list")),
@@ -202,25 +201,6 @@ class CryptographicVaultView(LoginRequiredMixin, View):
                 "unassigned_bundles": bundles.filter(services__isnull=True).distinct().count(),
             },
         )
-
-
-class CertificateAuthorityListView(EmptyListExportMixin, generic.ObjectListView):
-    queryset = Certificate.objects.filter(is_ca=True)
-    table = CertificateTable
-    filterset = CertificateV1FilterSet
-    filterset_form = CertificateV1FilterForm
-    actions = legacy_views.CertificateListView.actions
-    template_name = "netbox_certificates/certificate_authority_list.html"
-
-    def get_extra_context(self, request):
-        visible = self.queryset.restrict(request.user, "view") if hasattr(self.queryset, "restrict") else self.queryset
-        filterset = CertificateV1FilterSet(request.GET, queryset=visible, request=request)
-        if filterset.is_valid():
-            visible = filterset.qs
-        return {
-            "title": "Certificate Authorities",
-            "ca_count": visible.distinct().count(),
-        }
 
 
 class ArtifactGroupTreeListView(LoginRequiredMixin, View):

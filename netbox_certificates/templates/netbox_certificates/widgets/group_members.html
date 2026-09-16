@@ -1,0 +1,12 @@
+<div class="membership-grid">
+{% for group_name,options,index in widget.optgroups %}
+  <section class="membership-panel">
+    <label class="h3 d-block" for="{{ widget.attrs.id }}_{{ index }}">{{ group_name }}</label>
+    {% if group_name == 'Groups' %}<p class="text-muted small">Selected groups become direct children. Removing a child moves it to the top level.</p>{% else %}<p class="text-muted small">Select the {{ group_name|lower }} that belong directly to this group.</p>{% endif %}
+    <select name="{{ widget.name }}" id="{{ widget.attrs.id }}_{{ index }}" class="form-select" multiple size="8" aria-label="{{ group_name }} membership">
+      {% for option in options %}<option value="{{ option.value }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>{% endfor %}
+    </select>
+    {% if not options %}<p class="text-muted small mt-2 mb-0">No editable {{ group_name|lower }} available.</p>{% endif %}
+  </section>
+{% endfor %}
+</div>

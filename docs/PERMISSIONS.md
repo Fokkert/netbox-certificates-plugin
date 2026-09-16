@@ -71,3 +71,9 @@ CertificatePolicy is private and inactive. Migration 0022 removes its permission
 Grant `netbox_certificates.use_privatekey` (Additional action `use` on Private Key) to permit signing CSRs using a stored key. Both use and view constraints apply before decryption. This permission does not permit downloading a key. CSR generation also requires CSR add permission, Private Key add permission only when creating a key, and add/change permission for the matching Bundle. Generated objects are checked against add constraints within the transaction.
 
 Mixed imports require add permission for submitted artifact types, visibility of reused/matching artifacts, change permission for any existing bundle updated, and change permission when assigning a new Group to reused objects. Permission failure rolls back the entire import. Mixed export checks the existing custom action separately for every selected type; it never bypasses a type's view scope or the superuser requirement for exported keys.
+
+## Changes in 1.3.0
+
+Preferences uses a private settings singleton, like Alerts Configuration: only superusers can read/write it. REST mutations additionally require a write-enabled token. No new public settings model or assignable settings ObjectPermission is created. Existing object permissions continue to govern individual/bulk deletion, Group membership, artifact metadata, CSR signing, imports, and exports.
+
+Derived cryptographic fields and relationships cannot be overridden by edit forms or REST, including by superusers. Automatic ObjectLinks remain protected from manual mutation. Manual links cannot use reserved cryptographic relationship names. Group membership still requires change permission on every added/removed object; the redesigned controls preserve memberships outside the user's editable scope.

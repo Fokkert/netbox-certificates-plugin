@@ -91,3 +91,9 @@ The page combines expiration counts and upcoming/expired certificates with findi
 ## Reading findings (1.1.2)
 
 The Health table shows severity and status, summary and finding code, affected and related objects, details, evidence, and last detection time. Both object columns link directly to the referenced inventory records when the viewer can view those objects; missing or inaccessible objects show a dash. Detail pages use the same permission-aware links and labeled evidence. Filtering, pagination, scans, and selected-row actions retain their existing behavior.
+
+## Scheduling and relationship reconciliation (1.3.0)
+
+Configure health scan and alert evaluation intervals separately in [Preferences](PREFERENCES.md). Both default to 15 minutes; scheduled scanning can be disabled while retaining manual scans. The upcoming-expiration warning window defaults to 90 days and is configurable without changing per-certificate alert timing.
+
+Scans recalculate issuer links using signature verification and CA Basic Constraints. Stale issuer links are deactivated. Supersedes is inferred from matching SAN sets (subject when SANs are absent), CA status, and strictly earlier expiry; ties cannot form renewal cycles. This is inferred inventory succession, not proof of an external CA's renewal workflow. Old manually entered Supersedes values are replaced by these calculated relationships.

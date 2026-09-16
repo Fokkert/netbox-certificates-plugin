@@ -26,3 +26,7 @@ See [EXPORTS.md](EXPORTS.md).
 In 1.1.1, Groups and Health and Validity support selected-row bulk actions from their main pages. Automatic ObjectLinks are excluded from bulk edits/deletes. Invalid export filters produce readable field errors; an empty matching queryset displays a warning without downloading an archive. Group metadata export requires the `archive_export` action.
 
 The Vault’s **Export inventory** combines selected object types in one archive. Groups use padded hierarchy rows and separate action buttons. Bulk edit/delete continue to use standard confirmation pages and permission-scoped querysets.
+
+## Deletion (1.3.0)
+
+Individual and bulk deletion use NetBox's normal confirmation and permission checks. All public plugin models now expose the canonical serializers needed by NetBox deletion events. Generic ObjectLinks referencing deleted inventory objects are removed; certificate bulk deletion coalesces post-commit relationship reconciliation. Automatic links themselves remain read-only; delete their owning artifacts to remove them.

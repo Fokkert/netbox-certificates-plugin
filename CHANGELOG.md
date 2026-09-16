@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.0
+
+- Fix canonical serializer discovery for all public models and request-free event serialization during individual/bulk deletion.
+- Clean dangling ObjectLinks and reconcile authority/renewal relationships once per certificate deletion transaction.
+- Add Preferences under Overview for scan/alert schedules, warning windows, import defaults, and CSR RSA defaults, with a superuser-only API.
+- Replace the standalone Certificate Authorities page with a Vault link to filtered Certificates; preserve old bookmarks and CA import/export APIs.
+- Repair legacy link mirroring so automatic relationships cannot appear as editable manual links.
+- Protect derived cryptographic fields and material from manual replacement; calculate issuer/Supersedes relationships and keep friendly names editable.
+- Add structured, responsive CSR SAN rows and separate Group membership controls for all six member types.
+- Add migration 0023, regression coverage, and pip-only upgrade documentation.
+
+
 ## 1.2.0
 
 - Replace public Certificate Policies with five global certificate checks in Alerts Configuration; migrate a single enabled policy and retain legacy rows privately.

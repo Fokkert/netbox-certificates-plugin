@@ -135,12 +135,10 @@ def import_objects(*, uploads, allowed_kinds, user=None, owner=None, groups=None
             # Reconcile after all writes so order and container boundaries do not
             # affect matching. Expensive CA reconciliation runs once per request.
             from .certificate_authorities import sync_all_certificate_authorities
-            from .renewal import infer_supersedes
+            from .renewal import reconcile_supersedes
             from .chain import ordered_chain
             for obj in created:
                 link_matching_artifacts(obj)
-                if isinstance(obj, Certificate):
-                    infer_supersedes(obj)
             for certificate in Certificate.objects.filter(parent_certificate__isnull=True).iterator(chunk_size=200):
                 resolve_certificate_parent(certificate)
             for fingerprint, obj in (anchors.items() if not ca_only else []):
@@ -167,6 +165,7 @@ def import_objects(*, uploads, allowed_kinds, user=None, owner=None, groups=None
                     _check_created_permission(user, bundle)
                 sync_bundle_links(bundle)
                 bundles.append(bundle)
+            reconcile_supersedes()
             sync_all_certificate_authorities()
     except (ArtifactImportError, PrivateKeyEncryptionError) as exc:
         raise UnifiedImportError(str(exc)) from exc

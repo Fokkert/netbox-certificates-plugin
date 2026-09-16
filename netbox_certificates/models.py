@@ -107,9 +107,9 @@ class CertificateAuthority(PrimaryModel):
 
 class Certificate(PrimaryModel):
     name = models.CharField(max_length=200)
-    status = models.CharField(max_length=32, choices=CertificateStatusChoices, default=CertificateStatusChoices.INVALID)
+    status = models.CharField(max_length=32, choices=CertificateStatusChoices, default=CertificateStatusChoices.INVALID, editable=False)
     source_filename = models.CharField(max_length=255, blank=True)
-    source_format = models.CharField(max_length=32, choices=SourceFormatChoices, default=SourceFormatChoices.PEM)
+    source_format = models.CharField(max_length=32, choices=SourceFormatChoices, default=SourceFormatChoices.PEM, editable=False)
     material = models.TextField(verbose_name=_("certificate material"))
     fingerprint_sha256 = models.CharField(max_length=64, unique=True, editable=False)
     public_key_fingerprint = models.CharField(max_length=64, db_index=True, editable=False)
@@ -133,10 +133,10 @@ class Certificate(PrimaryModel):
     curve = models.CharField(max_length=64, blank=True, editable=False)
     is_ca = models.BooleanField(default=False, editable=False)
     parent_certificate = models.ForeignKey(
-        "self", on_delete=models.SET_NULL, blank=True, null=True, related_name="issued_certificates"
+        "self", on_delete=models.SET_NULL, blank=True, null=True, related_name="issued_certificates", editable=False
     )
     supersedes = models.ForeignKey(
-        "self", on_delete=models.SET_NULL, blank=True, null=True, related_name="superseded_by"
+        "self", on_delete=models.SET_NULL, blank=True, null=True, related_name="superseded_by", editable=False
     )
     trigger_unit = models.CharField(
         max_length=16, choices=AlertTriggerUnitChoices, blank=True, default="month", verbose_name="Trigger Unit"
@@ -169,7 +169,7 @@ class Certificate(PrimaryModel):
 class PrivateKey(PrimaryModel):
     name = models.CharField(max_length=200)
     source_filename = models.CharField(max_length=255, blank=True)
-    source_format = models.CharField(max_length=32, choices=SourceFormatChoices, default=SourceFormatChoices.PEM)
+    source_format = models.CharField(max_length=32, choices=SourceFormatChoices, default=SourceFormatChoices.PEM, editable=False)
     encrypted_material = models.BinaryField(editable=False)
     material_sha256 = models.CharField(max_length=64, editable=False)
     public_key_fingerprint = models.CharField(max_length=64, unique=True, editable=False)
@@ -194,7 +194,7 @@ class PrivateKey(PrimaryModel):
 class CSR(PrimaryModel):
     name = models.CharField(max_length=200)
     source_filename = models.CharField(max_length=255, blank=True)
-    source_format = models.CharField(max_length=32, choices=SourceFormatChoices, default=SourceFormatChoices.PEM)
+    source_format = models.CharField(max_length=32, choices=SourceFormatChoices, default=SourceFormatChoices.PEM, editable=False)
     material = models.TextField(verbose_name=_("CSR material"))
     fingerprint_sha256 = models.CharField(max_length=64, unique=True, editable=False)
     public_key_fingerprint = models.CharField(max_length=64, db_index=True, editable=False)
@@ -225,18 +225,18 @@ class Bundle(PrimaryModel):
         max_length=64, blank=True, null=True, unique=True, editable=False, db_index=True
     )
     source_filename = models.CharField(max_length=255, blank=True)
-    archive_format = models.CharField(max_length=32, choices=BundleFormatChoices, default=BundleFormatChoices.ZIP)
-    status = models.CharField(max_length=32, choices=BundleStatusChoices, default=BundleStatusChoices.PARTIAL)
+    archive_format = models.CharField(max_length=32, choices=BundleFormatChoices, default=BundleFormatChoices.ZIP, editable=False)
+    status = models.CharField(max_length=32, choices=BundleStatusChoices, default=BundleStatusChoices.PARTIAL, editable=False)
     encrypted_archive = models.BinaryField(blank=True, null=True, editable=False)
     import_report = models.JSONField(default=dict, blank=True, editable=False)
     certificate = models.ForeignKey(
-        Certificate, on_delete=models.SET_NULL, blank=True, null=True, related_name="primary_in_bundles"
+        Certificate, on_delete=models.SET_NULL, blank=True, null=True, related_name="primary_in_bundles", editable=False
     )
     private_key = models.ForeignKey(
-        PrivateKey, on_delete=models.SET_NULL, blank=True, null=True, related_name="bundles"
+        PrivateKey, on_delete=models.SET_NULL, blank=True, null=True, related_name="bundles", editable=False
     )
-    csr = models.ForeignKey(CSR, on_delete=models.SET_NULL, blank=True, null=True, related_name="bundles")
-    chain_certificates = models.ManyToManyField(Certificate, blank=True, related_name="chain_in_bundles")
+    csr = models.ForeignKey(CSR, on_delete=models.SET_NULL, blank=True, null=True, related_name="bundles", editable=False)
+    chain_certificates = models.ManyToManyField(Certificate, blank=True, related_name="chain_in_bundles", editable=False)
     groups = models.ManyToManyField(ArtifactGroup, blank=True, related_name="bundles")
 
     class Meta:

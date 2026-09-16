@@ -32,3 +32,9 @@ Known manifest, README, operating-system metadata, and inventory `metadata/*.jso
 ## API results
 
 A successful request returns created objects, reused identities, reconciled bundle IDs, and ignored filenames. Select owner/groups by ID; those choices are permission-scoped. Booleans must be valid Boolean values, and invalid owner/group IDs are rejected. API import requires a write-enabled token and add permission for each submitted cryptographic type.
+
+## Defaults and immutable material (1.3.0)
+
+Preferences controls the initial chain-import and source-archive-preservation options in both UI and API. Explicit request options override these defaults. Existing cryptographic objects retain their material: import renewal/replacement material as new objects, allowing fingerprint matching, issuer verification, and automatic Supersedes reconciliation to maintain relationships. Friendly names and organizational metadata remain editable.
+
+The Vault CA card opens the filtered Certificates list. Its **Import CA Certificates** action retains strict CA-only validation. CA import/export API routes remain available.

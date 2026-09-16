@@ -1,5 +1,6 @@
 {% extends 'generic/object_edit.html' %}
-{% load form_helpers %}
+{% load form_helpers static %}
+{% block head %}{{ block.super }}<link rel="stylesheet" href="{% static 'netbox_certificates/editors.css' %}">{% endblock %}
 {% block title %}Generate CSR{% endblock %}
 
 {% block form %}
@@ -27,34 +28,24 @@
     {% render_field form.email %}
   </div>
 
-  <div class="mb-4">
-    <h2>Subject Alternative Names (SANS)</h2>
-    <div class="card">
-      <div>
-        <table class="table table-hover table-vcenter mb-0">
-          <thead>
-            <tr>
-              <th style="width: 180px;">Type</th>
-              <th>Value</th>
-              <th class="text-end" style="width: 1%; white-space: nowrap;">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="san-editor"></tbody>
-        </table>
+  <section class="card mb-4" aria-labelledby="san-title">
+    <div class="card-header"><h2 class="mb-0" id="san-title">Subject Alternative Names (SANs)</h2></div>
+    <div class="card-body">
+      <p class="text-muted">Add the DNS names, IP addresses, email addresses, or URIs this CSR should cover.</p>
+      <div id="san-fallback">{% render_field form.sans %}</div>
+      <div id="san-editor" class="san-editor" hidden></div>
+      <div class="d-flex align-items-center gap-3 mt-3">
+        <button type="button" id="add-san" class="btn btn-outline-primary" hidden><i class="mdi mdi-plus" aria-hidden="true"></i> Add SAN</button>
+        <span id="san-count" class="text-muted small" aria-live="polite"></span>
       </div>
-      <div class="card-footer">
-        <button type="button" id="add-san" class="btn btn-primary btn-sm">
-          <i class="mdi mdi-plus-thick"></i> Add SAN
-        </button>
-      </div>
+      {% if form.sans.errors %}<div class="text-danger mt-2" role="alert">{{ form.sans.errors }}</div>{% endif %}
     </div>
-    {% if form.sans.errors %}<div class="text-danger mt-2">{{ form.sans.errors }}</div>{% endif %}
-  </div>
+  </section>
 
   <div class="mb-4">
     <h2>Private Key &amp; Signature</h2>
     {% render_field form.existing_private_key %}
-    {% render_field form.key_algorithm %}
+    <div id="key-algorithm-row">{% render_field form.key_algorithm %}</div>
     <div id="rsa-bits-row">{% render_field form.rsa_bits %}</div>
     <div id="ec-curve-row">{% render_field form.ec_curve %}</div>
     <div id="signature-hash-row">{% render_field form.signature_hash %}</div>
@@ -94,144 +85,7 @@
     </div>
   </div>
 
-  <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const hidden = document.getElementById('id_sans');
-    const editor = document.getElementById('san-editor');
-    const addButton = document.getElementById('add-san');
-    const examples = {
-      DNS: 'www.example.com',
-      IP: '192.0.2.10 or 2001:db8::10',
-      EMAIL: 'admin@example.com',
-      URI: 'spiffe://example/service'
-    };
-
-    function refreshSANRow(row) {
-      const type = row.querySelector('.san-type').value;
-      row.querySelector('.san-value').placeholder = examples[type];
-    }
-
-    function enhanceSANType(select, attempt = 0) {
-      if (select.tomselect) return;
-
-      // Use the already-initialized RSA Signature field as the canonical NetBox
-      // static-choice configuration. The 0.4.7 implementation reused only the
-      // constructor, which lost NetBox's control settings and allowed the SAN
-      // widget to render like an editable text input.
-      const reference = document.getElementById('id_rsa_signature');
-      const referenceInstance = reference && reference.tomselect;
-      const SelectConstructor = referenceInstance && referenceInstance.constructor;
-
-      if (!SelectConstructor) {
-        if (attempt < 40) {
-          window.setTimeout(() => enhanceSANType(select, attempt + 1), 25);
-        }
-        return;
-      }
-
-      const selectedValue = select.value || 'DNS';
-      const sanOptions = Array.from(select.options).map(option => ({
-        value: option.value,
-        text: option.textContent
-      }));
-
-      // Clone NetBox's settings so the SAN control behaves like RSA Signature,
-      // but replace the option/item data with the SAN choices. Render the menu
-      // under <body> so the surrounding table/card cannot clip the dropdown.
-      const settings = Object.assign({}, referenceInstance.settings, {
-        options: sanOptions,
-        items: [selectedValue],
-        create: false,
-        maxItems: 1,
-        dropdownParent: 'body'
-      });
-
-      // Static SAN choices never use an API loader. Do not inherit one from a
-      // future NetBox reference control implementation.
-      delete settings.load;
-      settings.preload = false;
-
-      const instance = new SelectConstructor(select, settings);
-
-      // Defensive guarantee: all SAN choices must exist even if the TomSelect
-      // implementation changes how it consumes the supplied `options` setting.
-      sanOptions.forEach(option => {
-        if (!instance.options[option.value]) {
-          instance.addOption(option);
-        }
-      });
-      instance.setValue(selectedValue, true);
-      instance.refreshOptions(false);
-    }
-
-    function addSANRow(type = 'DNS', value = '') {
-      const row = document.createElement('tr');
-      row.className = 'san-row';
-      row.innerHTML = `
-        <td>
-          <select class="form-select san-type" aria-label="SAN type">
-            <option value="DNS">DNS</option>
-            <option value="IP">IP</option>
-            <option value="EMAIL">Email</option>
-            <option value="URI">URI</option>
-          </select>
-        </td>
-        <td>
-          <input type="text" class="form-control san-value" autocomplete="off" aria-label="SAN value">
-        </td>
-        <td class="text-end">
-          <button type="button" class="btn btn-sm btn-outline-danger san-remove" title="Remove SAN" aria-label="Remove SAN">
-            <i class="mdi mdi-trash-can-outline"></i>
-          </button>
-        </td>`;
-      const typeSelect = row.querySelector('.san-type');
-      typeSelect.value = type;
-      row.querySelector('.san-value').value = value;
-      typeSelect.addEventListener('change', () => refreshSANRow(row));
-      row.querySelector('.san-remove').addEventListener('click', () => {
-        if (typeSelect.tomselect) typeSelect.tomselect.destroy();
-        row.remove();
-      });
-      refreshSANRow(row);
-      editor.appendChild(row);
-      enhanceSANType(typeSelect);
-    }
-
-    (hidden.value || '').split(/\r?\n/).filter(Boolean).forEach(item => {
-      const i = item.indexOf(':');
-      addSANRow(i > 0 ? item.slice(0, i) : 'DNS', i > 0 ? item.slice(i + 1) : item);
-    });
-    if (!editor.children.length) addSANRow();
-    addButton.addEventListener('click', () => addSANRow());
-    hidden.closest('form').addEventListener('submit', () => {
-      hidden.value = [...editor.querySelectorAll('.san-row')]
-        .map(row => {
-          const value = row.querySelector('.san-value').value.trim();
-          return value ? `${row.querySelector('.san-type').value}:${value}` : '';
-        })
-        .filter(Boolean)
-        .join('\n');
-    });
-
-    const algorithm = document.getElementById('id_key_algorithm');
-    function refreshAlgorithm() {
-      const value = algorithm.value;
-      document.getElementById('rsa-bits-row').style.display = value === 'rsa' ? '' : 'none';
-      document.getElementById('rsa-signature-row').style.display = value === 'rsa' ? '' : 'none';
-      document.getElementById('ec-curve-row').style.display = value === 'ec' ? '' : 'none';
-      document.getElementById('signature-hash-row').style.display = (value === 'rsa' || value === 'ec') ? '' : 'none';
-    }
-    algorithm.addEventListener('change', refreshAlgorithm);
-    refreshAlgorithm();
-
-    const requestCA = document.getElementById('id_request_ca');
-    function refreshCA() {
-      document.getElementById('path-length-row').style.display = requestCA.checked ? '' : 'none';
-    }
-    requestCA.addEventListener('change', refreshCA);
-    refreshCA();
-  });
-  </script>
+  <script src="{% static 'netbox_certificates/csr_editor.js' %}" defer></script>
 {% endblock %}
 
 {% block buttons %}

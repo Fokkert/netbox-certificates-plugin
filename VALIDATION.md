@@ -1,10 +1,12 @@
-# Validation for 1.2.0
+# Validation for 1.3.0
 
 ## Completed in the Windows development workspace
 
-- Started from clean v1.1.2 commit `a67fbed`; GitHub main was checked against the same commit and the v1.2.0 tag was unused.
-- 103 standalone tests passed under Python 3.12 and Django 5.2.
-- Release metadata, compilation, whitespace checks, wheel/sdist builds, and `twine check` passed. Both distributions include migration 0022, the new API/workflow modules, Group stylesheet, export templates, and documentation in the source distribution.
+- Started from published v1.2.0 commit `43baad1`; GitHub main was checked against the same commit and the v1.3.0 tag was unused.
+- 116 standalone tests passed under Python 3.12 and Django 5.2.
+- Release metadata, compilation, whitespace checks, wheel/sdist builds, and `twine check` passed. Both distributions include migration 0023, Preferences modules, the canonical serializer facade, SAN/editor assets, and the Group membership template; the source distribution includes documentation.
+- New behavioral checks cover canonical serializer discovery, event serialization with no request, derived-field rejection, inferred renewal ordering, legacy link field mapping and repair migration, preference ranges and schedule boundaries, failed-scan handling, Group widget rendering, and preserved CA bookmark filters.
+- A headless Edge browser fixture exercised production SAN JavaScript/CSS: IPv6/URI preservation, add/remove/type/value changes, existing-key selection, CA/path-length toggling, and mobile-width overflow. This was an isolated editor fixture, not a live NetBox page.
 - Complete-module undefined-name checks and URL-to-view symbol checks cover failures that isolated function tests cannot detect.
 - Real cryptography tests sign and verify CSRs with existing RSA, EC, and Ed25519 keys; malformed SAN/subject/usage inputs and tampered CSR signatures are rejected.
 - Alert form and shared validation checks cover invalid email addresses, hostnames, port boundaries, endpoint URLs, headers, and global certificate settings. Explicit `{}` clears headers while blank preserves them.
@@ -28,7 +30,7 @@ The helper checks release metadata, compilation, standalone tests, whitespace, w
 
 This workspace has no running NetBox/PostgreSQL/Redis stack, and no live VM test was performed. As requested, deployment testing happens after pip installation on the user's VM.
 
-The optional integration suite includes mixed-import database deduplication/relationships, transaction rollback, CSR generation with an existing key, empty exports, retired policy redirects, Group creation/editing, finding links, Services, and restricted alert settings. Run it only on a disposable test database:
+The optional integration suite now additionally checks actual NetBox serializer lookup/event serialization, individual and bulk certificate deletion with links, read-only fields, Preferences permissions, and CA redirects. These integration tests were added but not run here. The suite also includes mixed-import database deduplication/relationships, transaction rollback, CSR generation with an existing key, empty exports, retired policy redirects, Group creation/editing, finding links, Services, and restricted alert settings. Run it only on a disposable test database:
 
 ```bash
 python manage.py check
