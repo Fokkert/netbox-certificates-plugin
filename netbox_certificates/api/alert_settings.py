@@ -27,7 +27,7 @@ class AlertSettingsSerializer(serializers.Serializer):
             if isinstance(field, forms.BooleanField):
                 output = serializers.BooleanField(**options)
             elif isinstance(field, forms.IntegerField):
-                output = serializers.IntegerField(min_value=field.min_value, max_value=field.max_value, **options)
+                output = serializers.IntegerField(min_value=field.min_value, max_value=field.max_value, allow_null=not field.required, **options)
             elif isinstance(field, forms.MultipleChoiceField):
                 output = serializers.ListField(child=serializers.ChoiceField(choices=list(field.choices)), **options)
             elif isinstance(field, forms.ChoiceField):
@@ -49,7 +49,7 @@ class AlertSettingsSerializer(serializers.Serializer):
         return {name: form.initial.get(name, field.initial if field.initial is not None else
                                      False if isinstance(field, forms.BooleanField) else
                                      [] if isinstance(field, forms.MultipleChoiceField) or name == "recipients" else
-                                     None if isinstance(field, forms.JSONField) else "")
+                                     None if isinstance(field, (forms.JSONField, forms.IntegerField)) else "")
                 for name, field in form.fields.items()}
 
     def to_representation(self, config):

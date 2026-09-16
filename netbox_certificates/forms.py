@@ -22,7 +22,7 @@ from .choices import (
 )
 from .constants import ALERT_CHECK_INTERVAL_CHOICES
 from .models import ArtifactGroup, Bundle, Certificate, CertificateAuthority, CSR, ExpiryAlertConfiguration, PrivateKey
-from .services.csr import CSRGenerationError, generate_csr
+from .services.csr import CSRGenerationError
 from .services.encryption import encrypt_secret
 from .services.importing import ArtifactImportError, choose_leaf, create_or_reuse_chain
 from .services.ingest import apply_csr, apply_private_key, after_artifact_save
@@ -594,7 +594,7 @@ class UnifiedImportForm(AcronymFormMixin, forms.Form):
     password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False), label="Object Password")
     archive_password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False), label="Archive Password")
     import_chain = forms.BooleanField(required=False, initial=True, label="Import certificate chain")
-    preserve_archive = forms.BooleanField(required=False, initial=True, label="Preserve original Bundle archive")
+    preserve_archive = forms.BooleanField(required=False, initial=True, label="Preserve original Bundle archive", help_text="Retains single-bundle source archives, encrypted at rest. Mixed inventory archives are imported as individual objects and relationships.")
     owner = forms.ModelChoiceField(queryset=Owner.objects.none(), required=False)
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Groups")
     description = forms.CharField(required=False, max_length=200)
@@ -602,7 +602,7 @@ class UnifiedImportForm(AcronymFormMixin, forms.Form):
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         if user:
-            self.fields["owner"].queryset = Owner.objects.filter(users=user)
+            self.fields["owner"].queryset = Owner.objects.all() if user.is_superuser else Owner.objects.filter(users=user)
             self.fields["groups"].queryset = ArtifactGroup.objects.restrict(user, "view")
 
 
@@ -626,6 +626,8 @@ class BundleExportForm(AcronymFormMixin, forms.Form):
 
 
 class CSRGenerateForm(AcronymFormMixin, forms.Form):
+    existing_private_key = DynamicModelChoiceField(queryset=PrivateKey.objects.none(), required=False,
+        label="Use an existing private key", help_text="Leave blank to generate a new key. Algorithm and key-size options apply only to new keys.")
     name = forms.CharField(max_length=200, required=False)
     owner = forms.ModelChoiceField(queryset=Owner.objects.none(), required=False)
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Groups")
@@ -664,13 +666,15 @@ class CSRGenerateForm(AcronymFormMixin, forms.Form):
         FieldSet("name", "owner", "groups", name="NetBox Metadata"),
         FieldSet("common_name", "organization", "organizational_unit", "country", "state", "locality", "street_address", "postal_code", "subject_serial_number", "email", name="Subject"),
         FieldSet("sans", name="Subject Alternative Names"),
-        FieldSet("key_algorithm", "rsa_bits", "ec_curve", "signature_hash", "rsa_signature", name="Private Key & Signature"),
+        FieldSet("existing_private_key", "key_algorithm", "rsa_bits", "ec_curve", "signature_hash", "rsa_signature", name="Private Key & Signature"),
         FieldSet("ku_digital_signature", "ku_content_commitment", "ku_key_encipherment", "ku_data_encipherment", "ku_key_agreement", "ku_key_cert_sign", "ku_crl_sign", "eku_server_auth", "eku_client_auth", "eku_code_signing", "eku_email_protection", "eku_time_stamping", "eku_ocsp_signing", "request_ca", "path_length", name="Requested X.509 Extensions"),
     )
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         if user:
-            self.fields["owner"].queryset = Owner.objects.filter(users=user)
+            from .permissions import action_queryset
+            self.fields["existing_private_key"].queryset = action_queryset(PrivateKey, user, "use")
+            self.fields["owner"].queryset = Owner.objects.all() if user.is_superuser else Owner.objects.filter(users=user)
             self.fields["groups"].queryset = ArtifactGroup.objects.restrict(user, "view")
         for name in ("ku_digital_signature", "ku_content_commitment", "ku_key_encipherment", "ku_data_encipherment", "ku_key_agreement", "ku_key_cert_sign", "ku_crl_sign", "eku_server_auth", "eku_client_auth", "eku_code_signing", "eku_email_protection", "eku_time_stamping", "eku_ocsp_signing", "request_ca"):
             self.fields[name].widget.attrs["class"] = "form-check-input"
@@ -684,6 +688,11 @@ class CSRGenerateForm(AcronymFormMixin, forms.Form):
             prefix, sep, san_value = raw.partition(":")
             if not sep or prefix.upper() not in {"DNS", "IP", "EMAIL", "URI"} or not san_value.strip():
                 raise ValidationError("Each SAN must have a type (DNS, IP, EMAIL, or URI) and a value.")
+            from .services.csr import _parse_san
+            try:
+                _parse_san(raw)
+            except (CSRGenerationError, ValueError) as exc:
+                raise ValidationError(str(exc)) from exc
             entries.append(f"{prefix.upper()}:{san_value.strip()}")
         return "\n".join(entries)
 

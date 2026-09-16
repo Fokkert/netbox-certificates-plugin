@@ -1,4 +1,5 @@
 from .labels import AcronymFormMixin
+from .validation import OptionalObjectJSONField, validate_endpoint_url, validate_headers
 from django import forms
 from urllib.parse import urlsplit
 from django.utils.html import format_html_join
@@ -8,7 +9,7 @@ from netbox.forms import PrimaryModelBulkEditForm, PrimaryModelFilterSetForm, Pr
 from netbox.models import NetBoxModel
 from netbox.models.features import model_is_public
 from utilities.forms import add_blank_choice
-from utilities.forms.fields import DynamicModelChoiceField, DynamicModelMultipleChoiceField
+from utilities.forms.fields import DynamicModelMultipleChoiceField
 from utilities.forms.rendering import FieldSet
 
 from .choices_v1 import (
@@ -25,7 +26,6 @@ from .models_v1 import (
     AlertChannel,
     AlertEvent,
     AlertRule,
-    CertificatePolicy,
     HealthFinding,
     ObjectLink,
     Service,
@@ -97,20 +97,19 @@ class ServiceForm(AcronymFormMixin, PrimaryModelForm):
     custom_deployment = forms.CharField(required=False, max_length=120, label="Custom deployment name")
     protocol = forms.ChoiceField(choices=[(p, p.upper()) for p in ("https", "tls", "ldaps", "smtps", "imaps", "pop3s", "mqtts", "postgresql", "mysql")])
     port = forms.IntegerField(required=False, min_value=1, max_value=65535, help_text="Leave blank to use the URL port or the protocol default.")
-    deployment_metadata = forms.JSONField(required=False)
+    deployment_metadata = OptionalObjectJSONField(required=False)
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False)
     certificates = DynamicModelMultipleChoiceField(queryset=Certificate.objects.all(), required=False)
     private_keys = DynamicModelMultipleChoiceField(queryset=PrivateKey.objects.all(), required=False)
     csrs = DynamicModelMultipleChoiceField(queryset=CSR.objects.all(), required=False)
     bundles = DynamicModelMultipleChoiceField(queryset=Bundle.objects.all(), required=False)
-    policy = DynamicModelChoiceField(queryset=CertificatePolicy.objects.all(), required=False)
     additional_urls = LineListField(required=False, help_text="One URL per line.", widget=forms.Textarea(attrs={"rows": 3}))
 
     fieldsets = (
         FieldSet("name", "status", "service_type", "environment", "criticality", name="Service"),
         FieldSet("deployment", "custom_deployment", name="Deployment"),
         FieldSet("protocol", "primary_url", "additional_urls", "hostname", "port", "sni_name", name="Endpoints"),
-        FieldSet("external_reference", "contact", "enabled", "policy", name="Management"),
+        FieldSet("external_reference", "contact", "enabled", name="Management"),
         FieldSet("groups", "certificates", "private_keys", "csrs", "bundles", name="Relationships"),
         FieldSet("owner", "description", "comments", "tags", name="NetBox"),
         FieldSet("other_type", "deployment_metadata", name="Deployment metadata"),
@@ -121,7 +120,7 @@ class ServiceForm(AcronymFormMixin, PrimaryModelForm):
         fields = (
             "name", "status", "service_type", "other_type", "deployment", "deployment_metadata", "environment",
             "protocol", "primary_url", "additional_urls", "hostname", "port", "sni_name",
-            "criticality", "external_reference", "contact", "enabled", "policy",
+            "criticality", "external_reference", "contact", "enabled",
             "groups", "certificates", "private_keys", "csrs", "bundles",
             "owner", "description", "comments", "tags",
         )
@@ -164,7 +163,7 @@ class ServiceBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
     service_type = forms.ChoiceField(choices=add_blank_choice(ServiceTypeChoices), required=False)
     other_type = forms.CharField(required=False)
     deployment = forms.CharField(required=False, widget=DeploymentTextInput())
-    deployment_metadata = forms.JSONField(required=False)
+    deployment_metadata = OptionalObjectJSONField(required=False)
     environment = forms.ChoiceField(choices=add_blank_choice(ServiceEnvironmentChoices), required=False)
     protocol = forms.CharField(required=False)
     primary_url = forms.URLField(required=False)
@@ -176,7 +175,6 @@ class ServiceBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
     external_reference = forms.CharField(required=False)
     contact = forms.CharField(required=False)
     enabled = forms.NullBooleanField(required=False)
-    policy = DynamicModelChoiceField(queryset=CertificatePolicy.objects.all(), required=False)
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False)
     certificates = DynamicModelMultipleChoiceField(queryset=Certificate.objects.all(), required=False)
     private_keys = DynamicModelMultipleChoiceField(queryset=PrivateKey.objects.all(), required=False)
@@ -187,12 +185,12 @@ class ServiceBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
     fieldsets = (
         FieldSet("status", "service_type", "other_type", "deployment", "deployment_metadata", "environment", "criticality"),
         FieldSet("protocol", "primary_url", "additional_urls", "hostname", "port", "sni_name", name="Endpoints"),
-        FieldSet("external_reference", "contact", "enabled", "policy", name="Management"),
+        FieldSet("external_reference", "contact", "enabled", name="Management"),
         FieldSet("groups", "certificates", "private_keys", "csrs", "bundles", name="Relationships"),
         FieldSet("description", name="NetBox"),
     )
     nullable_fields = (
-        "other_type", "primary_url", "additional_urls", "hostname", "sni_name", "external_reference", "contact", "policy",
+        "other_type", "primary_url", "additional_urls", "hostname", "sni_name", "external_reference", "contact",
         "description", "comments",
     )
 
@@ -220,89 +218,13 @@ class ServiceFilterForm(AcronymFormMixin, PrimaryModelFilterSetForm):
     private_key_id = DynamicModelMultipleChoiceField(queryset=PrivateKey.objects.all(), required=False)
     csr_id = DynamicModelMultipleChoiceField(queryset=CSR.objects.all(), required=False)
     bundle_id = DynamicModelMultipleChoiceField(queryset=Bundle.objects.all(), required=False)
-    policy_id = DynamicModelMultipleChoiceField(queryset=CertificatePolicy.objects.all(), required=False)
 
     fieldsets = (
         FieldSet("q"),
         FieldSet("status", "service_type", "deployment", "deployment_metadata", "environment", "criticality", "enabled"),
         FieldSet("protocol", "primary_url", "additional_url", "hostname", "port", "sni_name", name="Endpoints"),
         FieldSet("external_reference", "contact", name="Management"),
-        FieldSet("groups_id", "certificate_id", "private_key_id", "csr_id", "bundle_id", "policy_id", name="Relationships"),
-    )
-
-
-class CertificatePolicyForm(AcronymFormMixin, PrimaryModelForm):
-    allowed_key_types = JSONListField(required=False)
-    allowed_signature_algorithms = JSONListField(required=False)
-    allowed_curves = JSONListField(required=False)
-    allowed_issuers = JSONListField(required=False)
-    certificates = DynamicModelMultipleChoiceField(queryset=Certificate.objects.all(), required=False)
-    csrs = DynamicModelMultipleChoiceField(queryset=CSR.objects.all(), required=False)
-    bundles = DynamicModelMultipleChoiceField(queryset=Bundle.objects.all(), required=False)
-
-    class Meta:
-        model = CertificatePolicy
-        fields = (
-            "name", "enabled", "minimum_rsa_bits", "allowed_key_types", "allowed_signature_algorithms",
-            "allowed_curves", "max_validity_days", "require_san", "allow_wildcards", "allow_ca",
-            "allowed_issuers", "forbid_key_reuse", "certificates", "csrs", "bundles",
-            "owner", "description", "comments", "tags",
-        )
-
-
-class CertificatePolicyBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
-    enabled = forms.NullBooleanField(required=False)
-    minimum_rsa_bits = forms.IntegerField(min_value=1024, required=False)
-    allowed_key_types = forms.JSONField(required=False)
-    allowed_signature_algorithms = forms.JSONField(required=False)
-    allowed_curves = forms.JSONField(required=False)
-    max_validity_days = forms.IntegerField(min_value=1, required=False)
-    allowed_issuers = forms.JSONField(required=False)
-    certificates = DynamicModelMultipleChoiceField(queryset=Certificate.objects.all(), required=False)
-    csrs = DynamicModelMultipleChoiceField(queryset=CSR.objects.all(), required=False)
-    bundles = DynamicModelMultipleChoiceField(queryset=Bundle.objects.all(), required=False)
-    require_san = forms.NullBooleanField(required=False)
-    allow_wildcards = forms.NullBooleanField(required=False)
-    allow_ca = forms.NullBooleanField(required=False)
-    forbid_key_reuse = forms.NullBooleanField(required=False)
-
-    model = CertificatePolicy
-    fieldsets = (
-        FieldSet(
-            "enabled", "minimum_rsa_bits", "allowed_key_types", "allowed_signature_algorithms",
-            "allowed_curves", "max_validity_days", "allowed_issuers", "require_san",
-            "allow_wildcards", "allow_ca", "forbid_key_reuse", "certificates", "csrs", "bundles", "description"
-        ),
-    )
-    nullable_fields = ("max_validity_days", "description", "comments")
-
-
-class CertificatePolicyFilterForm(AcronymFormMixin, PrimaryModelFilterSetForm):
-    model = CertificatePolicy
-    q = forms.CharField(required=False)
-    enabled = forms.NullBooleanField(required=False)
-    minimum_rsa_bits = forms.IntegerField(required=False)
-    allowed_key_types = forms.CharField(required=False)
-    allowed_signature_algorithms = forms.CharField(required=False)
-    allowed_curves = forms.CharField(required=False)
-    max_validity_days = forms.IntegerField(required=False)
-    require_san = forms.NullBooleanField(required=False)
-    allow_wildcards = forms.NullBooleanField(required=False)
-    allow_ca = forms.NullBooleanField(required=False)
-    allowed_issuers = forms.CharField(required=False)
-    forbid_key_reuse = forms.NullBooleanField(required=False)
-    certificate_id = DynamicModelMultipleChoiceField(queryset=Certificate.objects.all(), required=False)
-    csr_id = DynamicModelMultipleChoiceField(queryset=CSR.objects.all(), required=False)
-    bundle_id = DynamicModelMultipleChoiceField(queryset=Bundle.objects.all(), required=False)
-
-    fieldsets = (
-        FieldSet("q"),
-        FieldSet(
-            "enabled", "minimum_rsa_bits", "allowed_key_types", "allowed_signature_algorithms",
-            "allowed_curves", "max_validity_days", "require_san", "allow_wildcards",
-            "allow_ca", "allowed_issuers", "forbid_key_reuse",
-        ),
-        FieldSet("certificate_id", "csr_id", "bundle_id", name="Assignments"),
+        FieldSet("groups_id", "certificate_id", "private_key_id", "csr_id", "bundle_id", name="Relationships"),
     )
 
 
@@ -419,7 +341,7 @@ class AlertChannelForm(AcronymFormMixin, PrimaryModelForm):
         help_text="Leave blank while editing to preserve the existing encrypted password.",
     )
     webhook_url = forms.URLField(required=False)
-    webhook_headers = forms.JSONField(required=False)
+    webhook_headers = OptionalObjectJSONField(required=False)
 
     fieldsets = (
         FieldSet("name", "enabled", "channel_type", "recipients", "subject_prefix"),
@@ -451,6 +373,12 @@ class AlertChannelForm(AcronymFormMixin, PrimaryModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        for field, validator in (("webhook_url", lambda value: validate_endpoint_url(value, http_only=True)), ("webhook_headers", validate_headers)):
+            if cleaned.get(field):
+                try:
+                    validator(cleaned[field])
+                except forms.ValidationError as exc:
+                    self.add_error(field, exc)
         if cleaned.get("channel_type") == AlertChannelTypeChoices.WEBHOOK and not cleaned.get("webhook_url"):
             self.add_error("webhook_url", "Webhook URL is required for a webhook channel.")
         if cleaned.get("channel_type") == AlertChannelTypeChoices.EMAIL:
@@ -521,7 +449,6 @@ class AlertRuleForm(AcronymFormMixin, PrimaryModelForm):
     owner_ids = JSONListField(required=False)
     channels = DynamicModelMultipleChoiceField(queryset=AlertChannel.objects.all(), required=False)
     services = DynamicModelMultipleChoiceField(queryset=Service.objects.all(), required=False)
-    policies = DynamicModelMultipleChoiceField(queryset=CertificatePolicy.objects.all(), required=False)
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False)
 
     class Meta:
@@ -530,7 +457,7 @@ class AlertRuleForm(AcronymFormMixin, PrimaryModelForm):
             "name", "enabled", "finding_codes", "categories", "severities", "statuses",
             "object_types", "tag_names", "owner_ids",
             "cooldown_minutes", "repeat_minutes", "notify_on_recovery",
-            "channels", "services", "policies", "groups", "owner", "description", "comments", "tags",
+            "channels", "services", "groups", "owner", "description", "comments", "tags",
         )
 
 
@@ -548,14 +475,13 @@ class AlertRuleBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
     notify_on_recovery = forms.NullBooleanField(required=False)
     channels = DynamicModelMultipleChoiceField(queryset=AlertChannel.objects.all(), required=False)
     services = DynamicModelMultipleChoiceField(queryset=Service.objects.all(), required=False)
-    policies = DynamicModelMultipleChoiceField(queryset=CertificatePolicy.objects.all(), required=False)
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False)
 
     model = AlertRule
     fieldsets = (
         FieldSet("enabled", "finding_codes", "categories", "severities", "statuses", "object_types", "tag_names", "owner_ids", name="Finding Scope"),
         FieldSet("cooldown_minutes", "repeat_minutes", "notify_on_recovery", name="Timing"),
-        FieldSet("channels", "services", "policies", "groups", name="Scope"),
+        FieldSet("channels", "services", "groups", name="Scope"),
         FieldSet("description"),
     )
     nullable_fields = ("description", "comments")
@@ -577,7 +503,6 @@ class AlertRuleFilterForm(AcronymFormMixin, PrimaryModelFilterSetForm):
     notify_on_recovery = forms.NullBooleanField(required=False)
     channel_id = DynamicModelMultipleChoiceField(queryset=AlertChannel.objects.all(), required=False)
     service_id = DynamicModelMultipleChoiceField(queryset=Service.objects.all(), required=False)
-    policy_id = DynamicModelMultipleChoiceField(queryset=CertificatePolicy.objects.all(), required=False)
     group_id = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False)
 
 

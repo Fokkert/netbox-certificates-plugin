@@ -17,6 +17,7 @@ from .models_v1 import ObjectLink
 
 
 LEGACY_PUBLIC_MODELS = {
+    "certificatepolicy",
     "artifactlink",
     "certificateauthority",
     "expiryalertconfiguration",

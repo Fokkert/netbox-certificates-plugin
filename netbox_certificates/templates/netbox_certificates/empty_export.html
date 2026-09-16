@@ -1,0 +1,6 @@
+{% extends 'generic/_base.html' %}
+{% block title %}Nothing to export{% endblock %}
+{% block content %}
+<div class="alert alert-warning" role="status"><i class="mdi mdi-information-outline me-2" aria-hidden="true"></i>{{ warning }}</div>
+<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:vault' %}">Return to Cryptographic Vault</a>
+{% endblock %}

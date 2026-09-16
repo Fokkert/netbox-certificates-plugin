@@ -182,7 +182,7 @@ class PrivateKey(PrimaryModel):
         ordering = ("name",)
         verbose_name = "private key"
         verbose_name_plural = "private keys"
-        permissions = (("download_privatekey", "Can download private key material"),)
+        permissions = (("download_privatekey", "Can download private key material"), ("use_privatekey", "Can use private key to sign CSRs"))
 
     def __str__(self):
         return self.name

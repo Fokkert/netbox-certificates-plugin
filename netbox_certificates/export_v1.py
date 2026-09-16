@@ -1,3 +1,4 @@
+from .empty_exports import empty_export_response
 import hashlib
 import json
 import tempfile
@@ -14,20 +15,18 @@ from .filtersets_v1 import (
     AlertChannelFilterSet,
     AlertEventFilterSet,
     AlertRuleFilterSet,
-    CertificatePolicyFilterSet,
     HealthFindingFilterSet,
     ObjectLinkFilterSet,
     ServiceFilterSet,
 )
 from .models import ArtifactGroup
-from .models_v1 import AlertChannel, AlertEvent, AlertRule, CertificatePolicy, HealthFinding, ObjectLink, Service
-from .permissions import action_queryset, require_action_permission
+from .models_v1 import AlertChannel, AlertEvent, AlertRule, HealthFinding, ObjectLink, Service
+from .permissions import action_queryset, require_action_permission, object_allowed
 
 
 CONFIG = {
     "artifactgroup": (ArtifactGroup, ArtifactGroupV1FilterSet, "archive_export", "groups-export.zip"),
     "service": (Service, ServiceFilterSet, "archive_export", "services-export.zip"),
-    "certificatepolicy": (CertificatePolicy, CertificatePolicyFilterSet, "archive_export", "certificate-policies-export.zip"),
     "healthfinding": (HealthFinding, HealthFindingFilterSet, "archive_export", "health-findings-export.zip"),
     "objectlink": (ObjectLink, ObjectLinkFilterSet, "archive_export", "object-links-export.zip"),
     "alertchannel": (AlertChannel, AlertChannelFilterSet, "archive_export", "alert-channels-export.zip"),
@@ -45,40 +44,46 @@ def _filtered_data(filterset_class, request):
     return data
 
 
-def _safe_value(obj, field):
+def _visible_ids(manager, user):
+    queryset = manager.all()
+    if user is not None and hasattr(queryset, "restrict"):
+        queryset = queryset.restrict(user, "view")
+    return list(queryset.values_list("pk", flat=True))
+
+
+def _safe_value(obj, field, user=None):
     value = getattr(obj, field.name)
     if field.many_to_many:
-        return list(value.values_list("pk", flat=True))
+        return _visible_ids(value, user)
     if field.many_to_one:
-        return getattr(obj, field.attname)
+        return getattr(obj, field.attname) if user is None or object_allowed(user, value) else None
     return value
 
 
-def serialize_object(obj):
+def serialize_object(obj, user=None):
     values = {}
-    sensitive_names = {"smtp_password_encrypted", "webhook_url_encrypted", "webhook_headers_encrypted", "encrypted_material", "material"}
+    sensitive_names = {"smtp_password_encrypted", "webhook_url_encrypted", "webhook_headers_encrypted", "encrypted_material", "material", "policy"}
     for field in obj._meta.get_fields():
         if not getattr(field, "concrete", False) or getattr(field, "auto_created", False):
             continue
         if field.name in sensitive_names:
             continue
         try:
-            values[field.name] = _safe_value(obj, field)
+            values[field.name] = _safe_value(obj, field, user)
         except Exception:
             continue
 
     # Explicitly expose relationship identifiers without material or alert secrets.
     if isinstance(obj, Service):
-        values["group_ids"] = list(obj.groups.values_list("pk", flat=True))
-        values["certificate_ids"] = list(obj.certificates.values_list("pk", flat=True))
-        values["private_key_ids"] = list(obj.private_keys.values_list("pk", flat=True))
-        values["csr_ids"] = list(obj.csrs.values_list("pk", flat=True))
-        values["bundle_ids"] = list(obj.bundles.values_list("pk", flat=True))
+        values["group_ids"] = _visible_ids(obj.groups, user)
+        values["certificate_ids"] = _visible_ids(obj.certificates, user)
+        values["private_key_ids"] = _visible_ids(obj.private_keys, user)
+        values["csr_ids"] = _visible_ids(obj.csrs, user)
+        values["bundle_ids"] = _visible_ids(obj.bundles, user)
     if isinstance(obj, AlertRule):
-        values["channel_ids"] = list(obj.channels.values_list("pk", flat=True))
-        values["service_ids"] = list(obj.services.values_list("pk", flat=True))
-        values["policy_ids"] = list(obj.policies.values_list("pk", flat=True))
-        values["group_ids"] = list(obj.groups.values_list("pk", flat=True))
+        values["channel_ids"] = _visible_ids(obj.channels, user)
+        values["service_ids"] = _visible_ids(obj.services, user)
+        values["group_ids"] = _visible_ids(obj.groups, user)
 
     return {
         "type": obj._meta.label_lower,
@@ -112,12 +117,14 @@ class MetadataArchiveExportView(LoginRequiredMixin, View):
         if not filterset.is_valid():
             return JsonResponse({"detail": "Invalid export filters.", "errors": filterset.errors.get_json_data()}, status=400)
         objects = list(filterset.qs.order_by("pk"))
-        records = [serialize_object(obj) for obj in objects]
+        if not objects:
+            return empty_export_response(request)
+        records = [serialize_object(obj, request.user) for obj in objects]
         data = json.dumps(records, indent=2, sort_keys=True, cls=DjangoJSONEncoder).encode("utf-8")
         manifest = {
             "format": "netbox-certificates-export-manifest",
             "manifest_version": 1,
-            "plugin_version": "1.1.2",
+            "plugin_version": "1.2.0",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "object_kind": kind,
             "count": len(records),

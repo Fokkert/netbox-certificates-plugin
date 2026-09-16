@@ -1,6 +1,7 @@
 from __future__ import annotations
 from django.utils.http import content_disposition_header
 from .export_names import bundle_export_name, pfx_export_name
+from .empty_exports import EmptyListExportMixin
 from .labels import display_label
 
 import io
@@ -37,13 +38,11 @@ from .models import ArtifactGroup, ArtifactLink, Bundle, Certificate, CSR, Expir
 from .permissions import action_queryset as _action_queryset, object_allowed as _object_allowed
 from .services.alerts import ExpiryAlertError, send_email, send_webhook
 from .services.chain import ordered_chain, validate_chain
-from .services.csr import CSRGenerationError, generate_csr
-from .services.encryption import PrivateKeyEncryptionError, decrypt_private_key, encrypt_private_key
+from .services.csr import CSRGenerationError
+from .services.encryption import PrivateKeyEncryptionError, decrypt_private_key
 from .services.expiry import expiry_state
-from .services.importing import _check_created_permission
-from .services.ingest import after_artifact_save
 from .services.inventory import build_inventory
-from .services.parser import ArtifactParseError, parse_blob
+from .services.parser import ArtifactParseError
 from .services.pkcs12_export import PFXExportError, build_pfx
 from .services.status import refresh_certificate_statuses
 from .services.unified_import import UnifiedImportError, UploadItem, import_objects
@@ -122,7 +121,7 @@ class LinkedObjectView(generic.ObjectView):
         return {**_linked_context(instance, request.user), **_group_context(instance, request.user)}
 
 
-class CertificateListView(CertificateStatusRefreshMixin, generic.ObjectListView):
+class CertificateListView(EmptyListExportMixin, CertificateStatusRefreshMixin, generic.ObjectListView):
     actions = (AddObject, BulkExport, BulkEdit, BulkRename, BulkDelete)
     queryset = Certificate.objects.select_related("authority", "parent_certificate", "supersedes", "owner").prefetch_related("groups")
     table = CertificateTable
@@ -176,7 +175,7 @@ class CertificateDeleteView(generic.ObjectDeleteView):
     default_return_url = "plugins:netbox_certificates:certificate_list"
 
 
-class PrivateKeyListView(generic.ObjectListView):
+class PrivateKeyListView(EmptyListExportMixin, generic.ObjectListView):
     actions = (AddObject, BulkExport, BulkEdit, BulkRename, BulkDelete)
     queryset = PrivateKey.objects.select_related("owner").prefetch_related("groups")
     table = PrivateKeyTable
@@ -220,7 +219,7 @@ class PrivateKeyDeleteView(generic.ObjectDeleteView):
     default_return_url = "plugins:netbox_certificates:privatekey_list"
 
 
-class CSRListView(generic.ObjectListView):
+class CSRListView(EmptyListExportMixin, generic.ObjectListView):
     actions = (AddObject, BulkExport, BulkEdit, BulkRename, BulkDelete)
     queryset = CSR.objects.select_related("owner").prefetch_related("groups")
     table = CSRTable
@@ -264,7 +263,7 @@ class CSRDeleteView(generic.ObjectDeleteView):
     default_return_url = "plugins:netbox_certificates:csr_list"
 
 
-class BundleListView(generic.ObjectListView):
+class BundleListView(EmptyListExportMixin, generic.ObjectListView):
     actions = (BulkExport, BulkEdit, BulkRename, BulkDelete)
     queryset = Bundle.objects.select_related("certificate", "private_key", "csr", "owner").prefetch_related("chain_certificates", "groups")
     table = BundleTable
@@ -316,7 +315,7 @@ class BundleDeleteView(generic.ObjectDeleteView):
     default_return_url = "plugins:netbox_certificates:bundle_list"
 
 
-class ArtifactGroupListView(generic.ObjectListView):
+class ArtifactGroupListView(EmptyListExportMixin, generic.ObjectListView):
     actions = (AddObject, BulkExport, BulkEdit, BulkRename, BulkDelete)
     queryset = ArtifactGroup.objects.select_related("owner", "parent").prefetch_related(
         "children", "bundles", "certificates", "private_keys", "csrs"
@@ -450,9 +449,11 @@ class UnifiedImportView(LoginRequiredMixin, View):
         if result["mode"] == "bundle":
             messages.success(request, f"Imported Bundle {result['bundle']} and linked all detected members.")
             return redirect("plugins:netbox_certificates:bundle_list")
+        if result.get("ignored_files"):
+            messages.info(request, f"Skipped {len(result['ignored_files'])} archive metadata file(s).")
         created = result.get("created", [])
         reused = result.get("reused", [])
-        messages.success(request, f"Imported {len(created)} new object(s) and reused {len(reused)} existing CA certificate(s).")
+        messages.success(request, f"Imported {len(created)} new object(s) and reused {len(reused)} existing object(s).")
         if self.ca_only:
             return redirect("plugins:netbox_certificates:certificateauthority_list")
         kinds = {obj.__class__ for obj in created}
@@ -468,7 +469,7 @@ class CACertificateImportView(PermissionRequiredMixin, UnifiedImportView):
 
 
 class CSRGenerateView(PermissionRequiredMixin, View):
-    permission_required = ("netbox_certificates.add_csr", "netbox_certificates.add_privatekey")
+    permission_required = "netbox_certificates.add_csr"
     template_name = "netbox_certificates/csr_generate.html"
     ku_field_names = ("ku_digital_signature", "ku_content_commitment", "ku_key_encipherment", "ku_data_encipherment", "ku_key_agreement", "ku_key_cert_sign", "ku_crl_sign")
     eku_field_names = ("eku_server_auth", "eku_client_auth", "eku_code_signing", "eku_email_protection", "eku_time_stamping", "eku_ocsp_signing")
@@ -479,31 +480,13 @@ class CSRGenerateView(PermissionRequiredMixin, View):
     def post(self, request):
         form = CSRGenerateForm(request.POST, user=request.user)
         if form.is_valid():
-            d = form.cleaned_data
+            from .services.csr_workflow import save_generated_csr
             try:
-                key_pem, csr_pem = generate_csr(
-                    common_name=d["common_name"], sans=[x.strip() for x in d.get("sans", "").splitlines() if x.strip()], key_algorithm=d["key_algorithm"], rsa_bits=int(d["rsa_bits"]), ec_curve=d["ec_curve"], signature_hash=d["signature_hash"], rsa_signature=d["rsa_signature"],
-                    country=d.get("country", ""), state=d.get("state", ""), locality=d.get("locality", ""), organization=d.get("organization", ""), organizational_unit=d.get("organizational_unit", ""), street_address=d.get("street_address", ""), postal_code=d.get("postal_code", ""), subject_serial_number=d.get("subject_serial_number", ""), email=d.get("email", ""),
-                    key_usages=[name for name, field in (("digital_signature", "ku_digital_signature"), ("content_commitment", "ku_content_commitment"), ("key_encipherment", "ku_key_encipherment"), ("data_encipherment", "ku_data_encipherment"), ("key_agreement", "ku_key_agreement"), ("key_cert_sign", "ku_key_cert_sign"), ("crl_sign", "ku_crl_sign")) if d.get(field)],
-                    extended_key_usages=[name for name, field in (("server_auth", "eku_server_auth"), ("client_auth", "eku_client_auth"), ("code_signing", "eku_code_signing"), ("email_protection", "eku_email_protection"), ("time_stamping", "eku_time_stamping"), ("ocsp_signing", "eku_ocsp_signing")) if d.get(field)],
-                    request_ca=d.get("request_ca", False), path_length=d.get("path_length"),
-                )
-                key_p = next(p for p in parse_blob(key_pem, filename="generated.key") if p.kind == "private_key")
-                csr_p = next(p for p in parse_blob(csr_pem, filename="generated.csr") if p.kind == "csr")
-            except (CSRGenerationError, ArtifactParseError, StopIteration) as exc:
+                csr, key = save_generated_csr(form.cleaned_data, request.user)
+            except (CSRGenerationError, ArtifactParseError, PrivateKeyEncryptionError, ValueError) as exc:
                 form.add_error(None, str(exc))
             else:
-                with transaction.atomic():
-                    key_metadata = {k: v for k, v in key_p.metadata.items() if k != "curve"}
-                    key = PrivateKey.objects.create(name=(d.get("name") or d["common_name"]) + " key", source_filename="generated.key", source_format="pem", encrypted_material=encrypt_private_key(key_p.data), owner=d.get("owner"), **key_metadata)
-                    _check_created_permission(request.user, key)
-                    csr = CSR.objects.create(name=d.get("name") or d["common_name"], source_filename="generated.csr", source_format="pem", material=csr_p.data.decode("ascii"), owner=d.get("owner"), **csr_p.metadata)
-                    _check_created_permission(request.user, csr)
-                    groups = d.get("groups")
-                    if groups:
-                        key.groups.add(*groups); csr.groups.add(*groups)
-                    after_artifact_save(key); after_artifact_save(csr)
-                messages.success(request, "CSR and private key generated, encrypted at rest, grouped, and linked.")
+                messages.success(request, "CSR generated and linked to its private key.")
                 return redirect(csr.get_absolute_url())
         return render(request, self.template_name, self._context(form))
 

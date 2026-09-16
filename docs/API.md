@@ -17,7 +17,6 @@ Base path:
 | `private-keys/` | Private Keys |
 | `csrs/` | CSRs |
 | `certificate-authorities/` | CA Certificates |
-| `certificate-policies/` | Certificate Policies |
 | `health-findings/` | Health Findings |
 | `object-links/` | Object Links |
 | `alert-rules/` | Alert Rules |
@@ -28,7 +27,7 @@ Standard NetBox REST list, retrieve, create, update, and delete behavior applies
 
 ## Certificate Authorities
 
-`certificate-authorities/` returns Certificate objects whose parsed X.509 Basic Constraints mark them as CAS.
+`certificate-authorities/` returns Certificate objects whose parsed X.509 Basic Constraints mark them as CAs.
 
 ## Health actions
 
@@ -62,7 +61,7 @@ csrs
 bundles
 ```
 
-and an optional `policy`.
+Policy assignments are retired in 1.2.0.
 
 ## ObjectLink
 
@@ -89,7 +88,7 @@ Alert Channel accepts write-only SMTP password and webhook configuration fields.
 
 ## Filtering
 
-The API uses the same FilterSet architecture as the UI. Service and Policy relationships are available as filters on relevant inventory objects.
+The API uses the same FilterSet architecture as the UI. Service and Group relationships are available as filters on relevant inventory objects.
 
 Raw private-key material and encrypted alert secrets are not filterable.
 
@@ -108,10 +107,10 @@ Paths below are relative to `/api/plugins/ssl-certificates/`. API identifiers re
 | PATCH / PUT | `alert-settings/` | Update supplied settings; omitted values and saved secrets are preserved |
 | POST | `alert-settings/test-email/` | Save supplied settings and send a sample email |
 | POST | `alert-settings/test-webhook/` | Save supplied settings and send a sample webhook |
-| GET | `{resource}/export-archive/` | Filtered metadata ZIP, including empty results |
+| GET | `{resource}/export-archive/` | Filtered metadata ZIP, or a warning when empty |
 | GET / POST | `{crypto-resource}/export-material/` | Filtered material ZIP; bundles require POST options |
 
-Metadata resources: `groups`, `services`, `certificate-policies`, `health-findings`, `object-links`, `alert-rules`, `alert-channels`, `alert-events`. Crypto resources: `certificates`, `certificate-authorities`, `private-keys`, `csrs`, `bundles`. Query parameters use the resource's existing filters; display-only parameters are ignored. Metadata requires `archive_export` and view permission. Material requires `download` (or Bundle `export`), a write-enabled token, and a superuser when keys are included. PFX additionally requires Bundle `export_pfx`.
+Metadata resources: `groups`, `services`, `health-findings`, `object-links`, `alert-rules`, `alert-channels`, `alert-events`. Crypto resources: `certificates`, `certificate-authorities`, `private-keys`, `csrs`, `bundles`. Query parameters use the resource's existing filters; display-only parameters are ignored. Metadata requires `archive_export` and view permission. Material requires `download` (or Bundle `export`), a write-enabled token, and a superuser when keys are included. PFX additionally requires Bundle `export_pfx`.
 
 Bundle bulk export JSON:
 
@@ -134,3 +133,29 @@ All settings mutations/tests and finding state/scan actions require a write-enab
 ## Bundle export filenames in 1.1.2
 
 `POST /bundles/{id}/export/` returns a certificate-named archive, such as `example.com's Bundle.zip`, and PFX conversion produces `example.com.pfx` inside it. Filtered bulk Bundle exports use certificate-named directories and disambiguate collisions. Endpoint paths, request parameters, response formats, token requirements, and permission checks are unchanged. See [Exports](EXPORTS.md).
+
+## 1.2.0 settings, CSR generation, and mixed inventory
+
+`certificate-policies/` is retired. Policy fields are absent from Service and Alert Rule serializers; policy GraphQL queries and relationships are removed. Old UI bookmarks redirect to settings.
+
+`alert-settings/` additionally accepts `minimum_rsa_bits` (2048, 3072, 4096, 8192), `max_validity_days` (null or 1–365000), `require_san`, `allow_wildcards`, and `forbid_key_reuse`. The new finding category is `configuration`. Email addresses, SMTP host/port, webhook URL/headers, timing, and these check values are validated even when delivery is disabled. Ports must be 1–65535. Webhook URLs must be HTTP(S) without embedded credentials. Invalid inputs return field errors.
+
+`POST csrs/generate/` accepts the existing CSR options plus `existing_private_key` (Private Key ID). Omit it to create a key. Example:
+
+```json
+{"common_name": "example.com", "sans": ["DNS:example.com"], "existing_private_key": 42}
+```
+
+The response contains CSR/key metadata, never private material. Signing with an existing key requires its scoped `use` and view permissions, CSR add permission, and permission to create/change the matching Bundle. A new key requires Private Key add permission instead of `use`. Both modes require a write-enabled token. The same form validation applies to UI and API: SAN types/values, email, country, key algorithm settings, and usages are validated. SAN input can be newline-separated text, strings in an array, or `{ "type": "DNS", "value": "example.com" }` objects.
+
+`POST import-objects/` accepts mixed multipart uploads as described in [Imports](IMPORTS.md). It returns `created`, `reused`, `bundle_ids`, and `ignored_files`; `reused_ca_ids` remains for compatibility. Related IDs and input types are validated.
+
+`POST export-inventory/` accepts a non-empty `types` array:
+
+```json
+{"types": ["certificate", "privatekey", "csr", "bundle", "artifactgroup", "service"]}
+```
+
+Other choices are `objectlink`, `healthfinding`, `alertrule`, `alertchannel`, `alertevent`. The response is a ZIP containing selected crypto material and metadata snapshots. Each type requires its existing export/download permission and view scope; keys require a superuser. A write-enabled token is required. Secrets from alert configuration are excluded. Metadata snapshots are not automatically recreated by the crypto importer.
+
+All empty authorized material/metadata/inventory exports now return HTTP 200 JSON `{"warning": "There are no objects available to export with the current filters and permissions.", "count": 0}` without an attachment. Clients must inspect Content-Type before treating the response as ZIP. UI exports display the same warning as a page. Non-empty exports keep their normal formats.

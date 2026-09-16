@@ -1,7 +1,7 @@
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from django.core.validators import URLValidator, validate_email
+from django.core.validators import validate_email
 from django.db import models
 from taggit.managers import TaggableManager
 from extras.managers import NetBoxTaggableManager
@@ -9,6 +9,8 @@ from django.urls import reverse
 from django.utils import timezone
 from netbox.models import NetBoxModel, PrimaryModel
 from netbox.models.features import model_is_public
+
+from .validation import validate_hostname, validate_endpoint_url, validate_port
 
 from .choices_v1 import (
     AlertChannelTypeChoices,
@@ -38,6 +40,8 @@ def validate_list_fields(instance, names):
 
 
 class CertificatePolicy(PrimaryModel):
+    """Retained privately for upgrade compatibility; global checks live in AlertSettings."""
+    _netbox_private = True
     name = models.CharField(max_length=120, unique=True)
     enabled = models.BooleanField(default=True)
     minimum_rsa_bits = models.PositiveIntegerField(default=2048)
@@ -83,15 +87,14 @@ class CertificatePolicy(PrimaryModel):
 
     class Meta:
         ordering = ("name",)
-        permissions = (
-            ("archive_export_certificatepolicy", "Can archive-export certificate policies"),
-        )
+        default_permissions = ()
+        permissions = ()
 
     def __str__(self):
         return self.name
 
     def get_absolute_url(self):
-        return reverse("plugins:netbox_certificates:certificatepolicy", args=[self.pk])
+        return reverse("plugins:netbox_certificates:alert_settings")
 
     def clean(self):
         super().clean()
@@ -185,7 +188,6 @@ class Service(PrimaryModel):
         "port",
         "criticality",
         "enabled",
-        "policy",
         "groups",
     )
 
@@ -209,7 +211,16 @@ class Service(PrimaryModel):
             raise ValidationError({"additional_urls": "Additional URLS must be a JSON list."})
         if not isinstance(self.deployment_metadata, dict):
             raise ValidationError({"deployment_metadata": "Deployment metadata must be a JSON object."})
-        validate_url = URLValidator()
+        for field in ("hostname", "sni_name"):
+            try:
+                validate_hostname(getattr(self, field))
+            except ValidationError as exc:
+                raise ValidationError({field: exc.messages}) from exc
+        try:
+            validate_endpoint_url(self.primary_url)
+        except ValidationError as exc:
+            raise ValidationError({"primary_url": exc.messages}) from exc
+        validate_url = validate_endpoint_url
         url_errors = []
         for value in self.additional_urls:
             if not isinstance(value, str):
@@ -398,6 +409,16 @@ class AlertChannel(PrimaryModel):
     def clean(self):
         super().clean()
         validate_list_fields(self, ("recipients",))
+        for field, validator in (("smtp_port", validate_port), ("smtp_host", validate_hostname)):
+            try:
+                validator(getattr(self, field))
+            except ValidationError as exc:
+                raise ValidationError({field: exc.messages}) from exc
+        for address in self.recipients:
+            try:
+                validate_email(address)
+            except ValidationError as exc:
+                raise ValidationError({"recipients": exc.messages}) from exc
         if self.channel_type == AlertChannelTypeChoices.EMAIL:
             errors = {}
             for address in self.recipients:
@@ -405,9 +426,9 @@ class AlertChannel(PrimaryModel):
                     validate_email(address)
                 except ValidationError:
                     errors["recipients"] = "Every recipient must be a valid email address."
-            if not self.recipients:
+            if self.enabled and not self.recipients:
                 errors["recipients"] = "At least one recipient is required for an email channel."
-            if not self.smtp_host:
+            if self.enabled and not self.smtp_host:
                 errors["smtp_host"] = "SMTP host is required for an email channel."
             if self.smtp_use_tls and self.smtp_use_ssl:
                 errors["smtp_use_ssl"] = "TLS and SSL cannot both be enabled."
@@ -415,6 +436,8 @@ class AlertChannel(PrimaryModel):
                 errors["smtp_port"] = "SMTP port must be between 1 and 65535."
             if errors:
                 raise ValidationError(errors)
+        if self.enabled and self.channel_type == AlertChannelTypeChoices.EMAIL and not self.from_email:
+            raise ValidationError({"from_email": "A sender email address is required."})
         # Webhook URL/header validation occurs in the UI/API serializers before
         # encrypted values are assigned. Requiring ciphertext here would reject
         # a valid newly-submitted webhook before the form has encrypted it.
@@ -463,16 +486,37 @@ class AlertRule(PrimaryModel):
     def clean(self):
         super().clean()
         validate_list_fields(self, ("finding_codes", "categories", "severities", "statuses", "object_types", "tag_names", "owner_ids"))
+        for field, choices in (("severities", FindingSeverityChoices), ("statuses", FindingStatusChoices)):
+            if set(getattr(self, field)) - set(dict(choices)):
+                raise ValidationError({field: "Select valid choices."})
+        if any(isinstance(value, bool) or not str(value).isdigit() or not 0 < int(value) < 2**63 for value in self.owner_ids):
+            raise ValidationError({"owner_ids": "Owner IDs must be positive integers."})
+        if self.cooldown_minutes < 15 or self.cooldown_minutes > 5256000 or self.repeat_minutes > 5256000:
+            raise ValidationError("Alert timing must be between 15 and 5256000 minutes (repeat may be 0).")
+
 
 
 class AlertSettings(models.Model):
     """Private singleton linking the settings page to the existing alert engine."""
     _netbox_private = True
 
+    minimum_rsa_bits = models.PositiveIntegerField(default=2048)
+    max_validity_days = models.PositiveIntegerField(null=True, blank=True)
+    require_san = models.BooleanField(default=True)
+    allow_wildcards = models.BooleanField(default=True)
+    forbid_key_reuse = models.BooleanField(default=False)
+
     id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
     rule = models.ForeignKey(AlertRule, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     email_channel = models.ForeignKey(AlertChannel, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     webhook_channel = models.ForeignKey(AlertChannel, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    def clean(self):
+        super().clean()
+        if self.minimum_rsa_bits not in (2048, 3072, 4096, 8192):
+            raise ValidationError({"minimum_rsa_bits": "Select a supported RSA key size."})
+        if self.max_validity_days is not None and not 1 <= self.max_validity_days <= 365000:
+            raise ValidationError({"max_validity_days": "Validity must be between 1 and 365000 days."})
 
     class Meta:
         default_permissions = ()
@@ -511,7 +555,6 @@ def _internal_certificate_authority_absolute_url(self):
 
 
 from .models import (
-    ArtifactGroup as _ArtifactGroup,
     ArtifactLink as _LegacyArtifactLink,
     CertificateAuthority as _InternalCertificateAuthority,
     ExpiryAlertConfiguration as _LegacyExpiryAlertConfiguration,

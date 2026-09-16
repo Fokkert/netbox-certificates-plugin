@@ -11,6 +11,7 @@ from django.shortcuts import redirect, render
 from django.views import View
 
 from .labels import AcronymFormMixin
+from .validation import OptionalObjectJSONField, validate_hostname, validate_endpoint_url, validate_headers
 from .choices_v1 import FindingSeverityChoices
 from .forms_v1 import LineListField
 from .models_v1 import AlertChannel, AlertEvent, AlertRule, AlertSettings
@@ -18,17 +19,23 @@ from .services.secret_v1 import SecretConfigurationError, encrypt_text, encrypt_
 
 
 class AlertSettingsForm(AcronymFormMixin, forms.Form):
+    minimum_rsa_bits = forms.TypedChoiceField(coerce=int, required=False, empty_value=2048, choices=[(n, str(n)) for n in (2048, 3072, 4096, 8192)], initial=2048, label="Minimum RSA key size")
+    max_validity_days = forms.IntegerField(required=False, min_value=1, max_value=365000, label="Maximum certificate validity (days)")
+    require_san = forms.BooleanField(required=False, initial=True, label="Require SANs on end-entity certificates and CSRs")
+    allow_wildcards = forms.BooleanField(required=False, initial=True, label="Allow wildcard names")
+    forbid_key_reuse = forms.BooleanField(required=False, label="Treat key reuse as a settings violation",
+                                         help_text="General key-reuse findings remain available in the key-reuse alert category.")
     enabled = forms.BooleanField(required=False, label="Enable certificate alerts")
     categories = forms.MultipleChoiceField(required=True, choices=[
         ("validity", "Expiration and validity"), ("chain", "Certificate chain"),
         ("security", "Cryptographic weaknesses"), ("relationship", "Artifact relationships"),
         ("duplicate", "Duplicate material"), ("service", "Service configuration"),
-        ("policy", "Policy violations"),
-    ], initial=["validity", "chain", "security", "relationship", "duplicate", "service", "policy"])
+        ("configuration", "Certificate settings violations"),
+    ], initial=["validity", "chain", "security", "relationship", "duplicate", "service", "configuration"])
     severities = forms.MultipleChoiceField(required=False, choices=FindingSeverityChoices,
                                          help_text="Leave empty to include every severity.")
-    cooldown_minutes = forms.IntegerField(min_value=15, initial=60, label="Minimum minutes between alerts")
-    repeat_minutes = forms.IntegerField(min_value=0, initial=1440, label="Repeat unresolved alerts after minutes",
+    cooldown_minutes = forms.IntegerField(min_value=15, max_value=5256000, initial=60, label="Minimum minutes between alerts")
+    repeat_minutes = forms.IntegerField(min_value=0, max_value=5256000, initial=1440, label="Repeat unresolved alerts after minutes",
                                        help_text="0 sends once per occurrence. Delivery runs on NetBox's 15-minute job cycle.")
     notify_on_recovery = forms.BooleanField(required=False, label="Notify when a problem is resolved")
     email_enabled = forms.BooleanField(required=False, label="Enable email alerts")
@@ -47,7 +54,7 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
     webhook_enabled = forms.BooleanField(required=False, label="Enable webhook alerts")
     webhook_url = forms.URLField(required=False, assume_scheme="https", widget=forms.PasswordInput(render_value=False),
                                 help_text="Leave blank to keep the saved URL.")
-    webhook_headers = forms.JSONField(required=False, widget=forms.Textarea(attrs={"rows": 3}),
+    webhook_headers = OptionalObjectJSONField(required=False, widget=forms.Textarea(attrs={"rows": 3}),
                                      help_text="Optional JSON object. Leave blank to keep saved headers; {} clears them.")
     webhook_verify_tls = forms.BooleanField(required=False, initial=True, label="Verify webhook TLS certificate",
                                           help_text="Turn off to allow self-signed or otherwise untrusted HTTPS certificates.")
@@ -57,6 +64,9 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
         self.test_method = test_method
         initial = {}
         if config:
+            for name in ("minimum_rsa_bits", "max_validity_days", "require_san", "allow_wildcards", "forbid_key_reuse"):
+                if hasattr(config, name):
+                    initial[name] = getattr(config, name)
             rule, email, webhook = config.rule, config.email_channel, config.webhook_channel
             if rule:
                 for field in ("enabled", "categories", "severities", "cooldown_minutes", "repeat_minutes", "notify_on_recovery"):
@@ -86,12 +96,17 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
         saved_webhook = self.config and self.config.webhook_channel and self.config.webhook_channel.webhook_url_encrypted
         if (data.get("webhook_enabled") or self.test_method == "webhook") and not (data.get("webhook_url") or saved_webhook):
             self.add_error("webhook_url", "Enter the webhook URL.")
+        for field, validator in (("smtp_host", validate_hostname), ("webhook_url", lambda value: validate_endpoint_url(value, http_only=True))):
+            try:
+                validator(data.get(field))
+            except ValidationError as exc:
+                self.add_error(field, exc)
         headers = data.get("webhook_headers")
-        if headers is not None and (not isinstance(headers, dict) or any(
-            not isinstance(k, str) or not isinstance(v, str) or "\n" in k + v or "\r" in k + v
-            for k, v in headers.items()
-        )):
-            self.add_error("webhook_headers", "Enter a JSON object of header names and string values, without newlines.")
+        if headers is not None:
+            try:
+                validate_headers(headers)
+            except ValidationError as exc:
+                self.add_error("webhook_headers", exc)
         if data.get("enabled") and not (data.get("email_enabled") or data.get("webhook_enabled")):
             self.add_error(None, "Enable at least one delivery method before enabling alerts.")
         return data
@@ -119,8 +134,7 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
             email.smtp_password_encrypted = ""
         elif data["smtp_password"]:
             email.smtp_password_encrypted = encrypt_text(data["smtp_password"])
-        if email.enabled:
-            email.full_clean()
+        email.full_clean()
         email.save()
         webhook.enabled = data["webhook_enabled"]
         webhook.webhook_verify_tls = data["webhook_verify_tls"]
@@ -132,6 +146,9 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
         webhook.save()
         rule.channels.set([email, webhook])
         config.rule, config.email_channel, config.webhook_channel = rule, email, webhook
+        for name in ("minimum_rsa_bits", "max_validity_days", "require_san", "allow_wildcards", "forbid_key_reuse"):
+            setattr(config, name, data[name])
+        config.full_clean()
         config.save()
         return config
 
@@ -150,6 +167,7 @@ class AlertSettingsView(LoginRequiredMixin, View):
 
     def page(self, request, form):
         sections = [
+            ("Certificate checks", ("minimum_rsa_bits", "max_validity_days", "require_san", "allow_wildcards", "forbid_key_reuse")),
             ("When and what to send", ("enabled", "categories", "severities", "cooldown_minutes", "repeat_minutes", "notify_on_recovery")),
             ("Email alerts", ("email_enabled", "recipients", "smtp_host", "smtp_port", "smtp_username", "smtp_password", "clear_smtp_password", "smtp_security", "smtp_verify_tls", "from_email", "subject_prefix")),
             ("Webhook alerts", ("webhook_enabled", "webhook_url", "webhook_headers", "webhook_verify_tls")),

@@ -1,3 +1,5 @@
+from .retired import RetiredPolicyView
+from .inventory_export import InventoryExportView
 from django.urls import path
 from django.views.generic import RedirectView
 
@@ -23,16 +25,16 @@ urlpatterns = (
     path("health/delete/", views_v1.HealthFindingBulkDeleteView.as_view(), name="healthfinding_bulk_delete"),
     path("health/export-archive/", export_v1.MetadataArchiveExportView.as_view(), {"kind": "healthfinding"}, name="healthfinding_archive_export"),
 
-    # Certificate policies are managed from Health and Validity.
-    path("health/policies/", views_v1.CertificatePolicyListView.as_view(), name="certificatepolicy_list"),
-    path("health/policies/add/", views_v1.CertificatePolicyEditView.as_view(), name="certificatepolicy_add"),
-    path("health/policies/edit/", views_v1.CertificatePolicyBulkEditView.as_view(), name="certificatepolicy_bulk_edit"),
-    path("health/policies/rename/", views_v1.CertificatePolicyBulkRenameView.as_view(), name="certificatepolicy_bulk_rename"),
-    path("health/policies/delete/", views_v1.CertificatePolicyBulkDeleteView.as_view(), name="certificatepolicy_bulk_delete"),
-    path("health/policies/export-archive/", export_v1.MetadataArchiveExportView.as_view(), {"kind": "certificatepolicy"}, name="certificatepolicy_archive_export"),
-    path("health/policies/<int:pk>/", views_v1.CertificatePolicyView.as_view(), name="certificatepolicy"),
-    path("health/policies/<int:pk>/edit/", views_v1.CertificatePolicyEditView.as_view(), name="certificatepolicy_edit"),
-    path("health/policies/<int:pk>/delete/", views_v1.CertificatePolicyDeleteView.as_view(), name="certificatepolicy_delete"),
+    # Legacy policy bookmarks lead to the global certificate check settings.
+    path("health/policies/", RetiredPolicyView.as_view(), name="certificatepolicy_list"),
+    path("health/policies/add/", RetiredPolicyView.as_view(), name="certificatepolicy_add"),
+    path("health/policies/edit/", RetiredPolicyView.as_view(), name="certificatepolicy_bulk_edit"),
+    path("health/policies/rename/", RetiredPolicyView.as_view(), name="certificatepolicy_bulk_rename"),
+    path("health/policies/delete/", RetiredPolicyView.as_view(), name="certificatepolicy_bulk_delete"),
+    path("health/policies/export-archive/", RetiredPolicyView.as_view(), name="certificatepolicy_archive_export"),
+    path("health/policies/<int:pk>/", RetiredPolicyView.as_view(), name="certificatepolicy"),
+    path("health/policies/<int:pk>/edit/", RetiredPolicyView.as_view(), name="certificatepolicy_edit"),
+    path("health/policies/<int:pk>/delete/", RetiredPolicyView.as_view(), name="certificatepolicy_delete"),
 
     # INVENTORY: Groups
     path("groups/", views_v1.ArtifactGroupTreeListView.as_view(), name="artifactgroup_list"),
@@ -114,6 +116,8 @@ urlpatterns = (
     path("links/<int:pk>/", views_v1.ObjectLinkView.as_view(), name="objectlink"),
     path("links/<int:pk>/edit/", views_v1.ObjectLinkEditView.as_view(), name="objectlink_edit"),
     path("links/<int:pk>/delete/", views_v1.ObjectLinkDeleteView.as_view(), name="objectlink_delete"),
+
+    path("export-inventory/", InventoryExportView.as_view(), name="inventory_export"),
 
     # OPERATIONS
     path("import/", views.UnifiedImportView.as_view(), name="import_objects"),

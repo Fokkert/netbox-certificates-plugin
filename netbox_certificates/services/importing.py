@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 
 from netbox_certificates.choices import LinkOriginChoices
@@ -47,6 +47,16 @@ def _check_created_permission(user, obj):
         raise PermissionDenied(f"The new {obj._meta.verbose_name} does not satisfy your object permission constraints.")
 
 
+def _validated_create(model, **fields):
+    obj = model(**fields)
+    try:
+        obj.full_clean()
+        obj.save()
+    except (ValidationError, IntegrityError) as exc:
+        raise ArtifactImportError("Invalid or duplicate material: " + "; ".join(getattr(exc, "messages", ["Conflicting cryptographic identity."]))) from exc
+    return obj
+
+
 def _create(parsed, filename, owner=None):
     metadata = parsed.metadata.copy()
     common = {
@@ -56,12 +66,12 @@ def _create(parsed, filename, owner=None):
         "owner": owner,
     }
     if parsed.kind == "certificate":
-        return Certificate.objects.create(material=parsed.data.decode("ascii"), **common, **metadata)
+        return _validated_create(Certificate, material=parsed.data.decode("ascii"), **common, **metadata)
     if parsed.kind == "csr":
-        return CSR.objects.create(material=parsed.data.decode("ascii"), **common, **metadata)
+        return _validated_create(CSR, material=parsed.data.decode("ascii"), **common, **metadata)
     if parsed.kind == "private_key":
         metadata.pop("curve", None)
-        return PrivateKey.objects.create(encrypted_material=encrypt_private_key(parsed.data), **common, **metadata)
+        return _validated_create(PrivateKey, encrypted_material=encrypt_private_key(parsed.data), **common, **metadata)
     raise ArtifactImportError(f"Unsupported artifact kind: {parsed.kind}")
 
 
@@ -80,7 +90,7 @@ def _check_reused_group_permissions(reused, groups, user):
         return
     for obj in reused:
         if desired - set(obj.groups.values_list("pk", flat=True)) and not object_allowed(user, obj, "change"):
-            raise PermissionDenied("Change permission is required to assign groups to an existing CA certificate.")
+            raise PermissionDenied("Change permission is required to assign groups to an existing object.")
 
 
 def create_or_reuse_chain(parsed_chain, *, filename, user=None, owner=None, groups=None):

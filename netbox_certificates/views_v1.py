@@ -1,3 +1,4 @@
+from .empty_exports import EmptyListExportMixin
 from .labels import display_label
 from .finding_display import finding_object_link, finding_data_display
 from collections import defaultdict
@@ -30,7 +31,6 @@ from .filtersets_v1 import (
     AlertChannelFilterSet,
     AlertEventFilterSet,
     AlertRuleFilterSet,
-    CertificatePolicyFilterSet,
     HealthFindingFilterSet,
     ObjectLinkFilterSet,
     ServiceFilterSet,
@@ -44,9 +44,6 @@ from .forms_v1 import (
     AlertRuleBulkEditForm,
     AlertRuleFilterForm,
     AlertRuleForm,
-    CertificatePolicyBulkEditForm,
-    CertificatePolicyFilterForm,
-    CertificatePolicyForm,
     HealthFindingBulkEditForm,
     HealthFindingFilterForm,
     ObjectLinkBulkEditForm,
@@ -62,17 +59,15 @@ from .models_v1 import (
     AlertChannel,
     AlertEvent,
     AlertRule,
-    CertificatePolicy,
     HealthFinding,
     ObjectLink,
     Service,
 )
-from .tables import ArtifactGroupTable, CertificateTable
+from .tables import CertificateTable
 from .tables_v1 import (
     AlertChannelTable,
     AlertEventTable,
     AlertRuleTable,
-    CertificatePolicyTable,
     HealthFindingTable,
     ObjectLinkTable,
     ServiceTable,
@@ -88,8 +83,6 @@ SYSTEM_ACTIONS = tuple(
     action for action in FULL_ACTIONS
     if getattr(action, "__name__", "") not in {"AddObject", "BulkRename"}
 )
-
-
 
 
 def _legacy_filter_form(view_class):
@@ -123,10 +116,7 @@ class CertificateV1FilterForm(_CertificateLegacyFilterForm):
     service_id = DynamicModelMultipleChoiceField(
         queryset=Service.objects.all(), required=False, label="Service"
     )
-    policy_id = DynamicModelMultipleChoiceField(
-        queryset=CertificatePolicy.objects.all(), required=False, label="Certificate policy"
-    )
-    fieldsets = _extend_fieldsets(_CertificateLegacyFilterForm, "service_id", "policy_id")
+    fieldsets = _extend_fieldsets(_CertificateLegacyFilterForm, "service_id")
 
 
 class PrivateKeyV1FilterForm(_PrivateKeyLegacyFilterForm):
@@ -142,10 +132,7 @@ class CSRV1FilterForm(_CSRLegacyFilterForm):
     service_id = DynamicModelMultipleChoiceField(
         queryset=Service.objects.all(), required=False, label="Service"
     )
-    policy_id = DynamicModelMultipleChoiceField(
-        queryset=CertificatePolicy.objects.all(), required=False, label="Certificate policy"
-    )
-    fieldsets = _extend_fieldsets(_CSRLegacyFilterForm, "service_id", "policy_id")
+    fieldsets = _extend_fieldsets(_CSRLegacyFilterForm, "service_id")
 
 
 class BundleV1FilterForm(_BundleLegacyFilterForm):
@@ -153,10 +140,7 @@ class BundleV1FilterForm(_BundleLegacyFilterForm):
     service_id = DynamicModelMultipleChoiceField(
         queryset=Service.objects.all(), required=False, label="Service"
     )
-    policy_id = DynamicModelMultipleChoiceField(
-        queryset=CertificatePolicy.objects.all(), required=False, label="Certificate policy"
-    )
-    fieldsets = _extend_fieldsets(_BundleLegacyFilterForm, "service_id", "policy_id")
+    fieldsets = _extend_fieldsets(_BundleLegacyFilterForm, "service_id")
 
 
 class CertificateListView(legacy_views.CertificateListView):
@@ -220,7 +204,7 @@ class CryptographicVaultView(LoginRequiredMixin, View):
         )
 
 
-class CertificateAuthorityListView(generic.ObjectListView):
+class CertificateAuthorityListView(EmptyListExportMixin, generic.ObjectListView):
     queryset = Certificate.objects.filter(is_ca=True)
     table = CertificateTable
     filterset = CertificateV1FilterSet
@@ -323,7 +307,7 @@ class V1ObjectView(generic.ObjectView):
         return {"detail_rows": rows}
 
 
-class ServiceListView(generic.ObjectListView):
+class ServiceListView(EmptyListExportMixin, generic.ObjectListView):
     queryset = Service.objects.all()
     table = ServiceTable
     filterset = ServiceFilterSet
@@ -337,7 +321,7 @@ class ServiceView(V1ObjectView):
     detail_fields = (
         "name", "status", "service_type", "other_type", "deployment", "deployment_metadata", "environment",
         "protocol", "primary_url", "additional_urls", "hostname", "port", "sni_name",
-        "criticality", "external_reference", "contact", "enabled", "policy", "groups",
+        "criticality", "external_reference", "contact", "enabled", "groups",
         "certificates", "private_keys", "csrs", "bundles", "owner", "description", "comments",
     )
 
@@ -377,52 +361,6 @@ class ServiceBulkDeleteView(generic.BulkDeleteView):
     queryset = Service.objects.all()
     filterset = ServiceFilterSet
     table = ServiceTable
-
-
-class CertificatePolicyListView(generic.ObjectListView):
-    queryset = CertificatePolicy.objects.all()
-    table = CertificatePolicyTable
-    filterset = CertificatePolicyFilterSet
-    filterset_form = CertificatePolicyFilterForm
-    actions = FULL_ACTIONS
-    template_name = "netbox_certificates/certificatepolicy_list.html"
-
-
-class CertificatePolicyView(V1ObjectView):
-    queryset = CertificatePolicy.objects.all()
-    detail_fields = (
-        "name", "enabled", "minimum_rsa_bits", "allowed_key_types",
-        "allowed_signature_algorithms", "allowed_curves", "max_validity_days",
-        "require_san", "allow_wildcards", "allow_ca", "allowed_issuers",
-        "forbid_key_reuse", "certificates", "csrs", "bundles",
-        "owner", "description", "comments",
-    )
-
-
-class CertificatePolicyEditView(generic.ObjectEditView):
-    queryset = CertificatePolicy.objects.all()
-    form = CertificatePolicyForm
-
-
-class CertificatePolicyDeleteView(generic.ObjectDeleteView):
-    queryset = CertificatePolicy.objects.all()
-
-
-class CertificatePolicyBulkEditView(generic.BulkEditView):
-    queryset = CertificatePolicy.objects.all()
-    filterset = CertificatePolicyFilterSet
-    table = CertificatePolicyTable
-    form = CertificatePolicyBulkEditForm
-
-
-class CertificatePolicyBulkRenameView(generic.BulkRenameView):
-    queryset = CertificatePolicy.objects.all()
-
-
-class CertificatePolicyBulkDeleteView(generic.BulkDeleteView):
-    queryset = CertificatePolicy.objects.all()
-    filterset = CertificatePolicyFilterSet
-    table = CertificatePolicyTable
 
 
 class HealthFindingListView(LoginRequiredMixin, View):
@@ -549,7 +487,7 @@ class HealthRefreshView(LoginRequiredMixin, View):
         return redirect("plugins:netbox_certificates:health")
 
 
-class ObjectLinkListView(generic.ObjectListView):
+class ObjectLinkListView(EmptyListExportMixin, generic.ObjectListView):
     queryset = ObjectLink.objects.all()
     table = ObjectLinkTable
     filterset = ObjectLinkFilterSet
@@ -591,7 +529,7 @@ class ObjectLinkBulkDeleteView(generic.BulkDeleteView):
     table = ObjectLinkTable
 
 
-class AlertRuleListView(generic.ObjectListView):
+class AlertRuleListView(EmptyListExportMixin, generic.ObjectListView):
     queryset = AlertRule.objects.all()
     table = AlertRuleTable
     filterset = AlertRuleFilterSet
@@ -606,7 +544,7 @@ class AlertRuleView(V1ObjectView):
         "name", "enabled", "finding_codes", "categories", "severities", "statuses",
         "object_types", "tag_names", "owner_ids",
         "cooldown_minutes", "repeat_minutes", "notify_on_recovery", "channels",
-        "services", "policies", "groups", "owner", "description", "comments",
+        "services", "groups", "owner", "description", "comments",
     )
 
     def get_extra_context(self, request, instance):
@@ -641,7 +579,7 @@ class AlertRuleBulkDeleteView(generic.BulkDeleteView):
     table = AlertRuleTable
 
 
-class AlertChannelListView(generic.ObjectListView):
+class AlertChannelListView(EmptyListExportMixin, generic.ObjectListView):
     queryset = AlertChannel.objects.all()
     table = AlertChannelTable
     filterset = AlertChannelFilterSet
@@ -690,7 +628,7 @@ class AlertChannelBulkDeleteView(generic.BulkDeleteView):
     table = AlertChannelTable
 
 
-class AlertEventListView(generic.ObjectListView):
+class AlertEventListView(EmptyListExportMixin, generic.ObjectListView):
     queryset = AlertEvent.objects.all()
     table = AlertEventTable
     filterset = AlertEventFilterSet

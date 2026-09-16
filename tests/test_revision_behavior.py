@@ -36,6 +36,15 @@ def definitions(path, names, **scope):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         scope.setdefault("AcronymFormMixin", module.AcronymFormMixin)
+    # Load shared validators from the real module, not permissive test stubs.
+    spec = importlib.util.spec_from_file_location("isolated_validation", ROOT / "netbox_certificates/validation.py")
+    validators = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(validators)
+    for name in ("validate_hostname", "validate_endpoint_url", "validate_headers", "validate_port", "OptionalObjectJSONField"):
+        scope.setdefault(name, getattr(validators, name))
+    from django.core.exceptions import ValidationError
+    scope.setdefault("ValidationError", ValidationError)
+    scope.setdefault("DjangoValidationError", ValidationError)
     tree = ast.parse((ROOT / path).read_text(encoding="utf-8"))
     nodes = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef)) and n.name in names]
     assert {node.name for node in nodes} == set(names), "Missing tested definition"

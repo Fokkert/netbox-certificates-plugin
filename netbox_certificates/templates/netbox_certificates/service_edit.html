@@ -15,8 +15,8 @@
 <div class="card mb-3"><h2 class="card-header">Cryptographic artifacts</h2><div class="card-body">
 {% render_field form.certificates %}{% render_field form.private_keys %}{% render_field form.csrs %}{% render_field form.bundles %}
 </div></div>
-<div class="card mb-3"><h2 class="card-header">Organization and policy</h2><div class="card-body">
-{% render_field form.groups %}{% render_field form.policy %}{% render_field form.contact %}{% render_field form.external_reference %}
+<div class="card mb-3"><h2 class="card-header">Organization</h2><div class="card-body">
+{% render_field form.groups %}{% render_field form.contact %}{% render_field form.external_reference %}
 {% if form.owner_group %}{% render_field form.owner_group %}{% endif %}
 {% render_field form.owner %}
 </div></div>

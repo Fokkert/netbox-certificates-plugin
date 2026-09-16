@@ -1,6 +1,6 @@
 {% extends 'generic/object_edit.html' %}
 {% load form_helpers %}
-{% block title %}Generate CSR and Private Key{% endblock %}
+{% block title %}Generate CSR{% endblock %}
 
 {% block form %}
   {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
@@ -53,6 +53,7 @@
 
   <div class="mb-4">
     <h2>Private Key &amp; Signature</h2>
+    {% render_field form.existing_private_key %}
     {% render_field form.key_algorithm %}
     <div id="rsa-bits-row">{% render_field form.rsa_bits %}</div>
     <div id="ec-curve-row">{% render_field form.ec_curve %}</div>

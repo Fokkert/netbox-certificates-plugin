@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from ipaddress import ip_address
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from ..validation import validate_hostname
+from urllib.parse import urlsplit
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519, ed448, padding, rsa
@@ -45,16 +49,48 @@ def _parse_san(entry: str):
         except ValueError as exc:
             raise CSRGenerationError(f"Invalid IP SAN: {value}") from exc
     if kind == "EMAIL":
+        try:
+            validate_email(value)
+        except ValidationError as exc:
+            raise CSRGenerationError("Invalid email SAN.") from exc
         return x509.RFC822Name(value)
     if kind == "URI":
+        if not urlsplit(value).scheme or any(char.isspace() or ord(char) < 32 for char in value):
+            raise CSRGenerationError("Invalid URI SAN.")
         return x509.UniformResourceIdentifier(value)
-    return x509.DNSName(value)
+    try:
+        validate_hostname(value, wildcard=True)
+    except ValidationError as exc:
+        raise CSRGenerationError("Invalid DNS SAN.") from exc
+    return x509.DNSName(value.encode("idna").decode("ascii"))
 
 
-def generate_csr(*, common_name, sans=None, key_algorithm="rsa", rsa_bits=3072, ec_curve="secp256r1", signature_hash="sha256", rsa_signature="pkcs1v15", country="", state="", locality="", organization="", organizational_unit="", street_address="", postal_code="", subject_serial_number="", email="", key_usages=None, extended_key_usages=None, request_ca=False, path_length=None):
+def generate_csr(*, common_name, sans=None, key_algorithm="rsa", rsa_bits=3072, ec_curve="secp256r1", signature_hash="sha256", rsa_signature="pkcs1v15", country="", state="", locality="", organization="", organizational_unit="", street_address="", postal_code="", subject_serial_number="", email="", key_usages=None, extended_key_usages=None, request_ca=False, path_length=None, private_key_pem=None):
     if not common_name:
         raise CSRGenerationError("Common Name is required.")
-    if key_algorithm == "rsa":
+    if len(common_name.encode("utf-8")) > 64:
+        raise CSRGenerationError("Common Name must be at most 64 UTF-8 bytes.")
+    if country and (len(country) != 2 or not country.isascii() or not country.isalpha()):
+        raise CSRGenerationError("Country must be a two-letter country code.")
+    if email:
+        try:
+            validate_email(email)
+        except ValidationError as exc:
+            raise CSRGenerationError("Invalid subject email address.") from exc
+    if path_length is not None and not request_ca:
+        raise CSRGenerationError("CA path length requires a CA request.")
+    if set(key_usages or []) - {"digital_signature", "content_commitment", "key_encipherment", "data_encipherment", "key_agreement", "key_cert_sign", "crl_sign"}:
+        raise CSRGenerationError("Unknown key usage.")
+    if set(extended_key_usages or []) - set(EKUS):
+        raise CSRGenerationError("Unknown extended key usage.")
+    if private_key_pem is not None:
+        try:
+            key = serialization.load_pem_private_key(private_key_pem, password=None)
+        except (ValueError, TypeError) as exc:
+            raise CSRGenerationError("The stored private key could not be loaded.") from exc
+        if not isinstance(key, (rsa.RSAPrivateKey, ec.EllipticCurvePrivateKey, ed25519.Ed25519PrivateKey, ed448.Ed448PrivateKey)):
+            raise CSRGenerationError("This private-key algorithm is not supported for CSR generation.")
+    elif key_algorithm == "rsa":
         rsa_bits = int(rsa_bits)
         if rsa_bits not in (2048, 3072, 4096, 8192):
             raise CSRGenerationError("RSA key size must be 2048, 3072, 4096, or 8192 bits.")

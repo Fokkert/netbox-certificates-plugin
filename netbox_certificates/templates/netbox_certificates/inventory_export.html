@@ -1,0 +1,10 @@
+{% extends 'generic/_base.html' %}
+{% load form_helpers %}
+{% block title %}Export inventory{% endblock %}
+{% block content %}
+<p>Select the object types to include in one ZIP archive. Certificates, keys, CSRs, and Bundle material can be imported together. Other object types are exported as JSON metadata for reference.</p>
+<form method="post">{% csrf_token %}{{ form.non_field_errors }}
+<div class="card mb-3"><div class="card-body">{% render_field form.types %}</div></div>
+<button class="btn btn-primary" type="submit">Export selected types</button>
+<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:vault' %}">Cancel</a></form>
+{% endblock %}

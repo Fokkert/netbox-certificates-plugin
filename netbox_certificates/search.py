@@ -1,7 +1,7 @@
 from netbox.search import SearchIndex, register_search
 
 from .models import ArtifactGroup, Bundle, Certificate, CSR, PrivateKey
-from .models_v1 import AlertChannel, AlertEvent, AlertRule, CertificatePolicy, HealthFinding, ObjectLink, Service
+from .models_v1 import AlertChannel, AlertEvent, AlertRule, HealthFinding, ObjectLink, Service
 
 
 def _existing(model, candidates):
@@ -110,12 +110,6 @@ class BundleIndex(SearchIndex):
             ("comments", 5000),
         ),
     )
-
-
-@register_search
-class CertificatePolicyIndex(SearchIndex):
-    model = CertificatePolicy
-    fields = _existing(CertificatePolicy, (("name", 100), ("description", 500), ("comments", 5000)))
 
 
 @register_search

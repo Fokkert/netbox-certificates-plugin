@@ -6,40 +6,25 @@ from django.utils.html import format_html_join
 from .permissions import object_allowed
 from .finding_display import finding_object_link
 
-from .models_v1 import AlertChannel, AlertEvent, AlertRule, CertificatePolicy, HealthFinding, ObjectLink, Service
+from .models_v1 import AlertChannel, AlertEvent, AlertRule, HealthFinding, ObjectLink, Service
 
 
 class ServiceTable(AcronymTableMixin, PrimaryModelTable):
     actions = columns.ActionsColumn(actions=("edit", "delete"))
     name = tables.Column(linkify=True)
-    policy = tables.Column(linkify=True)
     groups = columns.ManyToManyColumn(linkify_item=True)
 
     class Meta(PrimaryModelTable.Meta):
         model = Service
         fields = (
             "pk", "id", "name", "status", "service_type", "deployment", "deployment_metadata", "environment",
-            "primary_url", "hostname", "port", "sni_name", "criticality", "policy",
+            "primary_url", "hostname", "port", "sni_name", "criticality",
             "groups", "enabled", "description", "owner", "tags", "last_updated",
         )
         default_columns = (
             "pk", "name", "status", "service_type", "deployment", "environment",
-            "hostname", "port", "criticality", "policy",
+            "hostname", "port", "criticality",
         )
-
-
-class CertificatePolicyTable(AcronymTableMixin, PrimaryModelTable):
-    actions = columns.ActionsColumn(actions=("edit", "delete"))
-    name = tables.Column(linkify=True)
-
-    class Meta(PrimaryModelTable.Meta):
-        model = CertificatePolicy
-        fields = (
-            "pk", "id", "name", "enabled", "minimum_rsa_bits", "max_validity_days",
-            "require_san", "allow_wildcards", "allow_ca", "forbid_key_reuse",
-            "description", "owner", "tags", "last_updated",
-        )
-        default_columns = ("pk", "name", "enabled", "minimum_rsa_bits", "max_validity_days", "allow_wildcards", "allow_ca")
 
 
 class HealthFindingTable(AcronymTableMixin, PrimaryModelTable):
@@ -111,13 +96,12 @@ class AlertRuleTable(AcronymTableMixin, PrimaryModelTable):
     name = tables.Column(linkify=True)
     channels = columns.ManyToManyColumn(linkify_item=True)
     services = columns.ManyToManyColumn(linkify_item=True)
-    policies = columns.ManyToManyColumn(linkify_item=True)
     groups = columns.ManyToManyColumn(linkify_item=True)
 
     class Meta(PrimaryModelTable.Meta):
         model = AlertRule
         fields = (
-            "pk", "id", "name", "enabled", "channels", "services", "policies", "groups",
+            "pk", "id", "name", "enabled", "channels", "services", "groups",
             "cooldown_minutes", "repeat_minutes", "notify_on_recovery",
             "description", "owner", "tags", "last_updated",
         )

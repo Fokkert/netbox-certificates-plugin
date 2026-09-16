@@ -14,7 +14,6 @@ from .models_v1 import (
     AlertChannel,
     AlertEvent,
     AlertRule,
-    CertificatePolicy,
     HealthFinding,
     ObjectLink,
     Service,
@@ -38,7 +37,7 @@ _SENSITIVE_FIELD_NAMES = {
 # The pre-1.0 root identity is deliberately internal in 1.0. Certificate.authority
 # remains an implementation relationship used by chain resolution, but it is not
 # a public GraphQL relation.
-_INTERNAL_RELATION_FIELDS = {"authority"}
+_INTERNAL_RELATION_FIELDS = {"authority", "policy", "policies", "certificate_policies"}
 
 
 def _safe_fields(model):
@@ -91,11 +90,6 @@ class ServiceType(NetBoxObjectType):
     pass
 
 
-@strawberry_django.type(CertificatePolicy, fields=_safe_fields(CertificatePolicy))
-class CertificatePolicyType(NetBoxObjectType):
-    pass
-
-
 @strawberry_django.type(HealthFinding, fields=_safe_fields(HealthFinding))
 class HealthFindingType(NetBoxObjectType):
     pass
@@ -140,9 +134,6 @@ class NetBoxCertificatesQuery:
 
     service: ServiceType = strawberry_django.field()
     service_list: list[ServiceType] = strawberry_django.field()
-
-    certificate_policy: CertificatePolicyType = strawberry_django.field()
-    certificate_policy_list: list[CertificatePolicyType] = strawberry_django.field()
 
     health_finding: HealthFindingType = strawberry_django.field()
     health_finding_list: list[HealthFindingType] = strawberry_django.field()

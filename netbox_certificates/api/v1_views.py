@@ -8,7 +8,6 @@ from ..filtersets_v1 import (
     AlertChannelFilterSet,
     AlertEventFilterSet,
     AlertRuleFilterSet,
-    CertificatePolicyFilterSet,
     HealthFindingFilterSet,
     ObjectLinkFilterSet,
     ServiceFilterSet,
@@ -20,8 +19,8 @@ from ..artifact_filtersets_v1 import (
     CSRV1FilterSet,
     PrivateKeyV1FilterSet,
 )
-from ..models import ArtifactGroup, Bundle, Certificate, CSR, PrivateKey
-from ..models_v1 import AlertChannel, AlertEvent, AlertRule, CertificatePolicy, HealthFinding, ObjectLink, Service
+from ..models import Certificate
+from ..models_v1 import AlertChannel, AlertEvent, AlertRule, HealthFinding, ObjectLink, Service
 from ..permissions import action_queryset
 from .views import (
     _require_sensitive_token,
@@ -37,7 +36,6 @@ from .v1_serializers import (
     AlertChannelSerializer,
     AlertEventSerializer,
     AlertRuleSerializer,
-    CertificatePolicySerializer,
     HealthFindingSerializer,
     ObjectLinkSerializer,
     ServiceSerializer,
@@ -80,12 +78,6 @@ class ServiceViewSet(MetadataExportMixin, NetBoxModelViewSet):
     queryset = Service.objects.all()
     serializer_class = ServiceSerializer
     filterset_class = ServiceFilterSet
-
-
-class CertificatePolicyViewSet(MetadataExportMixin, NetBoxModelViewSet):
-    queryset = CertificatePolicy.objects.all()
-    serializer_class = CertificatePolicySerializer
-    filterset_class = CertificatePolicyFilterSet
 
 
 class ObjectLinkViewSet(MetadataExportMixin, NetBoxModelViewSet):

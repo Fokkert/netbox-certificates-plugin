@@ -75,7 +75,7 @@ class EmptyExportsAndGroups(unittest.TestCase):
 
     def setUp(self):
         Group.objects.all().delete()
-        self.request = SimpleNamespace(GET=QueryDict(), user=SimpleNamespace(is_superuser=True))
+        self.request = SimpleNamespace(GET=QueryDict(), user=SimpleNamespace(is_superuser=True), accepted_renderer=object())
 
     def bulk_scope(self):
         return definitions("netbox_certificates/bulk_export.py",
@@ -85,30 +85,30 @@ class EmptyExportsAndGroups(unittest.TestCase):
                            require_action_permission=Mock(), action_queryset=lambda *args: Group.objects.none(),
                            EXPORT_CONFIG={"certificate": {"model": Group, "action": "download", "filterset": InventoryFilter, "filename": "certificates.zip"}},
                            tempfile=tempfile, zipfile=zipfile, hashlib=hashlib, datetime=datetime, timezone=dt_timezone,
-                           json=json, PrivateKeyEncryptionError=RuntimeError)
+                           json=json, PrivateKeyEncryptionError=RuntimeError,
+                           empty_export_response=definitions("netbox_certificates/empty_exports.py", ["empty_export_response"], JsonResponse=JsonResponse)["empty_export_response"])
 
-    def test_empty_material_export_returns_manifest(self):
+    def test_empty_material_export_returns_warning(self):
         scope = self.bulk_scope()
         response = scope["BulkMaterialExportView"]().get(self.request, "certificate")
         self.assertEqual(response.status_code, 200)
-        archive = zipfile.ZipFile(io.BytesIO(b"".join(response.streaming_content)))
-        response.close()
-        manifest = json.loads(archive.read("manifest.json"))
-        self.assertEqual((manifest["count"], manifest["objects"], manifest["files"]), (0, [], []))
+        self.assertNotIn("Content-Disposition", response)
+        self.assertEqual(json.loads(response.content)["count"], 0)
+        self.assertIn("no objects", json.loads(response.content)["warning"])
 
-    def test_empty_metadata_export_returns_empty_object_array(self):
+    def test_empty_metadata_export_returns_warning(self):
         scope = definitions("netbox_certificates/export_v1.py", ["_filtered_data", "_write", "MetadataArchiveExportView"],
                             LoginRequiredMixin=LoginRequiredMixin, View=View, QueryDict=QueryDict, Http404=Http404,
                             JsonResponse=JsonResponse, FileResponse=FileResponse, tempfile=tempfile, zipfile=zipfile,
                             hashlib=hashlib, datetime=datetime, timezone=dt_timezone, json=json, DjangoJSONEncoder=DjangoJSONEncoder,
                             require_action_permission=Mock(), action_queryset=lambda *args: Group.objects.none(), serialize_object=Mock(),
-                            CONFIG={"healthfinding": (Group, InventoryFilter, "archive_export", "health.zip")})
+                            CONFIG={"healthfinding": (Group, InventoryFilter, "archive_export", "health.zip")},
+                            empty_export_response=definitions("netbox_certificates/empty_exports.py", ["empty_export_response"], JsonResponse=JsonResponse)["empty_export_response"])
         response = scope["MetadataArchiveExportView"]().get(self.request, "healthfinding")
         self.assertEqual(response.status_code, 200)
-        archive = zipfile.ZipFile(io.BytesIO(b"".join(response.streaming_content)))
-        response.close()
-        self.assertEqual(json.loads(archive.read("objects.json")), [])
-        self.assertEqual(json.loads(archive.read("manifest.json"))["count"], 0)
+        self.assertNotIn("Content-Disposition", response)
+        self.assertEqual(json.loads(response.content)["count"], 0)
+        self.assertIn("no objects", json.loads(response.content)["warning"])
 
     def test_empty_query_and_display_options_preserve_results(self):
         Group.objects.create(name="kept")

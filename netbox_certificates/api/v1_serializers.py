@@ -1,15 +1,15 @@
 from django.db import transaction
 from rest_framework import serializers
+from django.core.exceptions import ValidationError as DjangoValidationError
+from ..validation import validate_endpoint_url, validate_headers
 from netbox.api.serializers import PrimaryModelSerializer
 from netbox.models import NetBoxModel
 from netbox.models.features import model_is_public
 
-from ..models import ArtifactGroup, Bundle, Certificate, CSR, PrivateKey
 from ..models_v1 import (
     AlertChannel,
     AlertEvent,
     AlertRule,
-    CertificatePolicy,
     HealthFinding,
     ObjectLink,
     Service,
@@ -34,25 +34,11 @@ class ServiceSerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):
             "id", "url", "display_url", "display", "name", "status", "service_type", "other_type",
             "deployment", "deployment_metadata", "environment", "protocol", "primary_url", "additional_urls",
             "hostname", "port", "sni_name", "criticality", "external_reference", "contact",
-            "enabled", "policy", "groups", "certificates", "private_keys", "csrs", "bundles",
+            "enabled", "groups", "certificates", "private_keys", "csrs", "bundles",
             "owner", "description", "comments", "tags", "custom_fields",
             "created", "last_updated",
         )
         brief_fields = ("id", "url", "display_url", "display", "name", "status", "service_type", "hostname")
-
-
-class CertificatePolicySerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):
-    class Meta:
-        model = CertificatePolicy
-        fields = (
-            "id", "url", "display_url", "display", "name", "enabled", "minimum_rsa_bits", "allowed_key_types",
-            "allowed_signature_algorithms", "allowed_curves", "max_validity_days",
-            "require_san", "allow_wildcards", "allow_ca", "allowed_issuers",
-            "forbid_key_reuse", "certificates", "csrs", "bundles",
-            "owner", "description", "comments", "tags", "custom_fields",
-            "created", "last_updated",
-        )
-        brief_fields = ("id", "url", "display_url", "display", "name", "enabled")
 
 
 class ObjectLinkSerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):
@@ -183,6 +169,12 @@ class AlertChannelSerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):
         smtp_password = attrs.pop("smtp_password", None)
         webhook_url = attrs.pop("webhook_url", None)
         webhook_headers = attrs.pop("webhook_headers", None)
+        for field, value, validator in (("webhook_url", webhook_url, lambda value: validate_endpoint_url(value, http_only=True)), ("webhook_headers", webhook_headers, validate_headers)):
+            if value is not None:
+                try:
+                    validator(value)
+                except DjangoValidationError as exc:
+                    raise serializers.ValidationError({field: exc.messages}) from exc
         channel_type = attrs.get("channel_type", getattr(self.instance, "channel_type", None))
         recipients = attrs.get("recipients", getattr(self.instance, "recipients", []))
         if channel_type == "email" and not recipients:
@@ -221,7 +213,7 @@ class AlertRuleSerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):
             "id", "url", "display_url", "display", "name", "enabled", "finding_codes", "categories",
             "severities", "statuses", "object_types", "tag_names", "owner_ids",
             "cooldown_minutes", "repeat_minutes",
-            "notify_on_recovery", "channels", "services", "policies", "groups",
+            "notify_on_recovery", "channels", "services", "groups",
             "owner", "description", "comments", "tags", "custom_fields",
             "created", "last_updated",
         )

@@ -4,7 +4,7 @@
 {% block content %}
 <div class="d-flex gap-2 mb-3">
 {% if perms.netbox_certificates.run_healthscan_healthfinding %}<form method="post" action="{% url 'plugins:netbox_certificates:health_refresh' %}">{% csrf_token %}<button class="btn btn-primary">Run health scan</button></form>{% endif %}
-{% if perms.netbox_certificates.view_certificatepolicy %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:certificatepolicy_list' %}">Policies</a>{% endif %}
+
 {% if perms.netbox_certificates.archive_export_healthfinding %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:healthfinding_archive_export' %}?{{ filter_query }}">Export findings</a>{% endif %}
 </div>
 <h2>Certificate expiration</h2>

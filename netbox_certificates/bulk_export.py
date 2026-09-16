@@ -1,3 +1,4 @@
+from .empty_exports import empty_export_response
 import hashlib
 import json
 import tempfile
@@ -185,6 +186,11 @@ class BulkMaterialExportView(LoginRequiredMixin, View):
     def get(self, request, kind):
         if kind == "bundle":
             require_action_permission(Bundle, request.user, "export")
+            queryset, errors, _ = apply_current_filters(BundleV1FilterSet, request, action_queryset(Bundle, request.user, "export"))
+            if errors is not None:
+                return HttpResponse(f"Invalid export filters:\n{errors.as_text()}", status=400, content_type="text/plain")
+            if not queryset.exists():
+                return empty_export_response(request)
             from .forms import BundleExportForm
             form = BundleExportForm()
             form.fields["archive_format"].choices = (("zip", "ZIP"),)
@@ -233,6 +239,8 @@ class BulkMaterialExportView(LoginRequiredMixin, View):
                 status=400,
                 content_type="text/plain; charset=utf-8",
             )
+        if not queryset.exists():
+            return empty_export_response(request)
         # Defense in depth: a material-export permission does not by itself grant
         # bulk extraction of plaintext private keys. Preserve the plugin's
         # sensitive-operation superuser overlay for both direct key exports and
@@ -254,7 +262,7 @@ class BulkMaterialExportView(LoginRequiredMixin, View):
         manifest = {
             "format": "netbox-certificates-export-manifest",
             "manifest_version": 1,
-            "plugin_version": "1.1.2",
+            "plugin_version": "1.2.0",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "object_kind": kind,
             "filters": {key: filter_data.getlist(key) for key in filter_data.keys()},
@@ -339,7 +347,7 @@ class SingleBundleArchiveExportView(LoginRequiredMixin, View):
         manifest = {
             "format": "netbox-certificates-export-manifest",
             "manifest_version": 1,
-            "plugin_version": "1.1.2",
+            "plugin_version": "1.2.0",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "object_kind": "bundle",
             "count": 1,

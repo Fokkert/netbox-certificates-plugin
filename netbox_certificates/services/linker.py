@@ -86,7 +86,7 @@ def resolve_certificate_parent(certificate: Certificate):
 
 
 def _bundle_members_for_fingerprint(fingerprint):
-    certificate = Certificate.objects.filter(public_key_fingerprint=fingerprint).order_by("-pk").first()
+    certificate = Certificate.objects.filter(public_key_fingerprint=fingerprint).order_by("is_ca", "-valid_to", "-pk").first()
     private_key = PrivateKey.objects.filter(public_key_fingerprint=fingerprint).order_by("-pk").first()
     csr = CSR.objects.filter(public_key_fingerprint=fingerprint).order_by("-pk").first()
     return certificate, private_key, csr
@@ -144,15 +144,10 @@ def sync_bundle_links(bundle: Bundle, origin=LinkOriginChoices.AUTOMATIC):
         bundle.save(update_fields=("status",))
 
 
-def ensure_automatic_bundle(obj, origin=LinkOriginChoices.AUTOMATIC):
-    fingerprint = getattr(obj, "public_key_fingerprint", None)
-    if not fingerprint:
-        return None
-    certificate, private_key, csr = _bundle_members_for_fingerprint(fingerprint)
-    members = [member for member in (certificate, private_key, csr) if member is not None]
-    # Any two matching primary artifact types form a valid Bundle.
-    if len(members) < 2:
-        return None
+def find_matching_bundle(fingerprint, members=None):
+    """Locate both identity-indexed bundles and older manually assembled ones."""
+    if members is None:
+        members = [member for member in _bundle_members_for_fingerprint(fingerprint) if member is not None]
     bundle = Bundle.objects.filter(identity_fingerprint=fingerprint).first()
     if bundle is None:
         candidates = Bundle.objects.filter(identity_fingerprint__isnull=True)
@@ -166,6 +161,19 @@ def ensure_automatic_bundle(obj, origin=LinkOriginChoices.AUTOMATIC):
             if candidate is not None:
                 bundle = candidate
                 break
+    return bundle
+
+
+def ensure_automatic_bundle(obj, origin=LinkOriginChoices.AUTOMATIC):
+    fingerprint = getattr(obj, "public_key_fingerprint", None)
+    if not fingerprint:
+        return None
+    certificate, private_key, csr = _bundle_members_for_fingerprint(fingerprint)
+    members = [member for member in (certificate, private_key, csr) if member is not None]
+    # Any two matching primary artifact types form a valid Bundle.
+    if len(members) < 2:
+        return None
+    bundle = find_matching_bundle(fingerprint, members)
     name = _automatic_bundle_name(certificate=certificate, private_key=private_key, csr=csr)
     if bundle is None:
         bundle = Bundle.objects.create(

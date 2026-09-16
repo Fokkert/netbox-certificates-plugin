@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.0
+
+- Replace public Certificate Policies with five global certificate checks in Alerts Configuration; migrate a single enabled policy and retain legacy rows privately.
+- Validate SMTP/email/webhook, endpoint/port, JSON, CSR, and import values consistently across forms, models, and API operations.
+- Generate CSRs using an existing Private Key with scoped `use` permission, or create a new key.
+- Improve Group hierarchy spacing, action buttons, and icons; use a shield/key plugin menu icon.
+- Return a warning for empty native/material/metadata/inventory exports, without an empty download.
+- Parse and validate mixed cryptographic uploads atomically, support large/nested batches, reuse identities, and reconcile relationships after all material is saved.
+- Add a mixed inventory ZIP export and REST endpoint with material, metadata snapshots, checksums, and scoped permissions.
+- Retire policy REST/GraphQL/search surfaces, refresh permissions, and document migration and pip-only deployment.
+- Expand standalone validation/signing/archive/route regressions and preserve prior release behavior tests.
+
+
 ## 1.1.2
 
 - Fix the missing Service import that prevented Group add/edit forms from opening; retain membership and hierarchy permission checks.

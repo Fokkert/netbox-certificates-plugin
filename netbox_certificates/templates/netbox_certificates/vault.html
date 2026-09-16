@@ -7,6 +7,7 @@
   <div class="vault-intro">
     <div><span class="vault-eyebrow">CERTIFICATE MANAGEMENT</span><h2>Your cryptographic inventory</h2><p class="text-muted mb-0">Certificates, keys, and the services that depend on them.</p></div>
     <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:inventory_export' %}"><i class="mdi mdi-download me-1" aria-hidden="true"></i> Export inventory</a>
       {% if perms.netbox_certificates.add_certificate or perms.netbox_certificates.add_privatekey or perms.netbox_certificates.add_csr %}<a class="btn btn-primary" href="{% url 'plugins:netbox_certificates:import_objects' %}"><i class="mdi mdi-upload me-1" aria-hidden="true"></i> Import material</a>{% endif %}
       {% if perms.netbox_certificates.view_artifactgroup %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_list' %}">Browse groups</a>{% endif %}
     </div>

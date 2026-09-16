@@ -109,6 +109,8 @@ def _certificate_parsed(cert: x509.Certificate, source_format: str) -> ParsedArt
 
 def _csr_parsed(csr: x509.CertificateSigningRequest, source_format: str) -> ParsedArtifact:
     if not csr.is_signature_valid:
+        raise ArtifactParseError("The CSR signature is invalid.")
+    if not csr.is_signature_valid:
         raise ArtifactParseError("The CSR is structurally readable, but its cryptographic signature is invalid.")
     pem = csr.public_bytes(serialization.Encoding.PEM)
     pub = csr.public_key()

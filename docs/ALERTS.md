@@ -23,7 +23,7 @@ Supported types:
 
 Email channels configure SMTP host/port/username, TLS/SSL, sender and recipients. SMTP passwords are encrypted at rest.
 
-Webhook URLS and headers are encrypted at rest.
+Webhook URLs and headers are encrypted at rest.
 
 ### AlertRule
 
@@ -40,7 +40,6 @@ Every scope is optional. Available controls include:
 - owner;
 - Service;
 - Group;
-- Certificate Policy;
 - cooldown;
 - repeat interval;
 - notification on recovery.
@@ -61,7 +60,7 @@ Health continues to show the normal 90-day expiration overview and creates earli
 
 ## Security
 
-SMTP passwords, webhook URLS and webhook headers are never emitted in ordinary serializers, GraphQL or metadata archives.
+SMTP passwords, webhook URLs and webhook headers are never emitted in ordinary serializers, GraphQL or metadata archives.
 
 Changing the plugin Fernet key without migrating encrypted data will make existing stored secrets/private keys undecryptable.
 
@@ -80,3 +79,9 @@ The unified 1.0 system job:
 1. refreshes established certificate validity/status fields;
 2. refreshes Health Findings;
 3. evaluates and dispatches Alert Rules.
+
+## Certificate checks in 1.2.0
+
+The settings page also defines the five global certificate requirements described in [Retired policy migration](POLICIES.md). These settings affect Health findings, independently of whether notification delivery is enabled. Expiration timing remains per certificate; no global expiration threshold is added.
+
+Invalid email addresses, SMTP hostnames and ports, webhook URLs/headers, and timing values are rejected even for disabled destinations. Clear webhook headers by submitting `{}`; leave the field blank to retain stored headers. Test buttons use the same validation before saving and sending the sample.

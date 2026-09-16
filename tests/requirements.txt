@@ -4,3 +4,4 @@ requests>=2.32
 django-filter>=25,<26
 djangorestframework>=3.16,<3.17
 drf-spectacular>=0.28,<0.30
+pyflakes>=3.4,<4

@@ -1,11 +1,22 @@
 {% for node in nodes %}
-<li class="mb-2">
-{% if node.children or node.members %}<details data-group-id="{{ node.id }}" open><summary>{% else %}<div class="ms-3">{% endif %}
-{% if perms.netbox_certificates.change_artifactgroup or perms.netbox_certificates.delete_artifactgroup %}<input class="form-check-input me-2" type="checkbox" name="pk" value="{{ node.id }}" aria-label="Select group {{ node.name }}">{% endif %}
-<i class="mdi mdi-folder-outline text-muted" aria-hidden="true"></i> <a href="{{ node.url }}">{{ node.name }}</a>
-<span class="text-muted ms-2">{{ node.service_count }} services · {{ node.artifact_count }} artifacts</span>
-{% if perms.netbox_certificates.add_artifactgroup %}<a class="btn btn-sm btn-link" href="{% url 'plugins:netbox_certificates:artifactgroup_add' %}?parent={{ node.id }}" aria-label="Add subgroup to {{ node.name }}">Create subgroup</a>{% endif %}
-{% if perms.netbox_certificates.change_artifactgroup %}<a class="btn btn-sm btn-link" href="{% url 'plugins:netbox_certificates:artifactgroup_edit' pk=node.id %}">Rename / move</a>{% endif %}
-{% if node.children or node.members %}</summary><ul class="list-unstyled ms-4 border-start ps-3">{% include 'netbox_certificates/inc/group_tree_nodes.html' with nodes=node.children %}{% for member in node.members %}<li class="py-1"><a href="{{ member.url }}">{{ member.name }}</a> <span class="text-muted small ms-2">{{ member.type }}</span></li>{% endfor %}</ul></details>{% else %}</div>{% endif %}
+<li class="group-node">
+<details data-group-id="{{ node.id }}" open>
+  <summary class="group-row">
+    {% if perms.netbox_certificates.change_artifactgroup or perms.netbox_certificates.delete_artifactgroup %}<input class="form-check-input" type="checkbox" name="pk" value="{{ node.id }}" aria-label="Select group {{ node.name }}">{% endif %}
+    <i class="mdi mdi-layers-triple-outline group-icon" aria-hidden="true"></i>
+    <a class="group-name" href="{{ node.url }}">{{ node.name }}</a>
+    <span class="text-muted small">{{ node.service_count }} services · {{ node.artifact_count }} artifacts</span>
+    <span class="group-actions">
+      {% if perms.netbox_certificates.add_artifactgroup %}<a class="btn btn-sm btn-outline-primary" href="{% url 'plugins:netbox_certificates:artifactgroup_add' %}?parent={{ node.id }}"><i class="mdi mdi-plus" aria-hidden="true"></i> Subgroup</a>{% endif %}
+      {% if perms.netbox_certificates.change_artifactgroup %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_edit' pk=node.id %}"><i class="mdi mdi-pencil-outline" aria-hidden="true"></i> Rename / move</a>{% endif %}
+      {% if perms.netbox_certificates.delete_artifactgroup %}<a class="btn btn-sm btn-outline-danger" href="{% url 'plugins:netbox_certificates:artifactgroup_delete' pk=node.id %}"><i class="mdi mdi-delete-outline" aria-hidden="true"></i> Delete</a>{% endif %}
+    </span>
+  </summary>
+  <ul class="group-children list-unstyled">
+    {% include 'netbox_certificates/inc/group_tree_nodes.html' with nodes=node.children %}
+    {% for member in node.members %}<li class="group-member"><a href="{{ member.url }}">{{ member.name }}</a><span class="text-muted small">{{ member.type }}</span></li>{% endfor %}
+    {% if not node.children and not node.members %}<li class="group-member text-muted">No objects in this group.</li>{% endif %}
+  </ul>
+</details>
 </li>
 {% endfor %}

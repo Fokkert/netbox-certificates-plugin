@@ -2,6 +2,7 @@
 {% load static %}
 {% block title %}Groups{% endblock %}
 {% block content %}
+<link rel="stylesheet" href="{% static 'netbox_certificates/groups.css' %}">
 <div class="d-flex flex-wrap gap-2 mb-3">
 {% if perms.netbox_certificates.add_artifactgroup %}<a class="btn btn-primary" href="{% url 'plugins:netbox_certificates:artifactgroup_add' %}">Create group</a>{% endif %}
 {% if perms.netbox_certificates.archive_export_artifactgroup %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_archive_export' %}?{{ request.GET.urlencode }}">Export groups</a>{% endif %}

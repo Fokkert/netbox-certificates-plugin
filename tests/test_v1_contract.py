@@ -67,7 +67,7 @@ class VersionOneFeatureContracts(unittest.TestCase):
             "PRIVATE_KEY_REUSED_ACROSS_SERVICES",
             "NON_WILDCARD_CERT_REUSED_ACROSS_SERVICES",
             "SINGLE_HOST_CERT_SHARED_ACROSS_SERVICES",
-            "CERTIFICATE_POLICY_VIOLATION",
+            "CERTIFICATE_SETTINGS_VIOLATION",
         ):
             self.assertIn(code, health)
         self.assertIn("verify_directly_issued_by", health)
@@ -102,7 +102,6 @@ class VersionOneFeatureContracts(unittest.TestCase):
             "PrivateKeyIndex",
             "CSRIndex",
             "BundleIndex",
-            "CertificatePolicyIndex",
             "HealthFindingIndex",
         ):
             self.assertIn(f"class {klass}", search)

@@ -4,7 +4,7 @@ A Service represents a system, application, or endpoint that consumes certificat
 
 ## Quick setup
 
-Choose a type, environment, deployment preset, and protocol. Enter a primary URL and select certificates or bundles. Leave port, hostname, and SNI blank to derive them from the URL and protocol. Additional URLS accept one URL per line. All fields stay visible, with certificates and private keys together. Existing custom deployment and protocol values remain selectable when editing.
+Choose a type, environment, deployment preset, and protocol. Enter a primary URL and select certificates or bundles. Leave port, hostname, and SNI blank to derive them from the URL and protocol. Additional URLs accept one URL per line. All fields stay visible, with certificates and private keys together. Existing custom deployment and protocol values remain selectable when editing.
 
 ## Metadata
 
@@ -19,14 +19,13 @@ Service fields include:
 - deployment metadata
 - protocol
 - primary URL
-- additional URLS
+- additional URLs
 - hostname
 - port
 - SNI name
 - external reference
 - contact
 - enabled state
-- Certificate Policy
 - owner
 - tags
 - custom fields
@@ -62,8 +61,10 @@ Service endpoint identities are derived from:
 - primary URL hostname
 - additional URL hostnames
 
-The Health engine compares these identities with linked Certificate SANS and reports uncovered names, mismatched keys/CSRs, private-key reuse, and suspicious non-wildcard certificate sharing.
+The Health engine compares these identities with linked Certificate SANs and reports uncovered names, mismatched keys/CSRs, private-key reuse, and suspicious non-wildcard certificate sharing.
 
 ## Editor layout
 
-Every section is visible: Service, Endpoints, Cryptographic artifacts, Organization and policy, and Metadata. Certificates and private keys are adjacent, followed by CSRs and bundles. There is no collapsible Advanced section. Additional URLS use one URL per line, and empty hostname/SNI/port fields derive from the primary URL and protocol.
+Every section is visible: Service, Endpoints, Cryptographic artifacts, Organization, and Metadata. Certificates and private keys are adjacent, followed by CSRs and bundles. There is no collapsible Advanced section. Additional URLs use one URL per line, and empty hostname/SNI/port fields derive from the primary URL and protocol.
+
+Ports must be integers from 1 to 65535. Hostname/SNI and every endpoint URL are validated in the model, including API and bulk updates. Deployment metadata must be a JSON object. Certificate requirements are configured globally in Alerts Configuration; Services no longer have policy assignments.

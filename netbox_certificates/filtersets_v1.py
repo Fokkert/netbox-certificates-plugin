@@ -11,7 +11,6 @@ from .models_v1 import (
     AlertChannel,
     AlertEvent,
     AlertRule,
-    CertificatePolicy,
     HealthFinding,
     ObjectLink,
     Service,
@@ -44,7 +43,6 @@ class ServiceFilterSet(PrimaryModelFilterSet):
     private_key_id = django_filters.ModelMultipleChoiceFilter(field_name="private_keys", queryset=PrivateKey.objects.all())
     csr_id = django_filters.ModelMultipleChoiceFilter(field_name="csrs", queryset=CSR.objects.all())
     bundle_id = django_filters.ModelMultipleChoiceFilter(field_name="bundles", queryset=Bundle.objects.all())
-    policy_id = django_filters.ModelMultipleChoiceFilter(field_name="policy", queryset=CertificatePolicy.objects.all())
     additional_url = django_filters.CharFilter(method="filter_additional_url")
 
     class Meta:
@@ -67,7 +65,6 @@ class ServiceFilterSet(PrimaryModelFilterSet):
             "external_reference",
             "contact",
             "enabled",
-            "policy",
             "description",
         )
 
@@ -100,46 +97,6 @@ class ServiceFilterSet(PrimaryModelFilterSet):
         if not isinstance(parsed, dict):
             return queryset.none()
         return queryset.filter(deployment_metadata__contains=parsed)
-
-
-@register_filterset
-class CertificatePolicyFilterSet(PrimaryModelFilterSet):
-    q = django_filters.CharFilter(method="search")
-    allowed_key_types = django_filters.CharFilter(method="filter_json")
-    allowed_signature_algorithms = django_filters.CharFilter(method="filter_json")
-    allowed_curves = django_filters.CharFilter(method="filter_json")
-    allowed_issuers = django_filters.CharFilter(method="filter_json")
-    certificate_id = django_filters.ModelMultipleChoiceFilter(field_name="certificates", queryset=Certificate.objects.all())
-    csr_id = django_filters.ModelMultipleChoiceFilter(field_name="csrs", queryset=CSR.objects.all())
-    bundle_id = django_filters.ModelMultipleChoiceFilter(field_name="bundles", queryset=Bundle.objects.all())
-
-    class Meta:
-        model = CertificatePolicy
-        fields = (
-            "id",
-            "name",
-            "enabled",
-            "minimum_rsa_bits",
-            "max_validity_days",
-            "require_san",
-            "allow_wildcards",
-            "allow_ca",
-            "forbid_key_reuse",
-            "description",
-        )
-
-    def search(self, queryset, name, value):
-        value = value.strip()
-        if not value:
-            return queryset
-        return queryset.filter(
-            Q(name__icontains=value)
-            | Q(description__icontains=value)
-            | Q(comments__icontains=value)
-        )
-
-    def filter_json(self, queryset, name, value):
-        return _json_value_filter(queryset, name, value)
 
 
 @register_filterset
@@ -284,7 +241,6 @@ class AlertRuleFilterSet(PrimaryModelFilterSet):
     owner_ids = django_filters.CharFilter(method="filter_json")
     channel_id = django_filters.ModelMultipleChoiceFilter(field_name="channels", queryset=AlertChannel.objects.all())
     service_id = django_filters.ModelMultipleChoiceFilter(field_name="services", queryset=Service.objects.all())
-    policy_id = django_filters.ModelMultipleChoiceFilter(field_name="policies", queryset=CertificatePolicy.objects.all())
     group_id = django_filters.ModelMultipleChoiceFilter(field_name="groups", queryset=ArtifactGroup.objects.all())
 
     class Meta:

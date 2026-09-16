@@ -7,7 +7,7 @@ from .filtersets import (
     CSRFilterSet,
     PrivateKeyFilterSet,
 )
-from .models_v1 import CertificatePolicy, Service
+from .models_v1 import Service
 
 
 class ArtifactGroupV1FilterSet(ArtifactGroupFilterSet):
@@ -23,11 +23,6 @@ class CertificateV1FilterSet(CertificateFilterSet):
         field_name="services",
         queryset=Service.objects.all(),
         label="Service",
-    )
-    policy_id = django_filters.ModelMultipleChoiceFilter(
-        field_name="certificate_policies",
-        queryset=CertificatePolicy.objects.all(),
-        label="Certificate policy",
     )
 
 
@@ -45,11 +40,6 @@ class CSRV1FilterSet(CSRFilterSet):
         queryset=Service.objects.all(),
         label="Service",
     )
-    policy_id = django_filters.ModelMultipleChoiceFilter(
-        field_name="certificate_policies",
-        queryset=CertificatePolicy.objects.all(),
-        label="Certificate policy",
-    )
 
 
 class BundleV1FilterSet(BundleFilterSet):
@@ -57,9 +47,4 @@ class BundleV1FilterSet(BundleFilterSet):
         field_name="services",
         queryset=Service.objects.all(),
         label="Service",
-    )
-    policy_id = django_filters.ModelMultipleChoiceFilter(
-        field_name="certificate_policies",
-        queryset=CertificatePolicy.objects.all(),
-        label="Certificate policy",
     )

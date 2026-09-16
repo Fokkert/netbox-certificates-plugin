@@ -3,6 +3,10 @@ import tarfile
 import zipfile
 
 from django.http import HttpResponse
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
+from .csr_generation import CSRGenerationSerializer
+from .import_options import ImportOptionsSerializer, ImportRequestSerializer
 from django.utils.http import content_disposition_header
 from django.db.models import F
 from django.utils import timezone
@@ -14,7 +18,6 @@ from rest_framework.exceptions import APIException, MethodNotAllowed, Permission
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from netbox.api.viewsets import NetBoxModelViewSet
-from users.models import Owner
 
 from netbox_certificates.constants import MAX_UPLOAD_BYTES
 from netbox_certificates.export_names import bundle_export_name, pfx_export_name
@@ -22,15 +25,12 @@ from netbox_certificates.filtersets import ArtifactGroupFilterSet, BundleFilterS
 from netbox_certificates.models import ArtifactGroup, ArtifactLink, Bundle, Certificate, CertificateAuthority, CSR, ExpiryAlertConfiguration, ExpiryAlertEvent, PrivateKey
 from netbox_certificates.permissions import action_queryset, object_allowed
 from netbox_certificates.services.alerts import ExpiryAlertError, run_expiry_alert_scan, send_email, send_webhook
-from netbox_certificates.services.bundles import BundleImportError, BundleImportPermissionError, import_bundle
 from netbox_certificates.services.chain import ordered_chain
-from netbox_certificates.services.csr import CSRGenerationError, generate_csr
-from netbox_certificates.services.encryption import PrivateKeyEncryptionError, decrypt_private_key, encrypt_private_key
+from netbox_certificates.services.csr import CSRGenerationError
+from netbox_certificates.services.encryption import PrivateKeyEncryptionError, decrypt_private_key
 from netbox_certificates.services.expiry import expiry_state
-from netbox_certificates.services.importing import _check_created_permission
-from netbox_certificates.services.ingest import after_artifact_save
 from netbox_certificates.services.inventory import build_inventory
-from netbox_certificates.services.parser import ArtifactParseError, parse_blob
+from netbox_certificates.services.parser import ArtifactParseError
 from netbox_certificates.services.pkcs12_export import PFXExportError, build_pfx
 from netbox_certificates.services.unified_import import UnifiedImportError, UploadItem, import_objects
 
@@ -87,13 +87,16 @@ def _archive(files, fmt):
                 info = tarfile.TarInfo(name); info.size, info.mode, info.mtime = len(data), 0o600, 0
                 archive.addfile(info, io.BytesIO(data))
         return output.getvalue(), "application/x-tar", ".tar"
-    raise PermissionDenied("Unsupported archive format. Use zip or tar.")
+    raise ValidationError({"format": "Use zip or tar."})
 
 
 def _bool_value(value, default=False):
     if value is None: return default
     if isinstance(value, bool): return value
-    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "on"}: return True
+    if text in {"0", "false", "no", "off"}: return False
+    raise ValidationError("Enter a valid boolean value.")
 
 
 def _list_value(value):
@@ -107,7 +110,7 @@ def _group_queryset(request, values):
     ids = []
     for value in values:
         try: ids.append(int(value))
-        except (TypeError, ValueError): raise APIException(f"Invalid group ID: {value!r}")
+        except (TypeError, ValueError): raise ValidationError({"groups": "Group IDs must be integers."})
     qs = ArtifactGroup.objects.restrict(request.user, "view").filter(pk__in=ids)
     if len(set(ids)) != qs.count(): raise PermissionDenied("One or more requested Groups do not exist or are not visible.")
     return list(qs)
@@ -168,30 +171,18 @@ class CSRViewSet(NetBoxModelViewSet):
         except CSR.DoesNotExist: raise PermissionDenied("CSR download permission denied.")
         return _secure_response(obj.material.encode("ascii"), _artifact_filename(obj, ".csr"), "application/pkcs10")
     @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated])
+    @extend_schema(request=CSRGenerationSerializer, responses={201: OpenApiTypes.OBJECT})
     def generate(self, request):
-        _require_superuser_token(request)
-        data = request.data; common_name = str(data.get("common_name", "")).strip()
-        if not common_name: raise APIException("common_name is required.")
-        raw_sans = data.get("sans", []); raw_sans = raw_sans if isinstance(raw_sans, (list, tuple)) else _list_value(raw_sans)
-        sans = []
-        for item in raw_sans or []:
-            if isinstance(item, dict):
-                kind, value = str(item.get("type", "DNS")).upper().strip(), str(item.get("value", "")).strip()
-                if value: sans.append(f"{kind}:{value}")
-            elif str(item).strip(): sans.append(str(item).strip())
+        _require_sensitive_token(request)
+        from ..services.csr_workflow import save_generated_csr
+        serializer = CSRGenerationSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
         try:
-            key_pem, csr_pem = generate_csr(common_name=common_name, sans=sans, key_algorithm=str(data.get("key_algorithm", "rsa")), rsa_bits=int(data.get("rsa_bits", 3072)), ec_curve=str(data.get("ec_curve", "secp256r1")), signature_hash=str(data.get("signature_hash", "sha256")), rsa_signature=str(data.get("rsa_signature", "pkcs1v15")), country=str(data.get("country", "")), state=str(data.get("state", "")), locality=str(data.get("locality", "")), organization=str(data.get("organization", "")), organizational_unit=str(data.get("organizational_unit", "")), street_address=str(data.get("street_address", "")), postal_code=str(data.get("postal_code", "")), subject_serial_number=str(data.get("subject_serial_number", "")), email=str(data.get("email", "")), key_usages=_list_value(data.get("key_usages")), extended_key_usages=_list_value(data.get("extended_key_usages")), request_ca=_bool_value(data.get("request_ca")), path_length=data.get("path_length"))
-            key_p = next(p for p in parse_blob(key_pem, filename="generated.key") if p.kind == "private_key"); csr_p = next(p for p in parse_blob(csr_pem, filename="generated.csr") if p.kind == "csr")
-        except (CSRGenerationError, ArtifactParseError, StopIteration, TypeError, ValueError) as exc: raise APIException(str(exc)) from exc
-        groups = _group_queryset(request, _list_value(data.get("groups"))) if data.get("groups") is not None else []
-        from django.db import transaction
-        with transaction.atomic():
-            key_meta = {k: v for k, v in key_p.metadata.items() if k != "curve"}
-            key = PrivateKey.objects.create(name=str(data.get("name") or common_name) + " key", source_filename="generated.key", source_format="pem", encrypted_material=encrypt_private_key(key_p.data), **key_meta); _check_created_permission(request.user, key)
-            csr = CSR.objects.create(name=str(data.get("name") or common_name), source_filename="generated.csr", source_format="pem", material=csr_p.data.decode("ascii"), **csr_p.metadata); _check_created_permission(request.user, csr)
-            if groups: key.groups.add(*groups); csr.groups.add(*groups)
-            after_artifact_save(key); after_artifact_save(csr)
-        return Response({"csr": CSRSerializer(csr, context={"request": request}).data, "private_key": PrivateKeySerializer(key, context={"request": request}).data}, status=status.HTTP_201_CREATED)
+            csr, key = save_generated_csr(serializer.validated_data, request.user)
+        except (CSRGenerationError, ArtifactParseError, PrivateKeyEncryptionError, ValueError) as exc:
+            raise ValidationError({"detail": str(exc)}) from exc
+        return Response({"csr": CSRSerializer(csr, context={"request": request}).data,
+                         "private_key": PrivateKeySerializer(key, context={"request": request}).data}, status=status.HTTP_201_CREATED)
 
 
 class BundleViewSet(NetBoxModelViewSet):
@@ -204,16 +195,16 @@ class BundleViewSet(NetBoxModelViewSet):
         try: bundle = action_queryset(Bundle, request.user, action_name).select_related("certificate", "private_key", "csr").prefetch_related("chain_certificates").get(pk=pk)
         except Bundle.DoesNotExist: raise PermissionDenied("Bundle export permission denied.")
         if pfx or bundle.private_key is not None: _require_superuser_token(request)
-        if sum(member is not None for member in (bundle.certificate, bundle.private_key, bundle.csr)) < 2: raise APIException("A Bundle must contain at least two matching primary objects before export.")
+        if sum(member is not None for member in (bundle.certificate, bundle.private_key, bundle.csr)) < 2: raise ValidationError("A Bundle must contain at least two matching primary objects before export.")
         fmt, include_chain = str(request.data.get("format", "zip")).lower(), _bool_value(request.data.get("include_chain"), False)
         if pfx:
-            if bundle.certificate is None or bundle.private_key is None: raise APIException("PFX export requires a certificate and matching private key.")
+            if bundle.certificate is None or bundle.private_key is None: raise ValidationError("PFX export requires a certificate and matching private key.")
             chain = []
             if include_chain:
                 chain = ordered_chain(bundle.certificate); chain.extend(c for c in bundle.chain_certificates.all() if c.pk not in {x.pk for x in chain})
             try: pfx_data = build_pfx(bundle, str(request.data.get("password", "")), chain_certificates=chain,
                                       allow_unencrypted=_bool_value(request.data.get("allow_unencrypted_pfx"), False))
-            except PFXExportError as exc: raise APIException(str(exc)) from exc
+            except PFXExportError as exc: raise ValidationError({"pfx": str(exc)}) from exc
             files = [(pfx_export_name(bundle), pfx_data)]
             if bundle.csr: files.append((_artifact_filename(bundle.csr, ".csr"), bundle.csr.material.encode("ascii")))
         else:
@@ -300,6 +291,8 @@ class UnifiedImportAPIView(APIView):
     ca_only = False
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
+
+    @extend_schema(request=ImportRequestSerializer, responses={201: OpenApiTypes.OBJECT})
     def post(self, request):
         _require_sensitive_token(request)
         uploads = request.FILES.getlist("files")
@@ -311,13 +304,13 @@ class UnifiedImportAPIView(APIView):
         allowed_kinds = {kind for kind, permission in {"certificate": "netbox_certificates.add_certificate", "csr": "netbox_certificates.add_csr"}.items() if request.user.has_perm(permission)}
         auth = getattr(request, "auth", None)
         if getattr(request.user, "is_superuser", False) and auth is not None and getattr(auth, "write_enabled", False) and request.user.has_perm("netbox_certificates.add_privatekey"): allowed_kinds.add("private_key")
-        groups_raw = request.data.getlist("groups") if hasattr(request.data, "getlist") else _list_value(request.data.get("groups"))
-        if not groups_raw and request.data.get("groups"): groups_raw = _list_value(request.data.get("groups"))
-        groups = _group_queryset(request, groups_raw) if groups_raw else []
-        owner = Owner.objects.filter(pk=request.data.get("owner")).first() if request.data.get("owner") else None
+        options = ImportOptionsSerializer(data=request.data, context={"request": request})
+        options.is_valid(raise_exception=True)
+        values = options.validated_data
+        values["ca_only"] = self.ca_only or values.get("ca_only", False)
         items = [UploadItem(upload.name, upload.read()) for upload in uploads]
         try:
-            result = import_objects(ca_only=self.ca_only or _bool_value(request.data.get("ca_only"), False), uploads=items, allowed_kinds=allowed_kinds, user=request.user, owner=owner, groups=groups, password=request.data.get("password") or None, archive_password=request.data.get("archive_password") or None, import_chain=_bool_value(request.data.get("import_chain"), True), preserve_archive=_bool_value(request.data.get("preserve_archive"), True), description=str(request.data.get("description", "")), comments=str(request.data.get("comments", "")))
+            result = import_objects(uploads=items, allowed_kinds=allowed_kinds, user=request.user, **values)
         except UnifiedImportError as exc:
             raise ValidationError({"files": [str(exc)]}) from exc
         if result["mode"] == "bundle":
@@ -329,4 +322,4 @@ class UnifiedImportAPIView(APIView):
             elif isinstance(obj, Bundle): data = BundleSerializer(obj, context={"request": request}).data
             else: data = CSRSerializer(obj, context={"request": request}).data
             created.append({"type": obj._meta.model_name, "object": data})
-        return Response({"mode": "objects", "created": created, "reused_ca_ids": [obj.pk for obj in result.get("reused", [])], "bundle_ids": [obj.pk for obj in result.get("bundles", [])]}, status=status.HTTP_201_CREATED)
+        return Response({"mode": "objects", "created": created, "reused_ca_ids": [obj.pk for obj in result.get("reused", []) if isinstance(obj, Certificate) and obj.is_ca], "reused": [{"type": obj._meta.model_name, "id": obj.pk} for obj in result.get("reused", [])], "ignored_files": result.get("ignored_files", []), "bundle_ids": [obj.pk for obj in result.get("bundles", [])]}, status=status.HTTP_201_CREATED)

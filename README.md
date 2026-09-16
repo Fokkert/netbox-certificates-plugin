@@ -1,6 +1,6 @@
 # NetBox Certificates Plugin
 
-NetBox Certificates Plugin adds certificate inventory and lifecycle management to NetBox. It manages X.509 certificates, encrypted private keys, CSRs, bundles, service relationships, certificate health, policy checks, alerting, imports, secure exports, and links to native NetBox objects.
+NetBox Certificates Plugin adds certificate inventory and lifecycle management to NetBox. It manages X.509 certificates, encrypted private keys, CSRs, bundles, service relationships, certificate health, configurable checks, alerting, imports, secure exports, and links to native NetBox objects.
 
 ## Compatibility
 
@@ -9,21 +9,21 @@ NetBox Certificates Plugin adds certificate inventory and lifecycle management t
 | NetBox | 4.5.9, 4.5.10 |
 | Python | 3.12+ |
 | `cryptography` | 42+ |
-| Release | 1.1.2 |
-| Upgrade source | 1.1.1 (older migrations retained) |
+| Release | 1.2.0 |
+| Upgrade source | 1.1.2 (older migrations retained) |
 
 ## Features
 
 - X.509 certificate inventory with parsed subject, issuer, SAN, validity, fingerprint, signature, key, and CA metadata
 - encrypted private-key storage
-- CSR inventory and generation
+- CSR inventory and generation using a new or existing private key
 - certificate/key/CSR bundles with cryptographic identity validation
 - Certificate Authorities view for imported CA certificates
 - hierarchical Groups with expandable subgroups and visible member objects, plus selection for bulk operations
 - Services for modeling certificate consumers and deployment metadata
 - many-to-many Service relationships to Certificates, Private Keys, CSRs, Bundles, and Groups
 - generic links from plugin objects to native NetBox objects such as Devices, VMs, Interfaces, IP Addresses, Sites, Circuits, VLANs, VRFs, Tenants, and Clusters
-- Certificate Policies
+- minimal global certificate checks within Alerts Configuration
 - Health and Validity findings for expiration, chain problems, weak algorithms, duplicates, mismatches, orphaned objects, Service/SAN conflicts, and key reuse
 - configurable SMTP and webhook alerts based on Health findings
 - unified object import for PEM, DER, PKCS#7/CMS, PKCS#12/PFX, and supported archives
@@ -56,13 +56,13 @@ OPERATIONS
 
 A Service represents a system or endpoint that consumes certificate material. Examples include websites, APIs, repositories, reverse proxies, load balancers, Kubernetes endpoints, mail systems, VPNs, databases, registries, and internal applications.
 
-Service metadata includes status, type, environment, deployment, deployment metadata, protocol, URLS, hostname, port, SNI name, criticality, external reference, contact, owner, tags, custom fields, description, and comments.
+Service metadata includes status, type, environment, deployment, deployment metadata, protocol, URLs, hostname, port, SNI name, criticality, external reference, contact, owner, tags, custom fields, description, and comments.
 
-`deployment` provides a dropdown of common technologies and a custom-name option. Protocols use dropdowns and default ports; a primary URL fills blank hostname/SNI/port fields. Additional URLS use one URL per line. All fields stay visible. Certificates, private keys, CSRs, and bundles share one Cryptographic artifacts section; organization, endpoints, and metadata have their own sections. `deployment_metadata` stores deployment-specific structured metadata such as a namespace, secret name, ingress name, virtual host, or configuration reference.
+`deployment` provides a dropdown of common technologies and a custom-name option. Protocols use dropdowns and default ports; a primary URL fills blank hostname/SNI/port fields. Additional URLs use one URL per line. All fields stay visible. Certificates, private keys, CSRs, and bundles share one Cryptographic artifacts section; organization, endpoints, and metadata have their own sections. `deployment_metadata` stores deployment-specific structured metadata such as a namespace, secret name, ingress name, virtual host, or configuration reference.
 
 ## Certificate Authorities
 
-The Certificate Authorities view lists imported `Certificate` objects with X.509 `CA=true`, including roots, intermediates, and subordinate CAS. The dedicated **Import CA Certificates** action accepts only X.509 Basic Constraints `CA=true`. Leaf certificates, certificates without that extension, keys, CSRs, and mixed CA/non-CA uploads are rejected before saving anything. Root and chain resolution are maintained internally from certificate relationships.
+The Certificate Authorities view lists imported `Certificate` objects with X.509 `CA=true`, including roots, intermediates, and subordinate CAs. The dedicated **Import CA Certificates** action accepts only X.509 Basic Constraints `CA=true`. Leaf certificates, certificates without that extension, keys, CSRs, and mixed CA/non-CA uploads are rejected before saving anything. Root and chain resolution are maintained internally from certificate relationships.
 
 ## Cryptographic Vault
 
@@ -70,7 +70,7 @@ Cryptographic Vault uses a responsive, neutral layout with clickable inventory c
 
 ## Health and Validity
 
-The combined page shows expiration counts, upcoming/expired certificates, findings, filtering, policy access, and a health-scan action. The old Expiration Dashboard URL redirects here.
+The combined page shows expiration counts, upcoming/expired certificates, findings, filtering and a health-scan action. The old Expiration Dashboard URL redirects here.
 
 Health findings are persistent, searchable NetBox objects with severity, status, evidence, affected object, related object, and detection timestamps.
 
@@ -85,22 +85,20 @@ Checks include:
 - incomplete or mismatched Bundles
 - orphaned private keys
 - Certificate/Private Key/CSR relationship mismatches
-- Service hostname, URL, and SNI coverage against certificate SANS
+- Service hostname, URL, and SNI coverage against certificate SANs
 - private-key reuse across Services
 - non-wildcard certificate reuse across unrelated Service endpoints
-- Certificate Policy violations
+- configured certificate requirement violations
 
-## Certificate Policies
+## Certificate checks
 
-Policies can enforce certificate requirements such as minimum RSA size, permitted key and signature algorithms, permitted curves, maximum validity, SAN requirements, wildcard rules, CA eligibility, issuer restrictions, and private-key reuse policy.
-
-Policies can be assigned to Services, Certificates, CSRs, and Bundles.
+Set minimum RSA size, optional maximum validity, SAN requirements, wildcard allowance, and key reuse handling directly in **Alerts Configuration**. These global settings apply to Certificates and CSRs; no separate policy definitions or assignments are needed. The settings are evaluated by health scans and violations can be selected as an alert category.
 
 ## Alerts
 
 **Alerts Configuration** is a single settings page for superusers: choose email/webhook delivery, categories and severities, cooldowns, repeats, and recovery alerts. Expiration alerts follow each certificate’s **Alert Trigger** and **Trigger Unit**, defaulting to **1 month**. Both fields are available as certificate table columns. Clear both fields to disable expiration alerts for one certificate. Email and webhook TLS verification can be disabled independently for untrusted destinations. Existing rules remain available as advanced configuration.
 
-Alert Rules select Health findings by code, category, severity, status, object type, tag, owner, Service, Group, or Policy. Global expiration thresholds are no longer used.
+Alert Rules select Health findings by code, category, severity, status, object type, tag, owner, Service or Group. Global expiration thresholds are no longer used.
 
 Alert Channels support SMTP and HTTP webhooks. SMTP passwords and webhook configuration are encrypted at rest with the plugin Fernet key.
 
@@ -121,13 +119,17 @@ The unified importer supports:
 - multiple unrelated objects in one request
 - multiple Bundle candidates grouped by matching public-key identity
 
-Ambiguous cryptographic matches are rejected instead of guessed.
+Files are detected by content. Mixed uploads are validated before any writes, deduplicated by cryptographic identity, and linked after the complete batch is stored. Certificates, keys, CSRs, and bundles can be imported together across multiple archives. Invalid input or insufficient permissions rolls back the batch. The CA-only action rejects all non-CA content.
+
+Limits are 64 MiB combined upload, 128 MiB expanded content, 10,000 counted files/objects, and three archive levels. See [Imports](docs/IMPORTS.md) for permissions, duplicate handling, relationship matching, and archive limits.
 
 ## Export
 
 Bundle export opens an options form. Choose separate files or PFX, optional PFX password protection, and whether to include the chain. Single bundles support ZIP/TAR; bulk bundles use ZIP. Exporting private keys still requires a superuser.
 
-NetBox-native export remains available for metadata tables.
+**Export inventory** in the Vault downloads selected object types together as one ZIP. It includes material for Certificates, Private Keys, CSRs, and Bundles and can include metadata for Groups, Services, Object Links, Health findings, and alert objects. Cryptographic files can be reimported together; metadata snapshots are for reference, not a replacement for a database backup.
+
+NetBox-native export remains available for metadata tables. Empty exports show a warning; the API returns HTTP 200 with a warning and `count: 0`, without an attachment.
 
 Material export is available for Certificates, Private Keys, CSRs, Bundles, and CA Certificates. Multi-file exports include `manifest.json` with object identifiers, applied filters, filenames, SHA-256 checksums, and available cryptographic fingerprints.
 
@@ -151,7 +153,6 @@ certificates/
 private-keys/
 csrs/
 certificate-authorities/
-certificate-policies/
 health-findings/
 object-links/
 alert-rules/
@@ -166,7 +167,7 @@ See [docs/API.md](docs/API.md).
 Add the package to `/opt/netbox/local_requirements.txt`:
 
 ```text
-netbox-certificates-plugin==1.1.2
+netbox-certificates-plugin==1.2.0
 ```
 
 Enable the plugin:
@@ -227,7 +228,8 @@ See [SECURITY.md](SECURITY.md).
 - [API](docs/API.md)
 - [Services](docs/SERVICES.md)
 - [Health and Validity](docs/HEALTH-AND-VALIDITY.md)
-- [Policies](docs/POLICIES.md)
+- [Retired policy migration](docs/POLICIES.md)
+- [Imports](docs/IMPORTS.md)
 - [Alerts](docs/ALERTS.md)
 - [Exports](docs/EXPORTS.md)
 - [Permissions](docs/PERMISSIONS.md)
@@ -241,8 +243,6 @@ See [SECURITY.md](SECURITY.md).
 
 Apache-2.0. See `LICENSE` and `NOTICE`.
 
-## Release 1.1.2
+## Release 1.2.0
 
-Group add/edit forms work with Service membership again. CSR plurals display as **CSRs**. Bundle downloads use the certificate name (`example.com's Bundle.zip` with `example.com.pfx` inside). Health tables and detail pages show readable evidence and permission-aware links to affected and related objects. The introductory Alerts paragraph has been removed.
-
-Empty material exports return a valid ZIP with a zero-count manifest; empty metadata exports also contain an empty `objects.json`. Invalid filters produce a readable validation error. See [API](docs/API.md) for CA-only import, alert settings and tests, and filtered export endpoints. New permission and migration details are in [Permissions](docs/PERMISSIONS.md) and [Upgrade](UPGRADE.md).
+This release consolidates certificate checks into Alerts Configuration, validates email/endpoint/port/CSR inputs in the UI and API, supports signing CSRs with an existing authorized key, improves Group spacing and action buttons, replaces empty downloads with warnings, and adds mixed inventory export. Large mixed imports detect content, reuse existing objects, and reconcile cryptographic relationships atomically. REST, GraphQL, search, permissions, migrations, and documentation reflect the retired policy model. See [Upgrade](UPGRADE.md) before installing.

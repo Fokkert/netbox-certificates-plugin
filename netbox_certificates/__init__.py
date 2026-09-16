@@ -4,8 +4,8 @@ from netbox.plugins import PluginConfig
 class NetBoxCertificatesConfig(PluginConfig):
     name = "netbox_certificates"
     verbose_name = "NetBox Certificates Plugin"
-    description = "Certificate inventory, services, cryptographic relationships, health, policy, alerts, and secure material management"
-    version = "1.1.2"
+    description = "Certificate inventory, services, cryptographic relationships, health, alerts, and secure material management"
+    version = "1.2.0"
     base_url = "ssl-certificates"
     min_version = "4.5.9"
     max_version = "4.5.10"

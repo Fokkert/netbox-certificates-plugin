@@ -1,4 +1,5 @@
 (() => {
+  document.querySelectorAll(".group-row a, .group-row input").forEach(control => control.addEventListener("click", event => event.stopPropagation()));
   const folders = document.querySelectorAll('details[data-group-id]');
   const searching = new URLSearchParams(location.search).has('q');
   folders.forEach(folder => {

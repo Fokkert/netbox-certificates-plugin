@@ -1,43 +1,50 @@
-# Upgrade to 1.1.2
+# Upgrade to 1.2.0
 
-This revision upgrades 1.1.1 (or 1.1.0) in place on NetBox 4.5.9 or 4.5.10. No uninstall is needed. The commands below assume the standard `/opt/netbox` installation, local PostgreSQL database `netbox`, and systemd services `netbox` and `netbox-rq`. Adjust these names for your VM; Docker installations should rebuild their image instead.
+Upgrade 1.1.2 in place; older migrations remain available. Supported NetBox versions remain 4.5.9 and 4.5.10 with Python 3.12+. Run the following on the Linux VM. These commands assume `/opt/netbox`, PostgreSQL database `netbox`, and systemd units `netbox` and `netbox-rq`. Adapt paths/service names if your installation differs. Container deployments should install the pinned package when rebuilding their image.
 
-## Before upgrading
+## Preserve existing data
 
-Keep the existing `PLUGINS_CONFIG['netbox_certificates']['encryption_key']` unchanged. Back up PostgreSQL, NetBox configuration (including that key), and `/opt/netbox/local_requirements.txt`. A VM snapshot is also useful.
-
-Run on the Linux VM, not on the development Windows computer:
+Keep the existing plugin Fernet encryption key unchanged. Back up the database, NetBox configuration including that key, and local requirements. Do not uninstall the plugin or delete its tables.
 
 ```bash
 sudo systemctl stop netbox netbox-rq
 umask 077
-sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.1.2.dump"
-sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.1.2
+sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.2.0.dump"
+sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.2.0
 ```
 
-If the database is remote or has a different name, use your usual database backup command. Confirm the backup succeeded before continuing.
+Use your normal backup command if PostgreSQL is remote. Confirm the backup succeeded before continuing.
 
-## Install the new package
+## Install with pip
 
-After GitHub's release workflow has successfully published **1.1.2** to PyPI:
+Wait until GitHub Actions has successfully published 1.2.0 to PyPI. No source copying, cloning, or uninstall is needed:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.1.2'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.2.0'
 ```
 
-If the GitHub tag exists but PyPI publication is still pending, pip can install directly from the tagged source archive, without copying files or cloning the repository:
+If the tag has been pushed but PyPI publication is pending, pip can instead install the tagged source archive:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.1.2.zip'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.2.0.zip'
 ```
 
-Edit `/opt/netbox/local_requirements.txt` with `sudoedit` and replace the existing plugin entry with the following single line. This preserves the version when NetBox's upgrade script recreates its environment:
+Update the persistent package pin automatically so NetBox's upgrade script keeps this version:
 
-```text
-netbox-certificates-plugin==1.1.2
+```bash
+sudo /opt/netbox/venv/bin/python - <<'PY'
+from pathlib import Path
+import re
+path = Path('/opt/netbox/local_requirements.txt')
+lines = path.read_text().splitlines() if path.exists() else []
+pattern = re.compile(r'^\s*netbox[-_]certificates[-_]plugin(?:\[.*?\])?(?:\s|[=<>!~@]|$)', re.I)
+lines = [line for line in lines if not pattern.match(line)]
+lines.append('netbox-certificates-plugin==1.2.0')
+path.write_text('\n'.join(lines) + '\n')
+PY
 ```
 
-Then run:
+Apply migrations and collect the new UI assets, then restart only if these checks succeed:
 
 ```bash
 cd /opt/netbox/netbox
@@ -53,46 +60,41 @@ sudo systemctl start netbox netbox-rq
 sudo systemctl status netbox netbox-rq --no-pager
 ```
 
-The installed version should be `1.1.2`. If a migration or check fails, investigate that error before restarting; do not skip it.
-
-## After restarting
-
-- Hard-refresh the browser to load the new static files.
-- Open **Health and Validity**, inspect expiration counts and findings, and open a finding detail page.
-- Expand a group, create and edit a subgroup, and check existing Service/artifact membership.
-- Export a bundle as separate files and as PFX, with and without password protection and chain inclusion. Confirm `example.com's Bundle.zip` contains `example.com.pfx` in PFX mode.
-- Open **Alerts Configuration** as a superuser. Existing settings and rules remain active; a new configuration starts disabled and accessible through the additional-rules link. Review them before enabling overlapping alerts.
-- Use **Save and send test email** or **Save and send test webhook** to save and test the form, including when a delivery method is disabled. Turning off the appropriate **Verify TLS certificate** checkbox permits an untrusted destination certificate.
-- NetBox's RQ worker must be running; the existing health/alert system job runs every 15 minutes. Repeat time `0` means once per occurrence, with a separate recovery notification if selected.
+The installed version must be `1.2.0`. Hard-refresh your browser after static files are collected.
 
 ## Data migration
 
-For an upgrade from 1.1.1, migration `0021_csr_plural_label` changes only the CSR display plural to **CSRs**. It preserves permissions and ordering and does not alter stored certificates, keys, groups, or alert settings.
+`0022_global_certificate_checks` adds five fields to AlertSettings, retires Certificate Policy permissions, and adds Private Key `use` permission. When exactly one enabled policy exists, its supported settings are copied. With no enabled policy or several enabled policies, defaults apply; review **Alerts Configuration** after the upgrade. Unsupported historic RSA/validity values fall back to defaults. Algorithm/curve/issuer allowlists and CA eligibility are not converted into settings. Legacy policies and assignments remain stored privately but inactive.
 
-For older installations:
+Policy categories and explicit finding codes on rules are updated to the new configuration category/code. Existing policy scopes are inactive; other rule scopes continue. Review additional rules to avoid unexpectedly broad notification scope. The next health scan resolves obsolete policy findings. No certificate, key, CSR, or encryption key is rewritten.
 
-Migration `0020_certificate_alert_defaults` defaults new certificate alerts to 1 month and initializes existing certificates only when both trigger fields were unset. Custom timing is retained. It also adds Group archive-export permission, sets the earlier CSR display label, and removes obsolete add permissions for generated findings/events. The earlier `0019_alert_settings` migration remains in the chain for older installations. Certificates, keys, CSRs, bundles, groups, services, policies, existing rules/channels, and delivery history are retained.
+Earlier migrations remain unchanged: 0021 fixes the CSRs label; 0020 defaults certificate expiration alerts to 1 month only where both fields were unset; 0019 creates the settings singleton. Clear both certificate trigger fields to disable its expiration alerts. Existing custom timing, delivery settings, and encrypted secrets are preserved.
 
-The one-time initialization enables per-certificate expiration timing for previously unconfigured certificates, but alerts still require an enabled rule and delivery channel. Existing rule-level `expiration_days` values are ignored. Review the two certificate columns after upgrading; clear both to disable expiration alerts for an individual certificate.
+## Verify after installation
 
-Non-superusers who export Groups need Additional action `archive_export` on Group, along with view permission. Custom-action ObjectPermission constraints now apply to the action itself as well as visibility.
+- Open Alerts Configuration and review Certificate checks. Invalid email/port/header values should produce field errors. Use the sample email/webhook buttons to verify your destinations.
+- Add, rename, move, and delete a disposable Group; inspect hierarchy spacing and existing membership.
+- Generate a CSR using an existing key, and confirm the key count stays unchanged. Non-admin operators need Private Key `use` and view permissions plus CSR add and applicable Bundle permissions.
+- Import a mixed batch, check deduplication and certificate/key/CSR/bundle/chain relationships, then export inventory. Empty list exports should show a warning.
+- Confirm old encrypted material is still decryptable. Verify constrained accounts cannot access other objects or key material.
+- Ensure `netbox-rq` is running for the periodic health/alert job.
 
 ## API and URL changes
 
-| Existing interface | Behavior in 1.1.2 |
+| Interface | Behavior in 1.2.0 |
 | --- | --- |
-| `/expiration-dashboard/` | Redirects to combined `/health/` |
-| `/alerts/` rule list | Single alert settings page (superuser) |
-| Rule list | `/alerts/rules/` |
-| Bundle material GET | Options form; submit POST to download |
-| PFX API | `allow_unencrypted_pfx=true` explicitly permits an empty password |
+| Policy UI bookmarks | Redirect to Alerts Configuration; writes unavailable |
+| `certificate-policies/` REST and policy GraphQL | Retired |
+| `alert-settings/` | Adds five global certificate check fields |
+| `csrs/generate/` | Adds scoped `existing_private_key` selection |
+| `import-objects/` | Mixed content detection, typed options, atomic deduplication/reconciliation |
+| `export-inventory/` | New POST endpoint for selected material and metadata types |
+| Empty exports | HTTP 200 warning, no attachment; API returns JSON with `count: 0` |
 
-SMTP/webhook API channels retain `smtp_verify_tls` and `webhook_verify_tls`, both true by default. Service JSON API fields retain their existing types; the UI accepts additional URLS one per line.
+The older `/expiration-dashboard/` redirect to `/health/`, `/alerts/` settings page, and `/alerts/rules/` advanced rule list remain. For upgrades from 0.5.0, `/inventory/` was replaced by `/vault/` and legacy ArtifactLink REST by `object-links/`.
 
-New endpoints cover CA-only import, singleton alert settings and sample tests, filtered metadata archives, and filtered material exports. See [API](docs/API.md). Empty authorized exports return valid archives, not 404 responses.
-
-For upgrades from 0.5.0: `/inventory/` was replaced by `/vault/`, the legacy ArtifactLink API by `object-links/`, and CA identity resources by CA Certificate views. Legacy expiration-alert records remain stored but are not automatically converted; configure the new alert settings. The migration sequence retains older artifact data.
+See [API](docs/API.md), [Permissions](docs/PERMISSIONS.md), and [Imports](docs/IMPORTS.md). Inventory export metadata snapshots are not a substitute for a full database backup or an automatic restoration of Services, Groups, and alert history.
 
 ## Rollback
 
-Stop NetBox and the worker, restore the pre-upgrade PostgreSQL backup and configuration/local requirements, reinstall `netbox-certificates-plugin==1.1.1`, run `manage.py collectstatic --no-input` and `manage.py check`, then restart. Keep the original encryption key. Reinstalling an older package alone does not roll back the database or changed alert settings.
+Stop NetBox and the worker, restore the pre-upgrade database/configuration/local requirements backup, reinstall `netbox-certificates-plugin==1.1.2` using pip, run `collectstatic --no-input` and `check`, and restart. Keep the original encryption key. An older package alone does not undo database migrations or settings changes. If upgrading from an earlier version, reinstall the exact version represented by your backup instead.

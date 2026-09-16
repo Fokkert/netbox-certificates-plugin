@@ -6,7 +6,6 @@ from datetime import timedelta
 from urllib.parse import urlparse
 
 from cryptography import x509
-from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import Q
@@ -14,7 +13,7 @@ from django.utils import timezone
 
 from ..choices_v1 import FindingSeverityChoices, FindingStatusChoices
 from ..models import Bundle, Certificate, CSR, PrivateKey
-from ..models_v1 import AlertRule, CertificatePolicy, HealthFinding, Service
+from ..models_v1 import HealthFinding, Service
 from .expiry import certificate_alert_due
 
 
@@ -188,36 +187,21 @@ def _validity(cert):
     return not_before, not_after
 
 
-def _evaluate_policy(policy, certificate):
+def _evaluate_checks(settings, certificate):
     violations = []
-    if not policy or not policy.enabled:
-        return violations
     key_type = _key_type(certificate)
     bits = _key_bits(certificate)
-    sig = str(_value(certificate, "signature_algorithm", default="") or "").lower()
-    curve = str(_value(certificate, "curve", "key_curve", default="") or "").lower()
     is_ca = bool(_value(certificate, "is_ca", default=False))
     sans = _certificate_sans(certificate)
-    issuer = str(_value(certificate, "issuer", default="") or "")
 
-    if "RSA" in key_type and bits and bits < policy.minimum_rsa_bits:
-        violations.append(f"RSA key size {bits} is below policy minimum {policy.minimum_rsa_bits}.")
-    if policy.allowed_key_types and key_type and key_type.lower() not in {str(x).lower() for x in policy.allowed_key_types}:
-        violations.append(f"Key type {key_type} is not allowed.")
-    if policy.allowed_signature_algorithms and sig and sig not in {str(x).lower() for x in policy.allowed_signature_algorithms}:
-        violations.append(f"Signature algorithm {sig} is not allowed.")
-    if policy.allowed_curves and curve and curve not in {str(x).lower() for x in policy.allowed_curves}:
-        violations.append(f"Curve {curve} is not allowed.")
-    if policy.require_san and not sans:
+    if "RSA" in key_type and bits and bits < settings.minimum_rsa_bits:
+        violations.append(f"RSA key size {bits} is below configured minimum {settings.minimum_rsa_bits}.")
+    if settings.require_san and not is_ca and not sans:
         violations.append("Subject Alternative Name is required.")
-    if not policy.allow_wildcards and any(_normalize_identity(x).startswith("*.") for x in sans):
+    if not settings.allow_wildcards and any(_normalize_identity(x).startswith("*.") for x in sans):
         violations.append("Wildcard SANS are not allowed.")
-    if is_ca and not policy.allow_ca:
-        violations.append("CA certificates are not allowed by this policy.")
-    if policy.allowed_issuers and issuer and issuer not in set(policy.allowed_issuers):
-        violations.append("Issuer is not in the policy allow-list.")
     public_key_fingerprint = _public_key_fingerprint(certificate)
-    if policy.forbid_key_reuse and public_key_fingerprint:
+    if settings.forbid_key_reuse and public_key_fingerprint:
         certificate_matches = Certificate.objects.filter(public_key_fingerprint=public_key_fingerprint)
         if isinstance(certificate, Certificate):
             certificate_matches = certificate_matches.exclude(pk=certificate.pk)
@@ -229,13 +213,13 @@ def _evaluate_policy(policy, certificate):
             | Q(bundles__private_key__public_key_fingerprint=public_key_fingerprint)
         ).distinct().count() > 1
         if certificate_reuse or service_reuse:
-            violations.append("Public/private key reuse is forbidden by this policy.")
+            violations.append("Public/private key reuse is forbidden by the certificate settings.")
     not_before, not_after = _validity(certificate)
-    if policy.max_validity_days and not_before and not_after:
+    if settings.max_validity_days and not_before and not_after:
         try:
             days = (not_after - not_before).days
-            if days > policy.max_validity_days:
-                violations.append(f"Validity {days} days exceeds policy maximum {policy.max_validity_days}.")
+            if days > settings.max_validity_days:
+                violations.append(f"Validity {days} days exceeds configured maximum {settings.max_validity_days}.")
         except TypeError:
             pass
     return violations
@@ -744,21 +728,6 @@ def _service_findings(service):
                 evidence={"public_key_fingerprint": fp},
             )
 
-    if service.policy:
-        for cert in effective_certs:
-            violations = _evaluate_policy(service.policy, cert)
-            if violations:
-                _finding(
-                    "CERTIFICATE_POLICY_VIOLATION",
-                    "policy",
-                    FindingSeverityChoices.HIGH,
-                    cert,
-                    f"Certificate violates policy {service.policy.name}.",
-                    related=service,
-                    evidence={"violations": violations, "policy_id": service.policy_id},
-                )
-
-
 @transaction.atomic
 def refresh_health_findings():
     started = timezone.now()
@@ -778,54 +747,15 @@ def refresh_health_findings():
     ):
         _service_findings(service)
 
-    # Policies may be attached directly to certificates/CSRs/Bundles as well as inherited through Services.
-    for policy in CertificatePolicy.objects.filter(enabled=True).prefetch_related(
-        "certificates", "csrs", "bundles__certificate", "bundles__csr"
-    ):
-        for cert in policy.certificates.all():
-            violations = _evaluate_policy(policy, cert)
+    from ..models_v1 import AlertSettings
+    settings = AlertSettings.objects.first() or AlertSettings()
+    for model in (Certificate, CSR):
+        for artifact in model.objects.all().iterator(chunk_size=200):
+            violations = _evaluate_checks(settings, artifact)
             if violations:
-                _finding(
-                    "CERTIFICATE_POLICY_VIOLATION",
-                    "policy",
-                    FindingSeverityChoices.HIGH,
-                    cert,
-                    f"Certificate violates policy {policy.name}.",
-                    related=policy,
-                    evidence={"violations": violations, "policy_id": policy.pk},
-                )
-        for csr in policy.csrs.all():
-            violations = _evaluate_policy(policy, csr)
-            if violations:
-                _finding(
-                    "CSR_POLICY_VIOLATION",
-                    "policy",
-                    FindingSeverityChoices.HIGH,
-                    csr,
-                    f"CSR violates policy {policy.name}.",
-                    related=policy,
-                    evidence={"violations": violations, "policy_id": policy.pk},
-                )
-        for bundle in policy.bundles.all():
-            for artifact in (bundle.certificate, bundle.csr):
-                if artifact is None:
-                    continue
-                violations = _evaluate_policy(policy, artifact)
-                if violations:
-                    _finding(
-                        "BUNDLE_POLICY_VIOLATION",
-                        "policy",
-                        FindingSeverityChoices.HIGH,
-                        bundle,
-                        f"Bundle violates policy {policy.name}.",
-                        related=policy,
-                        evidence={
-                            "artifact_type": artifact._meta.label_lower,
-                            "artifact_id": artifact.pk,
-                            "violations": violations,
-                            "policy_id": policy.pk,
-                        },
-                    )
+                _finding("CERTIFICATE_SETTINGS_VIOLATION", "configuration", FindingSeverityChoices.HIGH,
+                         artifact, "Cryptographic material does not meet the configured certificate checks.",
+                         evidence={"violations": violations})
 
     _duplicate_findings(
         Certificate,

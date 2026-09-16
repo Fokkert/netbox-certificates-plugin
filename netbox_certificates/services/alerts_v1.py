@@ -4,7 +4,6 @@ from datetime import timedelta
 import requests
 from django.conf import settings
 from django.core.mail import EmailMessage, get_connection
-from django.db.models import Q
 from django.utils import timezone
 
 from ..choices_v1 import (
@@ -77,23 +76,6 @@ def _matches(rule, finding):
         group_ids = set(rule.groups.values_list("pk", flat=True))
         groups = getattr(obj, "groups", None)
         if groups is None or not groups.filter(pk__in=group_ids).exists():
-            return False
-
-    if rule.policies.exists():
-        policy_ids = set(rule.policies.values_list("pk", flat=True))
-        if obj._meta.label_lower == "netbox_certificates.service":
-            if getattr(obj, "policy_id", None) not in policy_ids:
-                return False
-        elif hasattr(obj, "certificate_policies"):
-            if not obj.certificate_policies.filter(pk__in=policy_ids).exists():
-                related = finding.related_object
-                if not (
-                    related is not None
-                    and related._meta.label_lower == "netbox_certificates.service"
-                    and getattr(related, "policy_id", None) in policy_ids
-                ):
-                    return False
-        else:
             return False
 
     return True
@@ -187,7 +169,7 @@ def send_test_channel(channel):
     """Send a neutral test message without requiring or modifying a HealthFinding."""
     payload = {
         "type": "netbox-certificates-alert-test",
-        "plugin_version": "1.1.2",
+        "plugin_version": "1.2.0",
         "channel": channel.name,
         "timestamp": timezone.now().isoformat(),
     }
@@ -251,7 +233,7 @@ def dispatch_alerts(rule_ids=None, bypass_cooldown=False):
     rules = AlertRule.objects.filter(enabled=True)
     if rule_ids is not None:
         rules = rules.filter(pk__in=list(rule_ids))
-    for rule in rules.prefetch_related("channels", "services", "policies", "groups"):
+    for rule in rules.prefetch_related("channels", "services", "groups"):
         for finding in findings:
             if not _matches(rule, finding):
                 continue
@@ -266,7 +248,7 @@ def dispatch_alerts(rule_ids=None, bypass_cooldown=False):
                     status=AlertEventStatusChoices.FAILED,
                 )
                 try:
-                    payload = _deliver(channel, rule, finding)
+                    _deliver(channel, rule, finding)
                     event.status = AlertEventStatusChoices.DELIVERED
                     event.delivered_at = timezone.now()
                     event.payload_summary = {

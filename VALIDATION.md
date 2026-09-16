@@ -1,20 +1,20 @@
-# Validation for 1.1.2
+# Validation for 1.2.0
 
 ## Completed in the Windows development workspace
 
-- Started from the clean v1.1.1 release commit `8e10141`; prepared v1.1.2 without pushing or tagging.
-- 85 standalone tests passed under Python 3.12 and Django 5.2.
-- Group add/edit constructor regression executes the production import and checks Service choices, selected membership, hierarchy exclusions, and permission scoping.
-- Single UI and API ZIP/TAR exports use certificate-named archives and PFX files. Bulk exports retain both bundles when certificate names collide; manifests match archive contents and checksums.
-- Filename handling covers paths, control characters, Unicode, long names, reserved filenames, and case-insensitive collisions.
-- Finding links hide inaccessible or missing objects and escape names. Detail context and populated Health templates show readable evidence, including zero/negative values.
-- CSR plural normalization and retained SMTP/webhook sample buttons checked.
-- Existing CA-only validation, empty exports, calendar-month alert defaults, scoped permissions, Service form behavior, and cryptographic PFX round-trip regressions still pass.
-- Python compilation, release metadata checks, and diff whitespace checks pass.
+- Started from clean v1.1.2 commit `a67fbed`; GitHub main was checked against the same commit and the v1.2.0 tag was unused.
+- 103 standalone tests passed under Python 3.12 and Django 5.2.
+- Release metadata, compilation, whitespace checks, wheel/sdist builds, and `twine check` passed. Both distributions include migration 0022, the new API/workflow modules, Group stylesheet, export templates, and documentation in the source distribution.
+- Complete-module undefined-name checks and URL-to-view symbol checks cover failures that isolated function tests cannot detect.
+- Real cryptography tests sign and verify CSRs with existing RSA, EC, and Ed25519 keys; malformed SAN/subject/usage inputs and tampered CSR signatures are rejected.
+- Alert form and shared validation checks cover invalid email addresses, hostnames, port boundaries, endpoint URLs, headers, and global certificate settings. Explicit `{}` clears headers while blank preserves them.
+- Import tests parse mixed PEM/PFX, nested archives, unusual filenames, and 1,001 certificate files. Invalid archive members, traversal paths, limits, and metadata-only input are rejected.
+- Mixed inventory ZIP output is re-parsed and its checksums and unique member paths verified.
+- Existing tests for CA-only imports, Group editors, permission scopes, calendar-month alerts, certificate-named bundles/PFX, empty exports, and linked Health findings continue to pass.
 
-Standalone tests deliberately isolate functions/forms from the NetBox application. Template tests use a minimal parent layout; they are not a full browser test or a substitute for the NetBox runtime tests below.
+Standalone tests isolate functions/forms from NetBox's PostgreSQL/Redis application. They do not establish that every live button and deployment-specific integration has been exercised.
 
-## Standalone commands
+## Release checks
 
 ```bash
 python -m pip install -r tests/requirements.txt
@@ -22,13 +22,13 @@ python -m pip install 'setuptools>=77' wheel build twine
 python scripts/release.py
 ```
 
-The helper validates and builds without pushing unless `--publish` is explicitly supplied.
+The helper checks release metadata, compilation, standalone tests, whitespace, wheel/sdist builds, and distribution metadata. It pushes only with `--publish` after a clean commit.
 
 ## NetBox runtime verification
 
-This workspace does not have a running NetBox/PostgreSQL/Redis test stack. No claim of a completed live VM integration test is made.
+This workspace has no running NetBox/PostgreSQL/Redis stack, and no live VM test was performed. As requested, deployment testing happens after pip installation on the user's VM.
 
-The user will verify behavior after installation on the VM. Optional full integration commands for a disposable NetBox 4.5.9/4.5.10 installation are:
+The optional integration suite includes mixed-import database deduplication/relationships, transaction rollback, CSR generation with an existing key, empty exports, retired policy redirects, Group creation/editing, finding links, Services, and restricted alert settings. Run it only on a disposable test database:
 
 ```bash
 python manage.py check
@@ -37,14 +37,4 @@ python manage.py makemigrations --check --dry-run netbox_certificates
 python manage.py test netbox_certificates.tests
 ```
 
-The optional integration suite additionally checks Group add/edit GET and POST requests with Service membership and finding object links in both list/detail pages. Existing coverage includes the old-dashboard redirect, group hierarchy rendering, service endpoint inference, alert configuration, and denial of unprivileged settings access. Django's test runner requires permission to create a test database; do not point an ad hoc test setup at production data.
-
-Also verify on the test VM:
-
-1. Existing encrypted material remains decryptable using the unchanged Fernet key.
-2. Single and bulk bundle downloads contain only the selected material, and PFX files open with the chosen password mode.
-3. Existing alert rules are visible under additional rules; save the new settings, then explicitly test email/webhook delivery.
-4. NetBox's RQ worker processes the periodic health/alert job.
-5. Verify constrained non-admin users only see permitted certificate/group/finding data.
-
-See UPGRADE.md for install, backup, verification, and rollback commands.
+After deployment, review migrated global checks and alert scopes, confirm stored secrets remain decryptable, test SMTP/webhook samples, inspect Group hierarchy and constrained-user permissions, import/export a representative mixed batch, and confirm the worker runs scheduled jobs. See [Upgrade](UPGRADE.md) for pip installation and rollback instructions.

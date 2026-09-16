@@ -1,0 +1,10 @@
+#certificate-group-tree .group-node { margin-block: .8rem; }
+#certificate-group-tree .group-row { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem; padding: 1rem; border: 1px solid var(--bs-border-color, #8884); border-radius: .5rem; cursor: pointer; }
+#certificate-group-tree .group-row::before { content: "▸"; opacity: .65; }
+#certificate-group-tree details[open] > .group-row::before { content: "▾"; }
+#certificate-group-tree .group-icon { font-size: 1.35rem; opacity: .75; }
+#certificate-group-tree .group-name { font-weight: 600; overflow-wrap: anywhere; }
+#certificate-group-tree .group-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-left: auto; }
+#certificate-group-tree .group-children { margin: .75rem 0 1.25rem 1.5rem; padding-left: 1.25rem; border-left: 2px solid var(--bs-border-color, #8884); }
+#certificate-group-tree .group-member { display: flex; flex-wrap: wrap; gap: .75rem; padding: .65rem .75rem; }
+@media (max-width: 700px) { #certificate-group-tree .group-actions { width: 100%; margin-left: 0; } #certificate-group-tree .group-children { margin-left: .5rem; padding-left: .6rem; } }

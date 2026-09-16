@@ -68,13 +68,13 @@ Bundle primary artifacts are checked for completeness and matching public-key id
 
 ## Service checks
 
-The engine validates Service hostname, SNI, and URL identities against Certificate SANS, evaluates key/CSR relationships, detects key reuse across Services, and reports suspicious non-wildcard certificate sharing.
+The engine validates Service hostname, SNI, and URL identities against Certificate SANs, evaluates key/CSR relationships, detects key reuse across Services, and reports suspicious non-wildcard certificate sharing.
 
 Wildcard DNS matching covers a single label. For example, `*.example.com` matches `www.example.com` but not `a.b.example.com`.
 
-## Policy checks
+## Configurable checks
 
-Certificate Policies evaluate key size/type, signature algorithm, EC curve, validity, SAN requirements, wildcard rules, CA eligibility, issuer restrictions, and private-key reuse.
+Alerts Configuration supplies minimum RSA size, optional maximum validity, SAN requirements, wildcard allowance, and key reuse handling. Violations create `CERTIFICATE_SETTINGS_VIOLATION` findings in category `configuration`. Settings apply to Certificates and CSRs; required SAN excludes CAs. Legacy policy definitions/assignments are inactive. Baseline weak-crypto, key-reuse, chain, and relationship findings continue independently.
 
 ## Execution
 
@@ -86,7 +86,7 @@ python manage.py refresh_certificate_health
 
 Findings that are no longer detected are marked Resolved.
 
-The page combines expiration counts and upcoming/expired certificates with findings and their filters. Findings can be selected for bulk edit/delete. Empty finding exports are valid archives. Changing a finding to acknowledged, ignored, or resolved requires the corresponding custom permission even through bulk edits or REST PATCH. Findings are created by scans; evidence is not editable.
+The page combines expiration counts and upcoming/expired certificates with findings and their filters. Findings can be selected for bulk edit/delete. Empty finding exports display a warning. Changing a finding to acknowledged, ignored, or resolved requires the corresponding custom permission even through bulk edits or REST PATCH. Findings are created by scans; evidence is not editable.
 
 ## Reading findings (1.1.2)
 

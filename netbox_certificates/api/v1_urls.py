@@ -8,7 +8,6 @@ from .v1_views import (
     AlertEventViewSet,
     AlertRuleViewSet,
     CertificateAuthorityViewSet,
-    CertificatePolicyViewSet,
     HealthFindingViewSet,
     ObjectLinkViewSet,
     ServiceViewSet,
@@ -25,7 +24,6 @@ def register_v1_routes(router):
     router.register("bundles", BundleViewSet)
     router.register("certificate-authorities", CertificateAuthorityViewSet, basename="certificateauthority")
     router.register("services", ServiceViewSet)
-    router.register("certificate-policies", CertificatePolicyViewSet)
     router.register("health-findings", HealthFindingViewSet)
     router.register("object-links", ObjectLinkViewSet)
     router.register("alert-rules", AlertRuleViewSet)

@@ -12,7 +12,6 @@ PLUGIN_RELATIONSHIP_MODELS = [
     "netbox_certificates.certificate",
     "netbox_certificates.privatekey",
     "netbox_certificates.csr",
-    "netbox_certificates.certificatepolicy",
     "netbox_certificates.healthfinding",
     "netbox_certificates.alertrule",
     "netbox_certificates.alertchannel",
