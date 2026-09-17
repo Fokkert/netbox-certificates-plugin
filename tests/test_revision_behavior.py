@@ -45,6 +45,13 @@ def definitions(path, names, **scope):
     from django.core.exceptions import ValidationError
     scope.setdefault("ValidationError", ValidationError)
     scope.setdefault("DjangoValidationError", ValidationError)
+    version_scope = {}
+    exec((ROOT / "netbox_certificates/version.py").read_text(), version_scope)
+    scope.setdefault("__version__", version_scope["__version__"])
+    constants_scope = {}
+    exec((ROOT / "netbox_certificates/constants.py").read_text(), constants_scope)
+    scope.setdefault("WEBHOOK_METHODS", constants_scope["WEBHOOK_METHODS"])
+    scope.setdefault("WEBHOOK_METHOD_CHOICES", constants_scope["WEBHOOK_METHOD_CHOICES"])
     tree = ast.parse((ROOT / path).read_text(encoding="utf-8"))
     nodes = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef)) and n.name in names]
     assert {node.name for node in nodes} == set(names), "Missing tested definition"
@@ -236,8 +243,14 @@ class AlertBehavior(unittest.TestCase):
         self.assertFalse(invalid.is_valid())
         self.assertIn("recipients", invalid.errors)
         configured = SimpleNamespace(rule=None, email_channel=None, webhook_channel=SimpleNamespace(
-            enabled=True, webhook_verify_tls=True, webhook_url_encrypted="ciphertext"))
+            enabled=True, webhook_method="GET", webhook_verify_tls=True, webhook_url_encrypted="ciphertext"))
         self.assertTrue(form_type({**base, "enabled": "on", "webhook_enabled": "on"}, config=configured).is_valid())
+        preserved = form_type({**base, "webhook_enabled": "on"}, config=configured)
+        self.assertTrue(preserved.is_valid())
+        self.assertEqual(preserved.cleaned_data["webhook_method"], "GET")
+        invalid_method = form_type({**base, "webhook_method": "TRACE"})
+        self.assertFalse(invalid_method.is_valid())
+        self.assertIn("webhook_method", invalid_method.errors)
         invalid = form_type({**base, "webhook_headers": '{"Authorization": 123}'})
         self.assertFalse(invalid.is_valid())
 

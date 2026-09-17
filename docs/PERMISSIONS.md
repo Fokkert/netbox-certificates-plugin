@@ -77,3 +77,7 @@ Mixed imports require add permission for submitted artifact types, visibility of
 Preferences uses a private settings singleton, like Alerts Configuration: only superusers can read/write it. REST mutations additionally require a write-enabled token. No new public settings model or assignable settings ObjectPermission is created. Existing object permissions continue to govern individual/bulk deletion, Group membership, artifact metadata, CSR signing, imports, and exports.
 
 Derived cryptographic fields and relationships cannot be overridden by edit forms or REST, including by superusers. Automatic ObjectLinks remain protected from manual mutation. Manual links cannot use reserved cryptographic relationship names. Group membership still requires change permission on every added/removed object; the redesigned controls preserve memberships outside the user's editable scope.
+
+## Changes in 1.3.1
+
+No new public permission objects are introduced. Webhook method changes use the existing settings/channel permissions; sample sends still require existing test authorization and a write-enabled API token. Native Group selectors validate each selected object against the change-permitted queryset and preserve memberships outside that scope. Bulk selection does not grant edit/delete permission.

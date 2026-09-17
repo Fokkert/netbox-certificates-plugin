@@ -1,7 +1,9 @@
 {% extends 'generic/_base.html' %}
-{% load form_helpers %}
+{% load form_helpers static %}
 {% block title %}Preferences{% endblock %}
+{% block head %}{{ block.super }}<link rel="stylesheet" href="{% static 'netbox_certificates/editors.css' %}">{% endblock %}
 {% block content %}
+<div class="nbcert-settings">
 <p class="text-muted">Global defaults and processing schedules. Configure notification destinations and delivery rules in <a href="{% url 'plugins:netbox_certificates:alert_settings' %}">Alerts Configuration</a>.</p>
 <form method="post">{% csrf_token %}{{ form.non_field_errors }}
 {% for title,fields in sections %}
@@ -15,4 +17,5 @@
 <p>Last successful scheduled health scan: {{ preferences.last_health_scan|default:"Not yet run" }}</p>
 <p class="mb-0">Last successful alert evaluation: {{ preferences.last_alert_evaluation|default:"Not yet run" }}</p>
 </div></div>
+</div>
 {% endblock %}

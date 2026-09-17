@@ -9,6 +9,7 @@ from django.http import FileResponse, Http404, HttpResponse, QueryDict
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render
+from netbox_certificates.version import __version__
 
 from .artifact_filtersets_v1 import (
     BundleV1FilterSet,
@@ -262,7 +263,7 @@ class BulkMaterialExportView(LoginRequiredMixin, View):
         manifest = {
             "format": "netbox-certificates-export-manifest",
             "manifest_version": 1,
-            "plugin_version": "1.2.0",
+            "plugin_version": __version__,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "object_kind": kind,
             "filters": {key: filter_data.getlist(key) for key in filter_data.keys()},
@@ -347,7 +348,7 @@ class SingleBundleArchiveExportView(LoginRequiredMixin, View):
         manifest = {
             "format": "netbox-certificates-export-manifest",
             "manifest_version": 1,
-            "plugin_version": "1.2.0",
+            "plugin_version": __version__,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "object_kind": "bundle",
             "count": 1,

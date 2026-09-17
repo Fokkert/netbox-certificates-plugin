@@ -1,4 +1,5 @@
 """One bounded-memory archive for selected cryptographic and metadata types."""
+
 import json
 import tempfile
 import zipfile
@@ -9,6 +10,7 @@ from django.core.exceptions import PermissionDenied
 from django.core.serializers.json import DjangoJSONEncoder
 from django.shortcuts import render
 from django.views import View
+from netbox_certificates.version import __version__
 
 from .bulk_export import EXPORT_CONFIG, _bundle_members, _material_for_object, _object_manifest, _secure_file_response, _write_member
 from .empty_exports import empty_export_response
@@ -48,7 +50,7 @@ def export_inventory(request, selected):
     if not any(queryset.exists() for queryset in querysets.values()):
         return empty_export_response(request)
     output = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024, mode="w+b")
-    manifest = {"format": "netbox-certificates-export-manifest", "manifest_version": 1, "plugin_version": "1.2.0",
+    manifest = {"format": "netbox-certificates-export-manifest", "manifest_version": 1, "plugin_version": __version__,
                 "object_kind": "inventory", "objects": [], "files": [], "count": 0, "sensitive": bool(set(selected) & {"privatekey", "bundle"})}
     try:
         with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as archive:

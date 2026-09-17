@@ -1,3 +1,4 @@
+from .constants import WEBHOOK_METHOD_CHOICES
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
@@ -392,6 +393,7 @@ class AlertChannel(PrimaryModel):
     smtp_use_tls = models.BooleanField(default=True)
     smtp_use_ssl = models.BooleanField(default=False)
     smtp_verify_tls = models.BooleanField(default=True)
+    webhook_method = models.CharField(max_length=7, choices=WEBHOOK_METHOD_CHOICES, default="POST")
     webhook_verify_tls = models.BooleanField(default=True)
     from_email = models.EmailField(blank=True)
     webhook_url_encrypted = models.TextField(blank=True)

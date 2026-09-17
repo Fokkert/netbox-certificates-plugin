@@ -1,7 +1,9 @@
 {% extends 'generic/_base.html' %}
 {% load form_helpers static %}
 {% block title %}Export {% if bulk %}Bundles{% else %}{{ object }}{% endif %}{% endblock %}
+{% block head %}{{ block.super }}<link rel="stylesheet" href="{% static 'netbox_certificates/editors.css' %}">{% endblock %}
 {% block content %}
+<div class="nbcert-settings">
 <div class="card"><h2 class="card-header">Bundle export options</h2><div class="card-body">
 <p>Choose separate certificate and key files, or combine them into a PFX. The download includes a manifest inside the selected archive.</p>
 <form method="post">{% csrf_token %}
@@ -13,4 +15,5 @@
 <a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:bundle_list' %}">Cancel</a>
 </form></div></div>
 <script src="{% static 'netbox_certificates/export.js' %}" defer></script>
+</div>
 {% endblock %}

@@ -3,8 +3,11 @@ from datetime import timedelta
 
 import requests
 from django.conf import settings
-from django.core.mail import EmailMessage, get_connection
+from django.core.mail import EmailMultiAlternatives, get_connection
+from ..constants import WEBHOOK_METHODS
+from .email_templates import render_notification
 from django.utils import timezone
+from netbox_certificates.version import __version__
 
 from ..choices_v1 import (
     AlertChannelTypeChoices,
@@ -112,6 +115,7 @@ def _recent_event(rule, channel, finding):
 def _payload(rule, finding):
     obj = finding.affected_object
     return {
+        "plugin_version": __version__,
         "rule": rule.name,
         "finding": {
             "id": finding.pk,
@@ -150,26 +154,45 @@ def _email_connection(channel):
     )
 
 
-def _send_email(channel, subject, body):
+def _send_email(channel, subject, payload):
+    body, html = render_notification(subject, payload)
     connection = _email_connection(channel)
-    message = EmailMessage(
+    message = EmailMultiAlternatives(
         subject=subject,
         body=body,
         from_email=channel.from_email or getattr(settings, "DEFAULT_FROM_EMAIL", None),
         to=list(channel.recipients),
         connection=connection,
     )
+    message.attach_alternative(html, "text/html")
     sent = message.send(fail_silently=False)
     if not sent:
         raise RuntimeError("SMTP did not accept the alert message.")
     return sent
 
 
+def _send_webhook(channel, payload):
+    from .secret_v1 import decrypt_json, decrypt_text
+    method = channel.webhook_method
+    if method not in WEBHOOK_METHODS:
+        raise ValueError("Unsupported webhook HTTP method.")
+    headers = {"User-Agent": f"netbox-certificates-plugin/{__version__}",
+               **decrypt_json(channel.webhook_headers_encrypted)}
+    data = {"params": {"payload": json.dumps(payload, default=str)}} if method in {"GET", "HEAD", "OPTIONS"} else {"json": payload}
+    response = requests.request(
+        method, decrypt_text(channel.webhook_url_encrypted), headers=headers,
+        timeout=15, verify=channel.webhook_verify_tls, allow_redirects=False, **data,
+    )
+    response.raise_for_status()
+    if response.status_code >= 300:
+        raise ValueError("Webhook redirects are not followed; configure the final URL.")
+
+
 def send_test_channel(channel):
     """Send a neutral test message without requiring or modifying a HealthFinding."""
     payload = {
         "type": "netbox-certificates-alert-test",
-        "plugin_version": "1.2.0",
+        "plugin_version": __version__,
         "channel": channel.name,
         "timestamp": timezone.now().isoformat(),
     }
@@ -177,21 +200,10 @@ def send_test_channel(channel):
         _send_email(
             channel,
             f"{channel.subject_prefix} Test notification",
-            json.dumps(payload, indent=2),
+            payload,
         )
     elif channel.channel_type == AlertChannelTypeChoices.WEBHOOK:
-        from .secret_v1 import decrypt_json, decrypt_text
-        response = requests.post(
-            decrypt_text(channel.webhook_url_encrypted),
-            json=payload,
-            headers=decrypt_json(channel.webhook_headers_encrypted),
-            timeout=15,
-            verify=channel.webhook_verify_tls,
-            allow_redirects=False,
-        )
-        response.raise_for_status()
-        if response.status_code >= 300:
-            raise ValueError("Webhook redirects are not followed; configure the final URL.")
+        _send_webhook(channel, payload)
     else:
         raise ValueError(f"Unsupported alert channel type: {channel.channel_type}")
     return payload
@@ -201,21 +213,9 @@ def _deliver(channel, rule, finding):
     payload = _payload(rule, finding)
     if channel.channel_type == AlertChannelTypeChoices.EMAIL:
         subject = f"{channel.subject_prefix} {finding.severity.upper()}: {finding.summary}"
-        body = json.dumps(payload, indent=2, default=str)
-        _send_email(channel, subject, body)
+        _send_email(channel, subject, payload)
     elif channel.channel_type == AlertChannelTypeChoices.WEBHOOK:
-        from .secret_v1 import decrypt_json, decrypt_text
-        response = requests.post(
-            decrypt_text(channel.webhook_url_encrypted),
-            json=payload,
-            headers=decrypt_json(channel.webhook_headers_encrypted),
-            timeout=15,
-            verify=channel.webhook_verify_tls,
-            allow_redirects=False,
-        )
-        response.raise_for_status()
-        if response.status_code >= 300:
-            raise ValueError("Webhook redirects are not followed; configure the final URL.")
+        _send_webhook(channel, payload)
     else:
         raise ValueError(f"Unsupported alert channel type: {channel.channel_type}")
     return payload

@@ -1,15 +1,18 @@
 {% extends 'generic/_base.html' %}
-{% load form_helpers %}
+{% load form_helpers static %}
 {% block title %}Alerts Configuration{% endblock %}
+{% block head %}{{ block.super }}<link rel="stylesheet" href="{% static 'netbox_certificates/editors.css' %}">{% endblock %}
 {% block content %}
+<div class="nbcert-settings">
 {% if other_rule_count %}<div class="alert alert-info">{{ other_rule_count }} additional enabled rules are preserved from existing configuration. <a href="{% url 'plugins:netbox_certificates:alertrule_list' %}">Review additional rules</a> to avoid duplicate notifications. The switch below controls this page's alerts.</div>{% endif %}
 <form method="post">{% csrf_token %}{{ form.non_field_errors }}
 {% for title,fields in sections %}<div class="card mb-3"><h2 class="card-header">{{ title }}</h2><div class="card-body">{% for field in fields %}{% render_field field %}{% endfor %}</div></div>{% endfor %}
-<div class="d-flex gap-2 mb-4">
+<div class="d-flex flex-wrap gap-2 mb-4">
 <button type="submit" name="_action" value="save" class="btn btn-primary">Save alert settings</button>
 <button type="submit" name="_action" value="test_email" class="btn btn-outline-secondary">Save and send test email</button>
 <button type="submit" name="_action" value="test_webhook" class="btn btn-outline-secondary">Save and send test webhook</button>
 </div>
 </form>
 <details class="card"><summary class="card-header">Recent delivery history</summary><div class="table-responsive"><table class="table"><thead><tr><th>Time</th><th>Method</th><th>Result</th><th>Finding / error</th></tr></thead><tbody>{% for event in recent_events %}<tr><td>{{ event.created }}</td><td>{{ event.channel.get_channel_type_display }}</td><td>{{ event.get_status_display }}</td><td>{{ event.finding.summary }} {{ event.error }}</td></tr>{% empty %}<tr><td colspan="4">No deliveries yet. Processing frequency is configured in Preferences.</td></tr>{% endfor %}</tbody></table></div><div class="card-footer"><a href="{% url 'plugins:netbox_certificates:alertevent_list' %}">All delivery history</a></div></details>
+</div>
 {% endblock %}

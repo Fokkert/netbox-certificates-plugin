@@ -151,7 +151,7 @@ class AlertChannelSerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):
             "id", "url", "display_url", "display", "name", "enabled", "channel_type", "recipients",
             "smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_password_configured",
             "smtp_use_tls", "smtp_use_ssl", "smtp_verify_tls", "webhook_verify_tls", "from_email",
-            "webhook_url", "webhook_headers", "webhook_configured", "subject_prefix",
+            "webhook_method", "webhook_url", "webhook_headers", "webhook_configured", "subject_prefix",
             "owner", "description", "comments", "tags", "custom_fields",
             "created", "last_updated",
         )

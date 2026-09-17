@@ -1,10 +1,15 @@
 {% extends 'generic/_base.html' %}
-{% load form_helpers %}
+{% load form_helpers static %}
 {% block title %}Export inventory{% endblock %}
+{% block head %}{{ block.super }}<link rel="stylesheet" href="{% static 'netbox_certificates/editors.css' %}">{% endblock %}
 {% block content %}
+<div class="nbcert-settings">
 <p>Select the object types to include in one ZIP archive. Certificates, keys, CSRs, and Bundle material can be imported together. Other object types are exported as JSON metadata for reference.</p>
-<form method="post">{% csrf_token %}{{ form.non_field_errors }}
+<form method="post" data-bulk-select="input[name=types]">{% csrf_token %}{{ form.non_field_errors }}
+{% include "netbox_certificates/inc/bulk_selection.html" with select_label="Select all object types" %}
 <div class="card mb-3"><div class="card-body">{% render_field form.types %}</div></div>
 <button class="btn btn-primary" type="submit">Export selected types</button>
 <a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:vault' %}">Cancel</a></form>
+</div>
+<script src="{% static 'netbox_certificates/bulk_selection.js' %}" defer></script>
 {% endblock %}

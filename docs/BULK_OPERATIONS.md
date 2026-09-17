@@ -30,3 +30,7 @@ The Vault’s **Export inventory** combines selected object types in one archive
 ## Deletion (1.3.0)
 
 Individual and bulk deletion use NetBox's normal confirmation and permission checks. All public plugin models now expose the canonical serializers needed by NetBox deletion events. Generic ObjectLinks referencing deleted inventory objects are removed; certificate bulk deletion coalesces post-commit relationship reconciliation. Automatic links themselves remain read-only; delete their owning artifacts to remove them.
+
+## Selection controls (1.3.1)
+
+Standard NetBox inventory tables retain their header checkbox and all-matching-query selection. Groups adds Select all groups and Clear selection, including groups inside collapsed branches. Health adds page selection, Clear selection, and a separate all-matching-findings checkbox across pages. Bulk edit/delete preserves the Health filter query and still enforces the corresponding object permissions. Inventory export adds Select all object types and Clear selection. Empty lists have disabled selection buttons.

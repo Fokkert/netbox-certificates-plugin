@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 import json
 import smtplib
 import socket
@@ -13,8 +14,9 @@ from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
 from django.core.mail.backends.smtp import EmailBackend
 from django.db import transaction
-from django.template.loader import render_to_string
+from .email_templates import render_notification
 from django.utils import timezone
+from netbox_certificates.version import __version__
 
 from netbox_certificates.choices import AlertMethodChoices, AlertRepeatModeChoices
 from netbox_certificates.models import Bundle, Certificate, ExpiryAlertConfiguration, ExpiryAlertEvent
@@ -55,6 +57,7 @@ def build_alert_payload(certificate, *, now=None, test=False):
     bundles = list(Bundle.objects.filter(certificate=certificate).values("id", "name", "status")) if certificate else []
     parent = certificate.parent_certificate if certificate else None
     return {
+        "plugin_version": __version__,
         "event": "certificate.expiry_alert.test" if test else "certificate.expiry_alert",
         "generated_at": now.isoformat(),
         "certificate": None if certificate is None else {
@@ -149,25 +152,6 @@ def _email_subject(reports):
     return f"{len(reports)} certificates expiring - NetBox Certificates"
 
 
-def _email_text(reports):
-    lines = ["NetBox Certificates expiration report", ""]
-    for report in reports:
-        certificate = report["certificate"]
-        payload = report["payload"]["certificate"]
-        lines.extend([
-            f"[{report['condition_label']}] {certificate.name}",
-            f"Condition: {report['condition_text']}",
-            f"Expires: {certificate.valid_to}",
-            f"Subject: {certificate.subject}",
-            f"Issuer: {certificate.issuer}",
-            f"Serial: {certificate.serial_number}",
-            f"Alert trigger: {certificate.alert_trigger} {certificate.get_trigger_unit_display()}(s)",
-            f"Groups: {', '.join(group['name'] for group in payload.get('groups', [])) or '-'}",
-            "",
-        ])
-    return "\n".join(lines)
-
-
 def send_email(config, certificate=None, *, certificates=None, test=False):
     recipients = _recipients(config)
     if not recipients:
@@ -177,11 +161,7 @@ def send_email(config, certificate=None, *, certificates=None, test=False):
 
     if test:
         subject = "NetBox Certificates - Expiration Alert Test"
-        text = "NetBox Certificates successfully connected to this SMTP configuration and sent a test message."
-        html = render_to_string(
-            "netbox_certificates/expiration_alert_email.html",
-            {"test": True, "generated_at": timezone.now()},
-        )
+        text, html = render_notification(subject, {"test": True})
         report_count = 0
     else:
         selected = list(certificates or ([] if certificate is None else [certificate]))
@@ -190,18 +170,15 @@ def send_email(config, certificate=None, *, certificates=None, test=False):
         now = timezone.now()
         reports = [_email_report(item, now=now) for item in selected]
         subject = _email_subject(reports)
-        text = _email_text(reports)
-        html = render_to_string(
-            "netbox_certificates/expiration_alert_email.html",
-            {
-                "test": False,
-                "reports": reports,
-                "report_count": len(reports),
-                "expired_count": sum(1 for report in reports if report["condition"] == "expired"),
-                "critical_count": sum(1 for report in reports if report["condition"] == "critical"),
-                "generated_at": now,
-            },
-        )
+        text, html = render_notification(subject, {"reports": [
+            {"title": report["certificate"].name, "badge": report["condition_label"],
+             "rows": [("Expires", report["certificate"].valid_to),
+                      ("Subject", report["certificate"].subject), ("Issuer", report["certificate"].issuer),
+                      ("Serial", report["certificate"].serial_number),
+                      ("Alert trigger", f"{report['certificate'].alert_trigger} {report['certificate'].get_trigger_unit_display()}"),
+                      ("Groups", ", ".join(group["name"] for group in report["payload"]["certificate"].get("groups", [])) or "—")],
+             "details": report["condition_text"]} for report in reports
+        ]})
         report_count = len(reports)
 
     message = EmailMultiAlternatives(
@@ -243,7 +220,7 @@ def _webhook_url(config):
 def send_webhook(config, certificate=None, *, test=False):
     url = _webhook_url(config)
     data = json.dumps(build_alert_payload(certificate, test=test), separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    headers = {"Content-Type": "application/json", "Accept": "application/json", "User-Agent": "netbox-certificates-plugin/1.0.5"}
+    headers = {"Content-Type": "application/json", "Accept": "application/json", "User-Agent": f"netbox-certificates-plugin/{__version__}"}
     try:
         bearer = decrypt_secret(config.webhook_bearer_token_encrypted)
     except PrivateKeyEncryptionError as exc:

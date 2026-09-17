@@ -85,7 +85,7 @@ class AlertChannelTable(AcronymTableMixin, PrimaryModelTable):
     class Meta(PrimaryModelTable.Meta):
         model = AlertChannel
         fields = (
-            "pk", "id", "name", "enabled", "channel_type", "subject_prefix",
+            "pk", "id", "name", "enabled", "channel_type", "webhook_method", "subject_prefix",
             "description", "owner", "tags", "last_updated",
         )
         default_columns = ("pk", "name", "enabled", "channel_type", "subject_prefix")

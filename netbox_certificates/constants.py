@@ -19,3 +19,6 @@ ALERT_CHECK_INTERVAL_CHOICES = (
     (720, "Every 12 hours"),
     (1440, "Every 24 hours"),
 )
+
+WEBHOOK_METHODS = ("POST", "GET", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS")
+WEBHOOK_METHOD_CHOICES = tuple((method, method) for method in WEBHOOK_METHODS)

@@ -12,7 +12,9 @@
 {% if filter_errors %}<div class="alert alert-danger">{{ filter_errors }}</div>{% endif %}
 <div class="card"><h2 class="card-header">Group hierarchy</h2><div class="card-body">
 <p class="text-muted">Expand groups to browse subgroups and their objects. Open a group to manage membership.</p>
-<form method="post">{% csrf_token %}<ul class="list-unstyled" id="certificate-group-tree">{% include 'netbox_certificates/inc/group_tree_nodes.html' with nodes=group_tree %}</ul>
+<form method="post" data-bulk-select>{% csrf_token %}
+{% if perms.netbox_certificates.change_artifactgroup or perms.netbox_certificates.delete_artifactgroup %}{% include "netbox_certificates/inc/bulk_selection.html" with select_label="Select all groups" %}{% endif %}
+<ul class="list-unstyled" id="certificate-group-tree">{% include 'netbox_certificates/inc/group_tree_nodes.html' with nodes=group_tree %}</ul>
 <div class="d-flex gap-2 mt-3">
 {% if perms.netbox_certificates.change_artifactgroup %}<button class="btn btn-outline-secondary" formaction="{% url 'plugins:netbox_certificates:artifactgroup_bulk_edit' %}">Edit selected</button><button class="btn btn-outline-secondary" formaction="{% url 'plugins:netbox_certificates:artifactgroup_bulk_rename' %}">Rename selected</button>{% endif %}
 {% if perms.netbox_certificates.delete_artifactgroup %}<button class="btn btn-outline-danger" formaction="{% url 'plugins:netbox_certificates:artifactgroup_bulk_delete' %}">Delete selected</button>{% endif %}
@@ -20,4 +22,5 @@
 {% if not group_tree %}<p>No groups match your search.</p>{% endif %}
 </div></div>
 <script src="{% static 'netbox_certificates/groups.js' %}" defer></script>
+<script src="{% static 'netbox_certificates/bulk_selection.js' %}" defer></script>
 {% endblock %}

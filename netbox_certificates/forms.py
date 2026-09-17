@@ -227,12 +227,11 @@ class ArtifactGroupForm(AcronymFormMixin, PrimaryModelForm):
     members = forms.MultipleChoiceField(
         required=False,
         label="Members",
-        widget=forms.SelectMultiple(attrs={"class": "form-select"}),
+        widget=forms.MultipleHiddenInput(),
     )
-    members.widget.template_name = "netbox_certificates/widgets/group_members.html"
     fieldsets = (
         FieldSet("name", "parent", "description", "tags", name="Group"),
-        FieldSet("members", name="Members"),
+        FieldSet("member_group", "member_certificate", "member_privatekey", "member_csr", "member_bundle", "member_service", name="Membership"),
     )
 
     class Meta:
@@ -297,6 +296,15 @@ class ArtifactGroupForm(AcronymFormMixin, PrimaryModelForm):
             initial.extend(f"service:{pk}" for pk in self._member_querysets["service"].filter(groups=self.instance).values_list("pk", flat=True))
             self.fields["members"].initial = initial
 
+        for kind, label in (("group", "Child Groups"), ("certificate", "Certificates"),
+                            ("privatekey", "Private Keys"), ("csr", "CSRs"),
+                            ("bundle", "Bundles"), ("service", "Services")):
+            self.fields[f"member_{kind}"] = DynamicModelMultipleChoiceField(
+                queryset=self._member_querysets[kind], required=False, label=label,
+                initial=self._selected_ids(self.fields["members"].initial or [], kind),
+                help_text="Selected groups become direct children." if kind == "group" else "",
+            )
+
     def clean(self):
         super().clean()
         cleaned = self.cleaned_data
@@ -304,6 +312,10 @@ class ArtifactGroupForm(AcronymFormMixin, PrimaryModelForm):
         if self.instance.pk and parent is not None:
             if parent.pk == self.instance.pk or parent.pk in set(self.instance.descendant_ids()):
                 self.add_error("parent", "A group cannot be nested below itself or one of its descendants.")
+        # Accept historic form posts, while the UI uses six native selectors.
+        if "members" not in self.data:
+            cleaned["members"] = [f"{kind}:{obj.pk}" for kind in self._member_querysets
+                                  for obj in cleaned.get(f"member_{kind}", [])]
         selected = cleaned.get("members") or []
         selected_group_ids = set(self._selected_ids(selected, "group"))
         if self.instance.pk:

@@ -9,8 +9,8 @@ NetBox Certificates Plugin adds certificate inventory and lifecycle management t
 | NetBox | 4.5.9, 4.5.10 |
 | Python | 3.12+ |
 | `cryptography` | 42+ |
-| Release | 1.3.0 |
-| Upgrade source | 1.2.0 (older migrations retained) |
+| Release | 1.3.1 |
+| Upgrade source | 1.3.0 (older migrations retained) |
 
 ## Features
 
@@ -51,6 +51,8 @@ OPERATIONS
 ├── Generate CSR
 └── Alerts Configuration
 ```
+
+The Groups tree and Health findings have explicit Select all/Clear selection controls. Health can also select every filtered result across pages. Standard inventory tables retain NetBox's header checkbox and matching-query selection. Group membership uses one searchable NetBox multiple-choice selector per object type. Settings and export option forms remain responsive with a maximum width of 68rem.
 
 ## Services
 
@@ -108,7 +110,7 @@ Set minimum RSA size, optional maximum validity, SAN requirements, wildcard allo
 
 Alert Rules select Health findings by code, category, severity, status, object type, tag, owner, Service or Group. Global expiration thresholds are no longer used.
 
-Alert Channels support SMTP and HTTP webhooks. SMTP passwords and webhook configuration are encrypted at rest with the plugin Fernet key.
+Alert Channels support HTML email via SMTP and HTTP webhooks with POST (default), GET, PUT, PATCH, DELETE, HEAD, or OPTIONS. GET/HEAD/OPTIONS send the JSON payload in a `payload` query parameter; the other methods send a JSON body. Test notifications use the selected method too. SMTP passwords and webhook configuration are encrypted at rest with the plugin Fernet key.
 
 The always-visible **Save and send test email** and **Save and send test webhook** buttons save the submitted configuration and send a sample even when delivery is disabled. Results appear on the settings page.
 
@@ -175,7 +177,7 @@ See [docs/API.md](docs/API.md).
 Add the package to `/opt/netbox/local_requirements.txt`:
 
 ```text
-netbox-certificates-plugin==1.3.0
+netbox-certificates-plugin==1.3.1
 ```
 
 Enable the plugin:
@@ -252,6 +254,6 @@ See [SECURITY.md](SECURITY.md).
 
 Apache-2.0. See `LICENSE` and `NOTICE`.
 
-## Release 1.3.0
+## Release 1.3.1
 
-This release fixes NetBox serializer discovery during individual and bulk deletion, introduces operational Preferences, replaces the standalone CA page with a Vault filter link, and protects derived cryptographic fields and relationships. CSR generation has structured SAN rows, and Group membership has separate sections for each object type. See [Upgrade](UPGRADE.md) for pip-only deployment and [Validation](VALIDATION.md) for checks and runtime limitations.
+This release adds missing Select all controls, bounds settings-page widths, simplifies Group membership to native NetBox selectors, and uses one runtime version in manifests and alerts. All email alerts use a shared HTML design with plain-text fallback. Webhook HTTP methods are configurable in the UI and API. See [Upgrade](UPGRADE.md) for pip-only deployment and [Validation](VALIDATION.md) for checks and runtime limitations.

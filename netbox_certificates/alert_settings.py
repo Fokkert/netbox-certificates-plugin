@@ -11,6 +11,7 @@ from django.shortcuts import redirect, render
 from django.views import View
 
 from .labels import AcronymFormMixin
+from .constants import WEBHOOK_METHOD_CHOICES
 from .validation import OptionalObjectJSONField, validate_hostname, validate_endpoint_url, validate_headers
 from .choices_v1 import FindingSeverityChoices
 from .forms_v1 import LineListField
@@ -51,6 +52,8 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
                                        help_text="Turn off to allow self-signed or otherwise untrusted SMTP certificates.")
     from_email = forms.EmailField(required=False)
     subject_prefix = forms.CharField(initial="[NetBox Certificates]", max_length=120)
+    webhook_method = forms.ChoiceField(choices=WEBHOOK_METHOD_CHOICES, initial="POST", required=False, label="Webhook HTTP method",
+        help_text="GET, HEAD, and OPTIONS send a payload query parameter; other methods send a JSON body.")
     webhook_enabled = forms.BooleanField(required=False, label="Enable webhook alerts")
     webhook_url = forms.URLField(required=False, assume_scheme="https", widget=forms.PasswordInput(render_value=False),
                                 help_text="Leave blank to keep the saved URL.")
@@ -78,12 +81,15 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
                 initial["smtp_security"] = "starttls" if email.smtp_use_tls else "ssl" if email.smtp_use_ssl else "none"
             if webhook:
                 initial["webhook_enabled"] = webhook.enabled
+                initial["webhook_method"] = webhook.webhook_method
                 initial["webhook_verify_tls"] = webhook.webhook_verify_tls
         kwargs["initial"] = initial
         super().__init__(*args, **kwargs)
 
     def clean(self):
         data = super().clean()
+        if "webhook_method" not in self.errors:
+            data["webhook_method"] = data.get("webhook_method") or self.initial.get("webhook_method", "POST")
         for address in data.get("recipients", []):
             try:
                 validate_email(address)
@@ -137,6 +143,7 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
         email.full_clean()
         email.save()
         webhook.enabled = data["webhook_enabled"]
+        webhook.webhook_method = data["webhook_method"]
         webhook.webhook_verify_tls = data["webhook_verify_tls"]
         if data["webhook_url"]:
             webhook.webhook_url_encrypted = encrypt_text(data["webhook_url"])
@@ -170,7 +177,7 @@ class AlertSettingsView(LoginRequiredMixin, View):
             ("Certificate checks", ("minimum_rsa_bits", "max_validity_days", "require_san", "allow_wildcards", "forbid_key_reuse")),
             ("When and what to send", ("enabled", "categories", "severities", "cooldown_minutes", "repeat_minutes", "notify_on_recovery")),
             ("Email alerts", ("email_enabled", "recipients", "smtp_host", "smtp_port", "smtp_username", "smtp_password", "clear_smtp_password", "smtp_security", "smtp_verify_tls", "from_email", "subject_prefix")),
-            ("Webhook alerts", ("webhook_enabled", "webhook_url", "webhook_headers", "webhook_verify_tls")),
+            ("Webhook alerts", ("webhook_enabled", "webhook_method", "webhook_url", "webhook_headers", "webhook_verify_tls")),
         ]
         return render(request, self.template_name, {
             "form": form,

@@ -9,6 +9,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.http import FileResponse, Http404, QueryDict, JsonResponse
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
+from netbox_certificates.version import __version__
 
 from .artifact_filtersets_v1 import ArtifactGroupV1FilterSet
 from .filtersets_v1 import (
@@ -124,7 +125,7 @@ class MetadataArchiveExportView(LoginRequiredMixin, View):
         manifest = {
             "format": "netbox-certificates-export-manifest",
             "manifest_version": 1,
-            "plugin_version": "1.2.0",
+            "plugin_version": __version__,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "object_kind": kind,
             "count": len(records),

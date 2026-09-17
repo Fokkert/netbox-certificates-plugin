@@ -1,20 +1,15 @@
-# Validation for 1.3.0
+# Validation for 1.3.1
 
-## Completed in the Windows development workspace
+## Completed in the development workspace
 
-- Started from published v1.2.0 commit `43baad1`; GitHub main was checked against the same commit and the v1.3.0 tag was unused.
-- 116 standalone tests passed under Python 3.12 and Django 5.2.
-- Release metadata, compilation, whitespace checks, wheel/sdist builds, and `twine check` passed. Both distributions include migration 0023, Preferences modules, the canonical serializer facade, SAN/editor assets, and the Group membership template; the source distribution includes documentation.
-- New behavioral checks cover canonical serializer discovery, event serialization with no request, derived-field rejection, inferred renewal ordering, legacy link field mapping and repair migration, preference ranges and schedule boundaries, failed-scan handling, Group widget rendering, and preserved CA bookmark filters.
-- A headless Edge browser fixture exercised production SAN JavaScript/CSS: IPv6/URI preservation, add/remove/type/value changes, existing-key selection, CA/path-length toggling, and mobile-width overflow. This was an isolated editor fixture, not a live NetBox page.
-- Complete-module undefined-name checks and URL-to-view symbol checks cover failures that isolated function tests cannot detect.
-- Real cryptography tests sign and verify CSRs with existing RSA, EC, and Ed25519 keys; malformed SAN/subject/usage inputs and tampered CSR signatures are rejected.
-- Alert form and shared validation checks cover invalid email addresses, hostnames, port boundaries, endpoint URLs, headers, and global certificate settings. Explicit `{}` clears headers while blank preserves them.
-- Import tests parse mixed PEM/PFX, nested archives, unusual filenames, and 1,001 certificate files. Invalid archive members, traversal paths, limits, and metadata-only input are rejected.
-- Mixed inventory ZIP output is re-parsed and its checksums and unique member paths verified.
-- Existing tests for CA-only imports, Group editors, permission scopes, calendar-month alerts, certificate-named bundles/PFX, empty exports, and linked Health findings continue to pass.
+- Started from published v1.3.0 (`8236130`).
+- 124 standalone Python tests pass, including all previous cryptographic/import/export/permission regressions.
+- New checks cover shared runtime versions in every manifest and alert payload, HTML escaping and multipart email delivery with Django's in-memory backend, test/recovery/expiration templates, every supported webhook method, TLS/header preservation, redirect/invalid-method rejection, native Group selection and clearing, and filter preservation for Health bulk actions.
+- Headless Edge checks exercise the production bulk-selection JavaScript: collapsed child groups, disabled rows, all-query selection, deselection, clearing, and pages without edit controls. Settings width is bounded to 1088px at a 1920px viewport and shrinks to a 375px viewport.
+- The actual notification template was rendered, inspected, and checked for overflow at desktop/mobile widths. This does not establish rendering in every email client.
+- Release metadata, Python compilation, undefined-name/route checks, whitespace, wheel/sdist builds, and distribution metadata checks passed. Packages include migration 0024, native membership template, selection assets, notification template, and runtime version module.
 
-Standalone tests isolate functions/forms from NetBox's PostgreSQL/Redis application. They do not establish that every live button and deployment-specific integration has been exercised.
+No external email or webhook was sent during these checks. Delivery tests use mocks or Django's in-memory mail backend. No live NetBox/PostgreSQL/Redis stack is available here; migration/runtime testing remains on the user's VM after pip installation.
 
 ## Release checks
 

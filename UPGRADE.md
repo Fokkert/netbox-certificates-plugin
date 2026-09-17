@@ -1,6 +1,6 @@
-# Upgrade to 1.3.0
+# Upgrade to 1.3.1
 
-Upgrade 1.2.0 in place; older migrations remain available. Supported NetBox versions remain 4.5.9 and 4.5.10 with Python 3.12+. Run the following on the Linux VM. These commands assume `/opt/netbox`, PostgreSQL database `netbox`, and systemd units `netbox` and `netbox-rq`. Adapt paths/service names if your installation differs. Container deployments should install the pinned package when rebuilding their image.
+Upgrade 1.3.0 in place; older migrations remain available. Supported NetBox versions remain 4.5.9 and 4.5.10 with Python 3.12+. Run the following on the Linux VM. These commands assume `/opt/netbox`, PostgreSQL database `netbox`, and systemd units `netbox` and `netbox-rq`. Adapt paths/service names if your installation differs. Container deployments should install the pinned package when rebuilding their image.
 
 ## Preserve existing data
 
@@ -9,24 +9,24 @@ Keep the existing plugin Fernet encryption key unchanged. Back up the database, 
 ```bash
 sudo systemctl stop netbox netbox-rq
 umask 077
-sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.3.0.dump"
-sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.3.0
+sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.3.1.dump"
+sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.3.1
 ```
 
 Use your normal backup command if PostgreSQL is remote. Confirm the backup succeeded before continuing.
 
 ## Install with pip
 
-Wait until GitHub Actions has successfully published 1.3.0 to PyPI. No source copying, cloning, or uninstall is needed:
+Wait until GitHub Actions has successfully published 1.3.1 to PyPI. No source copying, cloning, or uninstall is needed:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.3.0'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.3.1'
 ```
 
 If the tag has been pushed but PyPI publication is pending, pip can instead install the tagged source archive:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.3.0.zip'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.3.1.zip'
 ```
 
 Update the persistent package pin automatically so NetBox's upgrade script keeps this version:
@@ -39,7 +39,7 @@ path = Path('/opt/netbox/local_requirements.txt')
 lines = path.read_text().splitlines() if path.exists() else []
 pattern = re.compile(r'^\s*netbox[-_]certificates[-_]plugin(?:\[.*?\])?(?:\s|[=<>!~@]|$)', re.I)
 lines = [line for line in lines if not pattern.match(line)]
-lines.append('netbox-certificates-plugin==1.3.0')
+lines.append('netbox-certificates-plugin==1.3.1')
 path.write_text('\n'.join(lines) + '\n')
 PY
 ```
@@ -60,9 +60,18 @@ sudo systemctl start netbox netbox-rq
 sudo systemctl status netbox netbox-rq --no-pager
 ```
 
-The installed version must be `1.3.0`. Hard-refresh your browser after static files are collected.
+The installed version must be `1.3.1`. Hard-refresh your browser after static files are collected.
 
 ## Data migration
+
+`0024_webhook_method` adds the HTTP method to alert channels, defaulting every existing channel to POST. It preserves destinations, credentials, TLS preferences, rules, and all inventory objects. After upgrading, use **Alerts Configuration → Webhook HTTP method** to choose POST, GET, PUT, PATCH, DELETE, HEAD, or OPTIONS. Sample tests use the selected method.
+
+All email paths now send the same minimal HTML template plus a readable plain-text alternative. Manifest files and notification versions come from the shared runtime version. Old exports and emails are not rewritten; generate a new export/test after installation.
+
+Group membership now uses six native searchable selectors, preserving the existing hierarchy, permissions, and membership data. Preferences, Alerts, Group editing, and export options have responsive bounded widths. Run collectstatic and hard-refresh the browser for these UI changes.
+
+### Upgrading from 1.2.0 or earlier
+
 
 `0023_preferences_and_derived_fields` adds Preferences with existing 15-minute scan/evaluation defaults and marks derived fields read-only. It preserves certificate/key/CSR material, delivery configuration, encryption keys, Groups, and Service assignments. The first health scan recalculates issuer and Supersedes relationships, including stale values that were previously entered manually. Names remain editable, including Bundle names. The migration repairs legacy mirrored links so their relationship, automatic flag, and enabled state match the internal engine; unverified historic manual cryptographic claims are disabled. Identifiable obsolete mirror rows are removed.
 
@@ -78,6 +87,11 @@ Policy categories and explicit finding codes on rules are updated to the new con
 Earlier migrations remain unchanged: 0021 fixes the CSRs label; 0020 defaults certificate expiration alerts to 1 month only where both fields were unset; 0019 creates the settings singleton. Clear both certificate trigger fields to disable its expiration alerts. Existing custom timing, delivery settings, and encrypted secrets are preserved.
 
 ## Verify after installation
+
+- Use Select all/Clear selection in Groups and Health. For Health, check that all-pages selection affects only the filtered results.
+- Add/remove Group members with the native selectors and verify the changes persist.
+- Send an email sample: verify HTML formatting and version 1.3.1. Generate a fresh export and check its manifest version.
+- Choose a webhook method and send a sample to your endpoint. GET/HEAD/OPTIONS use a `payload` query parameter; POST/PUT/PATCH/DELETE send a JSON body.
 
 - Delete disposable Certificates individually and with Delete Selected, including objects with automatic links; confirm dependent links are removed.
 - Open Preferences, save a supported scan interval, and verify successful scheduled timestamps after the worker runs.
@@ -113,4 +127,4 @@ See [API](docs/API.md), [Permissions](docs/PERMISSIONS.md), and [Imports](docs/I
 
 ## Rollback
 
-Stop NetBox and the worker, restore the pre-upgrade database/configuration/local requirements backup, reinstall `netbox-certificates-plugin==1.2.0` using pip, run `collectstatic --no-input` and `check`, and restart. Keep the original encryption key. An older package alone does not undo database migrations or settings changes. If upgrading from an earlier version, reinstall the exact version represented by your backup instead.
+Stop NetBox and the worker, restore the pre-upgrade database/configuration/local requirements backup, reinstall `netbox-certificates-plugin==1.3.0` using pip, run `collectstatic --no-input` and `check`, and restart. Keep the original encryption key. An older package alone does not undo database migrations or settings changes. If upgrading from an earlier version, reinstall the exact version represented by your backup instead.

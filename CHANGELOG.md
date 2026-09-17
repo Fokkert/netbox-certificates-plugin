@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.1
+
+- Add Select all/Clear selection to the Groups tree, Health findings, and inventory export types; preserve Health filters during all-pages bulk actions.
+- Bound settings/export form widths and replace large Group membership boxes with native NetBox multiple-choice selectors.
+- Centralize the runtime version used by NetBox, export manifests, email templates, webhook payloads, and User-Agent headers.
+- Use one minimal HTML email template with plain-text fallback for tests, findings, recoveries, and legacy expiration reports.
+- Add validated webhook HTTP methods to settings, channels, REST, filters, and bulk editing. Migration 0024 preserves POST as the default.
+
+
 ## 1.3.0
 
 - Fix canonical serializer discovery for all public models and request-free event serialization during individual/bulk deletion.

@@ -75,3 +75,7 @@ If a Bundle has no certificate, its Bundle name is used. Unsafe path characters 
 Use **Export inventory** on the Vault, or API `POST export-inventory/`. Choose any combination of crypto types and metadata types. Material includes the matching bundle chain and separate PEM files; use the individual/bulk Bundle exporter for PFX choices. The mixed exporter iterates records in chunks and spools the ZIP to disk beyond 8 MiB. It includes per-file SHA-256 checksums and object references in a manifest. All types use their existing scoped export permissions; any unauthorized selection rejects the request.
 
 Non-crypto records are JSON snapshots under `metadata/`, without encrypted secrets or private material. Related IDs are visibility-scoped. Reimporting this ZIP restores/reuses crypto objects and reconstructs their crypto relationships, but skips metadata snapshots; it is not a complete database restore. The importer has documented upload/expansion limits, so exceptionally large exports may need to be split into filtered batches before reimport.
+
+## Runtime version (1.3.1)
+
+Every newly generated material, Bundle, metadata, and inventory manifest reads `plugin_version` from the plugin's shared runtime version constant. Previously downloaded archives remain unchanged. Re-export after upgrading to obtain a manifest showing the installed release.

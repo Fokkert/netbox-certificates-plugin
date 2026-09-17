@@ -1,3 +1,4 @@
+from .constants import WEBHOOK_METHOD_CHOICES
 import json
 
 import django_filters
@@ -191,6 +192,7 @@ class ObjectLinkFilterSet(PrimaryModelFilterSet):
 
 @register_filterset
 class AlertChannelFilterSet(PrimaryModelFilterSet):
+    webhook_method = django_filters.MultipleChoiceFilter(choices=WEBHOOK_METHOD_CHOICES)
     q = django_filters.CharFilter(method="search")
     recipients = django_filters.CharFilter(method="filter_recipients")
 
@@ -201,6 +203,7 @@ class AlertChannelFilterSet(PrimaryModelFilterSet):
             "name",
             "enabled",
             "channel_type",
+            "webhook_method",
             "smtp_host",
             "smtp_port",
             "smtp_username",

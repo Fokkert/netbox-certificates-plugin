@@ -281,15 +281,16 @@ class PermissionsAndSettings(unittest.TestCase):
         post = Mock()
         post.return_value.status_code = 200
         email = Mock()
-        scope = definitions("netbox_certificates/services/alerts_v1.py", ["send_test_channel"],
+        scope = definitions("netbox_certificates/services/alerts_v1.py", ["send_test_channel", "_send_webhook"],
                             __package__="netbox_certificates.services", timezone=timezone, json=json, _send_email=email,
-                            requests=SimpleNamespace(post=post), AlertChannelTypeChoices=SimpleNamespace(EMAIL="email", WEBHOOK="webhook"))
+                            requests=SimpleNamespace(request=post), AlertChannelTypeChoices=SimpleNamespace(EMAIL="email", WEBHOOK="webhook"))
         channel = SimpleNamespace(name="sample", channel_type="email", subject_prefix="Test")
         payload = scope["send_test_channel"](channel)
-        self.assertEqual(json.loads(email.call_args.args[2]), payload)
+        self.assertEqual(email.call_args.args[2], payload)
         channel.channel_type = "webhook"
         channel.webhook_url_encrypted = "ciphertext"
         channel.webhook_headers_encrypted = "ciphertext"
+        channel.webhook_method = "POST"
         channel.webhook_verify_tls = False
         with patch.dict(sys.modules, {secret.__name__: secret}):
             scope["send_test_channel"](channel)

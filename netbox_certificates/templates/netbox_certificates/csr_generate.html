@@ -4,6 +4,7 @@
 {% block title %}Generate CSR{% endblock %}
 
 {% block form %}
+<div class="nbcert-settings">
   {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
   {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
 
@@ -86,6 +87,7 @@
   </div>
 
   <script src="{% static 'netbox_certificates/csr_editor.js' %}" defer></script>
+</div>
 {% endblock %}
 
 {% block buttons %}

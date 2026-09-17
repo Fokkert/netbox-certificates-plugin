@@ -175,3 +175,9 @@ Supported intervals are 5, 15, 30, 60, 180, 360, 720, and 1440 minutes; the warn
 Existing Certificate/CSR/Private Key material cannot be replaced with different cryptographic identity. Import renewal/replacement material as a new object. Creating/importing artifacts still parses material automatically; CSR generation still accepts the requested subject and SANs before signing. Manual ObjectLinks cannot claim `key_match`, `csr_match`, `issuer`, `bundle_member`, or `supersedes` relationships. Automatic links remain excluded from manual updates/deletes.
 
 CA REST endpoints are retained. The removed UI page redirects to `certificates/?is_ca=true`; the Vault uses that filtered URL. All public model serializers are exported from the canonical module required by NetBox event serialization, including cascaded delete events with no HTTP request.
+
+## 1.3.1 notification changes
+
+`alert-settings/` and `alert-channels/` expose `webhook_method`, one of POST, GET, PUT, PATCH, DELETE, HEAD, OPTIONS. Omitted values on settings updates preserve the current method; new channels default to POST. Invalid methods return a field validation error. Channel filtering and bulk editing also support this field. Existing settings and object permissions remain unchanged.
+
+Both sample and live webhooks use the selected method. GET/HEAD/OPTIONS carry JSON in the `payload` query parameter; the other methods carry a JSON body. Notification payloads include `plugin_version` from the same runtime constant as all export manifests. GET delivery does not change the settings/test API verbs: test endpoints still require POST and a write-enabled token.

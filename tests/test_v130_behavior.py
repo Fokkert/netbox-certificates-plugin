@@ -10,7 +10,6 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from django import forms
-from django.template import Context, Engine
 from django.utils.module_loading import import_string
 from rest_framework import serializers
 
@@ -207,18 +206,12 @@ class BackgroundPreferences(unittest.TestCase):
 
 
 class EditorRendering(unittest.TestCase):
-    def test_group_membership_sections_keep_selected_values_and_escape_names(self):
-        widget = forms.SelectMultiple(choices=[("Certificates", [("certificate:1", "<unsafe>")]),
-                                               ("Private Keys", [("privatekey:2", "Key")]), ("Groups", [])])
-        context = widget.get_context("members", ["certificate:1", "privatekey:2"], {"id": "id_members"})
-        template = Engine().from_string((ROOT / "netbox_certificates/templates/netbox_certificates/widgets/group_members.html").read_text(encoding="utf-8"))
-        html = template.render(Context(context))
-        self.assertEqual(html.count('name="members"'), 3)
-        self.assertEqual(html.count(" selected"), 2)
-        self.assertIn("&lt;unsafe&gt;", html)
-        self.assertIn('id="id_members_0"', html)
-        self.assertIn('id="id_members_1"', html)
-        self.assertIn("No editable groups available.", html)
+    def test_group_membership_uses_six_native_selectors(self):
+        source = (ROOT / "netbox_certificates/templates/netbox_certificates/group_edit.html").read_text()
+        for kind in ("group", "certificate", "privatekey", "csr", "bundle", "service"):
+            self.assertIn(f"render_field form.member_{kind}", source)
+        self.assertNotIn("membership-panel", source)
+        self.assertNotIn("Hold Ctrl", source)
 
     def test_ca_bookmark_preserves_filters_and_forces_ca_filter(self):
         from django.http import QueryDict

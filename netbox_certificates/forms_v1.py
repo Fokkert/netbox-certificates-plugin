@@ -1,3 +1,4 @@
+from .constants import WEBHOOK_METHOD_CHOICES
 from .labels import AcronymFormMixin
 from .validation import OptionalObjectJSONField, validate_endpoint_url, validate_headers
 from django import forms
@@ -350,7 +351,7 @@ class AlertChannelForm(AcronymFormMixin, PrimaryModelForm):
             "smtp_use_tls", "smtp_use_ssl", "smtp_verify_tls", "from_email",
             name="SMTP",
         ),
-        FieldSet("webhook_url", "webhook_headers", "webhook_verify_tls", name="Webhook"),
+        FieldSet("webhook_method", "webhook_url", "webhook_headers", "webhook_verify_tls", name="Webhook"),
         FieldSet("owner", "description", "comments", "tags", name="NetBox"),
     )
 
@@ -360,7 +361,7 @@ class AlertChannelForm(AcronymFormMixin, PrimaryModelForm):
             "name", "enabled", "channel_type", "recipients",
             "smtp_host", "smtp_port", "smtp_username", "smtp_password",
             "smtp_use_tls", "smtp_use_ssl", "smtp_verify_tls", "webhook_verify_tls", "from_email",
-            "webhook_url", "webhook_headers", "subject_prefix",
+            "webhook_method", "webhook_url", "webhook_headers", "subject_prefix",
             "owner", "description", "comments", "tags",
         )
 
@@ -405,6 +406,7 @@ class AlertChannelForm(AcronymFormMixin, PrimaryModelForm):
 
 
 class AlertChannelBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
+    webhook_method = forms.ChoiceField(choices=[("", "---------"), *WEBHOOK_METHOD_CHOICES], required=False)
     enabled = forms.NullBooleanField(required=False)
     subject_prefix = forms.CharField(required=False)
     recipients = forms.JSONField(required=False)
@@ -419,12 +421,14 @@ class AlertChannelBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
     fieldsets = (
         FieldSet("enabled", "subject_prefix"),
         FieldSet("recipients", "smtp_host", "smtp_port", "smtp_username", "smtp_use_tls", "smtp_use_ssl", "from_email", name="SMTP"),
+        FieldSet("webhook_method", name="Webhook"),
         FieldSet("description"),
     )
     nullable_fields = ("description", "comments")
 
 
 class AlertChannelFilterForm(AcronymFormMixin, PrimaryModelFilterSetForm):
+    webhook_method = forms.MultipleChoiceField(choices=WEBHOOK_METHOD_CHOICES, required=False)
     model = AlertChannel
     q = forms.CharField(required=False)
     enabled = forms.NullBooleanField(required=False)

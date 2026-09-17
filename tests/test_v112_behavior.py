@@ -34,7 +34,7 @@ class GroupFormRegression(unittest.TestCase):
         # global Service here would conceal the actual v1.1.1 NameError.
         source = ast.parse((ROOT / "netbox_certificates/forms.py").read_text(encoding="utf-8"))
         cls = next(node for node in source.body if isinstance(node, ast.ClassDef) and node.name == "ArtifactGroupForm")
-        cls.body = [node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name == "__init__"]
+        cls.body = [node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name in {"__init__", "_selected_ids"}]
         cls.bases = [ast.Name(id="BaseForm", ctx=ast.Load())]
 
         class BaseForm(forms.Form):
@@ -56,7 +56,7 @@ class GroupFormRegression(unittest.TestCase):
             manager = Mock(all=Mock(return_value=queryset), restrict=Mock(return_value=queryset))
             return SimpleNamespace(objects=manager), queryset
 
-        scope = {"__name__": "isolated.forms", "__package__": "isolated", "BaseForm": BaseForm}
+        scope = {"__name__": "isolated.forms", "__package__": "isolated", "BaseForm": BaseForm, "DynamicModelMultipleChoiceField": lambda queryset, **kwargs: forms.MultipleChoiceField(**kwargs)}
         for label in ("ArtifactGroup", "Certificate", "PrivateKey", "CSR", "Bundle"):
             scope[label], _ = inventory(1, label)
         service, service_qs = inventory(42, "Web service")
@@ -75,6 +75,7 @@ class GroupFormRegression(unittest.TestCase):
             service.objects.restrict.assert_called_with(user, "change")
             if pk:
                 self.assertIn("service:42", form.fields["members"].initial)
+                self.assertEqual(form.fields["member_service"].initial, [42])
                 scope["ArtifactGroup"].objects.restrict.return_value.exclude.assert_any_call(pk__in={2, 3})
 
 
@@ -95,13 +96,13 @@ class BundleNamesRegression(unittest.TestCase):
         self.assertEqual(names.bundle_export_name(bundle), "Internal bundle label's Bundle")
 
     def test_unsafe_and_unicode_names(self):
-        for name in ('../../bad\\name\r\n".com', '...', '*', 'CON', 'LPT1.com', 'x' * 300, 'مثال' * 90):
+        for name in ('../../bad\\name\r\n".com', '...', '*', 'CON', 'LPT1.com', 'x' * 300, 'Ù…Ø«Ø§Ù„' * 90):
             result = names.certificate_export_name(self.bundle(name))
             self.assertNotRegex(result, r'[<>:"/\\|?*\x00-\x1f]')
             self.assertNotIn(result, ('', '.', '..', 'CON', 'LPT1.com'))
             self.assertLessEqual(len(result), 121)
             self.assertLessEqual(len(result.encode("utf-8")), 161)
-        result = names.bundle_export_name(self.bundle("مثال.com"), ".zip")
+        result = names.bundle_export_name(self.bundle("Ù…Ø«Ø§Ù„.com"), ".zip")
         self.assertIn("filename*=utf-8''", content_disposition_header(True, result))
 
     def export_scope(self):
@@ -249,6 +250,9 @@ class FindingDisplayRegression(unittest.TestCase):
         tags = Library()
         tags.simple_tag(lambda field: "", name="render_field")
         engine.template_libraries["form_helpers"] = tags
+        static_tags = Library()
+        static_tags.simple_tag(lambda path: "/static/" + path, name="static")
+        engine.template_libraries["static"] = static_tags
         finding = SimpleNamespace(pk=7, severity="critical", summary="Expired <script>",
             get_severity_display=lambda: "Critical", get_status_display=lambda: "Active", category="validity", code="EXPIRED",
             get_absolute_url=lambda: "/health/7/", affected_link=format_html('<a href="{}">{}</a>', "/certificates/1/", "example.com"),
