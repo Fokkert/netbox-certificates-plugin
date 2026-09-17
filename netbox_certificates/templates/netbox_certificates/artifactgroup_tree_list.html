@@ -1,21 +1,26 @@
 {% extends 'generic/_base.html' %}
 {% load static %}
 {% block title %}Groups{% endblock %}
+{% block head %}{{ block.super }}<link rel="stylesheet" href="{% static 'netbox_certificates/editors.css' %}">{% endblock %}
 {% block content %}
 <link rel="stylesheet" href="{% static 'netbox_certificates/groups.css' %}">
-<div class="d-flex flex-wrap gap-2 mb-3">
+<div class="nbcert-actions mb-3">
 {% if perms.netbox_certificates.add_artifactgroup %}<a class="btn btn-primary" href="{% url 'plugins:netbox_certificates:artifactgroup_add' %}">Create group</a>{% endif %}
 {% if perms.netbox_certificates.archive_export_artifactgroup %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_archive_export' %}?{{ request.GET.urlencode }}">Export groups</a>{% endif %}
 <button type="button" class="btn btn-outline-secondary" data-expand-all="true">Expand all</button><button type="button" class="btn btn-outline-secondary" data-expand-all="false">Collapse all</button>
 </div>
-<form method="get" class="d-flex gap-2 mb-3"><label for="group-search" class="visually-hidden">Search groups</label><input id="group-search" class="form-control" name="q" value="{{ request.GET.q }}" placeholder="Find a group"><button class="btn btn-outline-primary">Search</button><a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_list' %}">Clear</a></form>
+<form method="get" class="nbcert-search mb-3">
+<label for="group-search" class="visually-hidden">Search groups</label>
+<input id="group-search" class="form-control" name="q" value="{{ request.GET.q }}" placeholder="Find a group">
+<div class="nbcert-actions"><button type="submit" class="btn btn-outline-primary">Search</button><a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_list' %}">Clear</a></div>
+</form>
 {% if filter_errors %}<div class="alert alert-danger">{{ filter_errors }}</div>{% endif %}
 <div class="card"><h2 class="card-header">Group hierarchy</h2><div class="card-body">
 <p class="text-muted">Expand groups to browse subgroups and their objects. Open a group to manage membership.</p>
 <form method="post" data-bulk-select>{% csrf_token %}
 {% if perms.netbox_certificates.change_artifactgroup or perms.netbox_certificates.delete_artifactgroup %}{% include "netbox_certificates/inc/bulk_selection.html" with select_label="Select all groups" %}{% endif %}
 <ul class="list-unstyled" id="certificate-group-tree">{% include 'netbox_certificates/inc/group_tree_nodes.html' with nodes=group_tree %}</ul>
-<div class="d-flex gap-2 mt-3">
+<div class="nbcert-actions mt-3">
 {% if perms.netbox_certificates.change_artifactgroup %}<button class="btn btn-outline-secondary" formaction="{% url 'plugins:netbox_certificates:artifactgroup_bulk_edit' %}">Edit selected</button><button class="btn btn-outline-secondary" formaction="{% url 'plugins:netbox_certificates:artifactgroup_bulk_rename' %}">Rename selected</button>{% endif %}
 {% if perms.netbox_certificates.delete_artifactgroup %}<button class="btn btn-outline-danger" formaction="{% url 'plugins:netbox_certificates:artifactgroup_bulk_delete' %}">Delete selected</button>{% endif %}
 </div></form>

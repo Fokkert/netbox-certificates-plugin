@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.2
+
+- Add a navy email header, status colors, tinted summary panels, and alternating detail rows across all notifications; retain escaping and plain-text alternatives.
+- Center bounded Preferences, Alerts Configuration, Group edit, CSR generation, and export forms.
+- Render inventory export types as aligned, labeled checkboxes with visible checked/focus states, responsive columns, and accessible validation errors.
+- Align search/filter and action buttons, including Groups Search/Clear, at desktop and mobile widths.
+- Preserve export permissions, API behavior, stored data, and existing selection logic; no new migration.
+
 ## 1.3.1
 
 - Add Select all/Clear selection to the Groups tree, Health findings, and inventory export types; preserve Health filters during all-pages bulk actions.

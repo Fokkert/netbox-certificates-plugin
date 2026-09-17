@@ -76,6 +76,10 @@ Use **Export inventory** on the Vault, or API `POST export-inventory/`. Choose a
 
 Non-crypto records are JSON snapshots under `metadata/`, without encrypted secrets or private material. Related IDs are visibility-scoped. Reimporting this ZIP restores/reuses crypto objects and reconstructs their crypto relationships, but skips metadata snapshots; it is not a complete database restore. The importer has documented upload/expansion limits, so exceptionally large exports may need to be split into filtered batches before reimport.
 
+## Inventory selection (1.3.2)
+
+Export inventory uses a responsive grid of labeled checkboxes with visible checked states. Click a label or use Tab and Space to toggle a type; Select all object types and Clear selection update the selection count. At least one valid type is required. Certificates, private keys, CSRs, and Bundles remain selected initially; a failed export preserves your submitted choices. Existing object and private-key export permissions still apply.
+
 ## Runtime version (1.3.1)
 
 Every newly generated material, Bundle, metadata, and inventory manifest reads `plugin_version` from the plugin's shared runtime version constant. Previously downloaded archives remain unchanged. Re-export after upgrading to obtain a manifest showing the installed release.

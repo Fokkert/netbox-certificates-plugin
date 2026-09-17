@@ -1,6 +1,6 @@
-# Upgrade to 1.3.1
+# Upgrade to 1.3.2
 
-Upgrade 1.3.0 in place; older migrations remain available. Supported NetBox versions remain 4.5.9 and 4.5.10 with Python 3.12+. Run the following on the Linux VM. These commands assume `/opt/netbox`, PostgreSQL database `netbox`, and systemd units `netbox` and `netbox-rq`. Adapt paths/service names if your installation differs. Container deployments should install the pinned package when rebuilding their image.
+Upgrade 1.3.1 in place; older migrations remain available. Supported NetBox versions remain 4.5.9 and 4.5.10 with Python 3.12+. Run the following on the Linux VM. These commands assume `/opt/netbox`, PostgreSQL database `netbox`, and systemd units `netbox` and `netbox-rq`. Adapt paths/service names if your installation differs. Container deployments should install the pinned package when rebuilding their image.
 
 ## Preserve existing data
 
@@ -9,24 +9,24 @@ Keep the existing plugin Fernet encryption key unchanged. Back up the database, 
 ```bash
 sudo systemctl stop netbox netbox-rq
 umask 077
-sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.3.1.dump"
-sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.3.1
+sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.3.2.dump"
+sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.3.2
 ```
 
 Use your normal backup command if PostgreSQL is remote. Confirm the backup succeeded before continuing.
 
 ## Install with pip
 
-Wait until GitHub Actions has successfully published 1.3.1 to PyPI. No source copying, cloning, or uninstall is needed:
+Wait until GitHub Actions has successfully published 1.3.2 to PyPI. No source copying, cloning, or uninstall is needed:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.3.1'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.3.2'
 ```
 
 If the tag has been pushed but PyPI publication is pending, pip can instead install the tagged source archive:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.3.1.zip'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.3.2.zip'
 ```
 
 Update the persistent package pin automatically so NetBox's upgrade script keeps this version:
@@ -39,7 +39,7 @@ path = Path('/opt/netbox/local_requirements.txt')
 lines = path.read_text().splitlines() if path.exists() else []
 pattern = re.compile(r'^\s*netbox[-_]certificates[-_]plugin(?:\[.*?\])?(?:\s|[=<>!~@]|$)', re.I)
 lines = [line for line in lines if not pattern.match(line)]
-lines.append('netbox-certificates-plugin==1.3.1')
+lines.append('netbox-certificates-plugin==1.3.2')
 path.write_text('\n'.join(lines) + '\n')
 PY
 ```
@@ -60,9 +60,13 @@ sudo systemctl start netbox netbox-rq
 sudo systemctl status netbox netbox-rq --no-pager
 ```
 
-The installed version must be `1.3.1`. Hard-refresh your browser after static files are collected.
+The installed version must be `1.3.2`. Hard-refresh your browser after static files are collected.
 
-## Data migration
+## Changes in 1.3.2
+
+No new database migration is required from 1.3.1. Run `migrate` for compatibility with older installations and run `collectstatic` to install the checkbox and layout fixes. Preferences, Alerts Configuration, and other bounded forms are now centered. Inventory export shows labeled checkboxes with visible selected states. Search and action buttons have consistent spacing and height. All email notifications use a navy header, tinted status panels, and alternating detail rows; a plain-text alternative remains available.
+
+## Earlier data migrations
 
 `0024_webhook_method` adds the HTTP method to alert channels, defaulting every existing channel to POST. It preserves destinations, credentials, TLS preferences, rules, and all inventory objects. After upgrading, use **Alerts Configuration → Webhook HTTP method** to choose POST, GET, PUT, PATCH, DELETE, HEAD, or OPTIONS. Sample tests use the selected method.
 
@@ -88,9 +92,10 @@ Earlier migrations remain unchanged: 0021 fixes the CSRs label; 0020 defaults ce
 
 ## Verify after installation
 
+- Verify that Preferences and Alerts Configuration are centered, Group Search/Clear buttons align, and inventory export checkboxes toggle visibly with either their labels or the keyboard.
 - Use Select all/Clear selection in Groups and Health. For Health, check that all-pages selection affects only the filtered results.
 - Add/remove Group members with the native selectors and verify the changes persist.
-- Send an email sample: verify HTML formatting and version 1.3.1. Generate a fresh export and check its manifest version.
+- Send an email sample: verify HTML formatting and version 1.3.2. Generate a fresh export and check its manifest version.
 - Choose a webhook method and send a sample to your endpoint. GET/HEAD/OPTIONS use a `payload` query parameter; POST/PUT/PATCH/DELETE send a JSON body.
 
 - Delete disposable Certificates individually and with Delete Selected, including objects with automatic links; confirm dependent links are removed.
@@ -127,4 +132,4 @@ See [API](docs/API.md), [Permissions](docs/PERMISSIONS.md), and [Imports](docs/I
 
 ## Rollback
 
-Stop NetBox and the worker, restore the pre-upgrade database/configuration/local requirements backup, reinstall `netbox-certificates-plugin==1.3.0` using pip, run `collectstatic --no-input` and `check`, and restart. Keep the original encryption key. An older package alone does not undo database migrations or settings changes. If upgrading from an earlier version, reinstall the exact version represented by your backup instead.
+Stop NetBox and the worker, restore the pre-upgrade database/configuration/local requirements backup, reinstall `netbox-certificates-plugin==1.3.1` using pip, run `collectstatic --no-input` and `check`, and restart. Keep the original encryption key. An older package alone does not undo database migrations or settings changes. If upgrading from an earlier version, reinstall the exact version represented by your backup instead.

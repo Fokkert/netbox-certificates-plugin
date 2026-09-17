@@ -9,7 +9,7 @@ NetBox Certificates Plugin adds certificate inventory and lifecycle management t
 | NetBox | 4.5.9, 4.5.10 |
 | Python | 3.12+ |
 | `cryptography` | 42+ |
-| Release | 1.3.1 |
+| Release | 1.3.2 |
 | Upgrade source | 1.3.0 (older migrations retained) |
 
 ## Features
@@ -177,7 +177,7 @@ See [docs/API.md](docs/API.md).
 Add the package to `/opt/netbox/local_requirements.txt`:
 
 ```text
-netbox-certificates-plugin==1.3.1
+netbox-certificates-plugin==1.3.2
 ```
 
 Enable the plugin:
@@ -254,6 +254,6 @@ See [SECURITY.md](SECURITY.md).
 
 Apache-2.0. See `LICENSE` and `NOTICE`.
 
-## Release 1.3.1
+## Release 1.3.2
 
-This release adds missing Select all controls, bounds settings-page widths, simplifies Group membership to native NetBox selectors, and uses one runtime version in manifests and alerts. All email alerts use a shared HTML design with plain-text fallback. Webhook HTTP methods are configurable in the UI and API. See [Upgrade](UPGRADE.md) for pip-only deployment and [Validation](VALIDATION.md) for checks and runtime limitations.
+This release adds a navy header and readable status colors to all email alerts, centers bounded settings and export forms, repairs inventory export checkboxes with clickable labels and visible selections, and aligns search and action buttons. Selection supports keyboard input and responsive light/dark layouts. No database migration or API/permission change is required from 1.3.1. See [Upgrade](UPGRADE.md) for pip-only deployment and [Validation](VALIDATION.md) for checks and runtime limitations.

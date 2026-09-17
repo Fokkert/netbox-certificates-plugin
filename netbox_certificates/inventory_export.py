@@ -27,7 +27,8 @@ TYPE_LABELS = {
 
 
 class InventoryExportForm(forms.Form):
-    types = forms.MultipleChoiceField(choices=list(TYPE_LABELS.items()), widget=forms.CheckboxSelectMultiple,
+    types = forms.MultipleChoiceField(choices=list(TYPE_LABELS.items()),
+                                     widget=forms.CheckboxSelectMultiple(attrs={"class": "form-check-input"}),
                                      initial=["certificate", "privatekey", "csr", "bundle"], label="Object types")
 
 

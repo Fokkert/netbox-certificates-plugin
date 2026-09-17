@@ -86,6 +86,10 @@ The settings page also defines the five global certificate requirements describe
 
 Invalid email addresses, SMTP hostnames and ports, webhook URLs/headers, and timing values are rejected even for disabled destinations. Clear webhook headers by submitting `{}`; leave the field blank to retain stored headers. Test buttons use the same validation before saving and sending the sample.
 
+## Email appearance (1.3.2)
+
+Every email uses a navy header with a teal accent, a tinted summary, and alternating detail rows. Critical/expired findings use red accents, warnings/expiring reports use amber, resolved findings use green, and informational/test notifications use blue. Labels remain visible so color is not the only status indicator. HTML content remains escaped and every message includes a plain-text alternative.
+
 ## HTML emails and webhook methods (1.3.1)
 
 All email notifications use the shared `notification_email.html` template: a neutral, 640px-wide card with summary, object/rule/status, details, evidence, generation time, and the current plugin version. Test messages, recoveries, and legacy expiration reports use the same design. HTML escapes object names and other supplied content. Messages are multipart with a readable plain-text fallback.

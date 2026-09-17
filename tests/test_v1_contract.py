@@ -90,7 +90,9 @@ class VersionOneFeatureContracts(unittest.TestCase):
     def test_groups_have_expandable_tree(self):
         template = self.read("netbox_certificates/templates/netbox_certificates/artifactgroup_tree_list.html")
         self.assertIn("groups.js", template)
-        self.assertNotIn("block.super", template)
+        # The content replaces generic list filters; head assets may be inherited.
+        content = template.split("{% block content %}", 1)[1]
+        self.assertNotIn("block.super", content)
         self.assertIn("localStorage", self.read("netbox_certificates/static/netbox_certificates/groups.js"))
 
     def test_search_indexes_cover_inventory_and_crypto_identifiers(self):

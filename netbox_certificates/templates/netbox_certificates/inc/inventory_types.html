@@ -1,0 +1,13 @@
+<fieldset class="nbcert-export-types" aria-describedby="export-types-help{% if form.types.errors %} export-types-errors{% endif %}">
+  <legend class="h3 mb-2">Object types <span class="text-danger" aria-hidden="true">*</span></legend>
+  <p class="text-muted mb-3" id="export-types-help">Select at least one object type. Click a checkbox or its label to change the selection.</p>
+  <div class="nbcert-choice-grid">
+    {% for checkbox in form.types %}
+    <label class="nbcert-choice" for="{{ checkbox.id_for_label }}">
+      {{ checkbox.tag }}
+      <span>{{ checkbox.choice_label }}</span>
+    </label>
+    {% endfor %}
+  </div>
+  {% if form.types.errors %}<div class="text-danger mt-3" id="export-types-errors" role="alert">{{ form.types.errors }}</div>{% endif %}
+</fieldset>

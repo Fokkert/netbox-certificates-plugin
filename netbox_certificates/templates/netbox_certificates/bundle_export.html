@@ -11,8 +11,8 @@
 {% render_field form.archive_format %}{% render_field form.export_pfx %}{% render_field form.include_chain %}
 <div id="pfx-options">{% render_field form.protect_pfx %}
 <div id="pfx-passwords">{% render_field form.pfx_password %}{% render_field form.pfx_password_confirm %}</div></div>
-<button type="submit" class="btn btn-primary">Download bundle</button>
-<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:bundle_list' %}">Cancel</a>
+<div class="nbcert-actions"><button type="submit" class="btn btn-primary">Download bundle</button>
+<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:bundle_list' %}">Cancel</a></div>
 </form></div></div>
 <script src="{% static 'netbox_certificates/export.js' %}" defer></script>
 </div>
