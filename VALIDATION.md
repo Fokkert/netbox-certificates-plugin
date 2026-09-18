@@ -1,16 +1,24 @@
-# Validation for 1.3.3
+# Validation for 1.3.4
 
-## Completed in the development workspace
+## Migration-state repair
 
-- Started from published v1.3.2 (`8a9b984`).
-- 133 standalone Python tests pass. New tests execute the production Health filter declarations against real Django forms and a small SQLite model: blank/reset choices, repeated values, combined filters, invalid choices, and label/widget behavior. Workflow tests verify preserved resolution timestamps and reopening.
-- Reviewed NetBox 4.5.9 filter/form implementations and replaced the dashboard's modifier widgets with simple optional controls. The shared filterset continues to serve UI, REST, export, and bulk operations.
-- Rendered the actual Health, Groups, and CSR templates in component fixtures. Headless Edge checks cover filter clearing, invalid-filter recovery, bulk Group selection, saved tree expansion during search, lowercase IP/URI SAN round trips, add/remove SANs, existing-key selection, algorithm controls, and CA path-length enablement.
-- Inspected light/dark desktop/mobile previews and verified no page overflow at 1440px and 375px. Fixtures use Bootstrap and production CSS/JavaScript; they do not emulate the entire NetBox frontend.
-- Reviewed canonical serializer discovery, routes, derived-field restrictions, action querysets, superuser/write-token checks, stale-link deletion cleanup, and finding reconciliation. Existing regressions for permissions, cryptography, imports/exports, and deletion remain passing. No installed database was inspected or cleaned.
-- Release metadata, compilation, undefined-name checks, whitespace, wheel/sdist builds, and distribution metadata are checked by the publishing helper. No new database migration or permission definition.
+- Started from published v1.3.3 (`60cbbd8`) and reproduced a pending AlterField for AlertRule.statuses using the actual NetBox 4.5.9 app registry, migration graph, and Django autodetector.
+- The historical default was `0014_certificate_management_v1.default_alert_statuses`; the runtime field uses `models_v1.default_alert_statuses`. Both return ["active"], but their distinct callable identities produce migration drift.
+- Added 0025_alertrule_statuses_default. All earlier published migrations remain unchanged. The same detector now reports no pending plugin changes against both 4.5.9 and 4.5.10 source trees. The local verification environment uses NetBox 4.5.9's pinned dependencies; CI installs each version's own requirements.
+- Added mandatory CI/release checks with real NetBox, PostgreSQL 16, and Redis 7 on both supported versions. They apply the full migration graph, run Django checks and `makemigrations --check --dry-run`, and upgrade from 0024 to 0025 with seeded alert rules to verify that all stored values are preserved.
+- Existing 133 standalone tests, compilation, metadata checks, and distribution checks remain part of release validation. The local state check requires no database connection and does not inspect the user's VM.
 
-No external email or webhook was sent. No live NetBox/PostgreSQL/Redis stack is available here; full runtime and migration verification remains on the user's VM after pip installation. These checks do not establish that every possible defect has been eliminated.
+The earlier 1.3.3 report covered standalone/component checks but did not perform a real NetBox model/migration comparison. Its claim of no outstanding migration requirements was incorrect. The new check closes that gap. Database-backed checks run in the GitHub workflow, not against production data.
+
+## Reproduce the migration-state check
+
+With a checkout of a supported NetBox release and its Python dependencies installed:
+
+```bash
+python scripts/check_migration_state.py --netbox-root /path/to/netbox
+```
+
+The script uses the disposable configuration in tests/netbox_configuration.py and compares migration files to real runtime models without connecting to a database. It fails if a plugin migration is missing. For actual database application and data preservation, use the NetBox migrations workflow.
 
 ## Release checks
 

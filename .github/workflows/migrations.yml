@@ -1,0 +1,66 @@
+name: NetBox migrations
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migration-check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        netbox: ["4.5.9", "4.5.10"]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: netbox
+          POSTGRES_USER: netbox
+          POSTGRES_PASSWORD: netbox
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U netbox"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      NETBOX_CONFIGURATION: netbox_configuration
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/tests:${{ github.workspace }}/netbox-source/netbox
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: netbox-community/netbox
+          ref: v${{ matrix.netbox }}
+          path: netbox-source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: netbox-source/requirements.txt
+      - name: Install NetBox and plugin dependencies
+        run: |
+          python -m pip install -r netbox-source/requirements.txt
+          python -m pip install .
+      - name: Compare real NetBox models and migration state
+        run: python scripts/check_migration_state.py --netbox-root netbox-source
+      - name: Apply migrations and check NetBox
+        run: |
+          python netbox-source/netbox/manage.py migrate --no-input
+          python netbox-source/netbox/manage.py check
+          python netbox-source/netbox/manage.py makemigrations --check --dry-run netbox_certificates
+          python netbox-source/netbox/manage.py migrate --check
+      - name: Check upgrade from the last published migration
+        run: |
+          python tests/check_migration_upgrade.py
+          python netbox-source/netbox/manage.py migrate --no-input
+          python netbox-source/netbox/manage.py makemigrations --check --dry-run netbox_certificates
+          python netbox-source/netbox/manage.py migrate --check

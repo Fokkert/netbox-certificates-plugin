@@ -10,7 +10,10 @@ permissions:
   id-token: write
 
 jobs:
+  migrations:
+    uses: ./.github/workflows/migrations.yml
   build:
+    needs: migrations
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.4
+
+- Add migration 0025_alertrule_statuses_default to align AlertRule.statuses with the runtime default callable. Migration 0014 referenced a different function with the same return value, leaving a persistent pending-model-change warning.
+- Preserve existing rule statuses and the default of ["active"] for new rules. Existing published migrations remain unchanged.
+- Add a real NetBox migration-state checker and PostgreSQL/Redis CI matrix for 4.5.9 and 4.5.10, including stored-data preservation during 0024 -> 0025 upgrades. Gate PyPI publication on these checks.
+- Correct the release/upgrade documentation: 1.3.3 shipped with outstanding migration-state drift; running migrate alone could not resolve it until this repair was packaged.
+
 ## 1.3.3
 
 - Fix optional Health severity/status filters: cleared values are accepted, multiple values are combined with OR, and unknown values remain invalid across UI, API, exports, and bulk actions.

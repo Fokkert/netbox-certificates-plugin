@@ -9,7 +9,7 @@ NetBox Certificates Plugin adds certificate inventory and lifecycle management t
 | NetBox | 4.5.9, 4.5.10 |
 | Python | 3.12+ |
 | `cryptography` | 42+ |
-| Release | 1.3.3 |
+| Release | 1.3.4 |
 | Upgrade source | 1.3.0 (older migrations retained) |
 
 ## Features
@@ -177,7 +177,7 @@ See [docs/API.md](docs/API.md).
 Add the package to `/opt/netbox/local_requirements.txt`:
 
 ```text
-netbox-certificates-plugin==1.3.3
+netbox-certificates-plugin==1.3.4
 ```
 
 Enable the plugin:
@@ -254,6 +254,6 @@ See [SECURITY.md](SECURITY.md).
 
 Apache-2.0. See `LICENSE` and `NOTICE`.
 
-## Release 1.3.3
+## Release 1.3.4
 
-This release fixes clearing Health filters, labels the query field Search, and shows invalid filter errors with a working reset link. Severity/status filters support multiple values consistently in the UI, API, and exports. Groups uses simpler tree rows and preserves expansion preferences during search. CSR generation uses consistent sections and preserves lowercase SAN types on redisplay. Editing resolved findings retains their resolution timestamp. No new database migration or permission definition is required. See [Upgrade](UPGRADE.md) for pip-only deployment and [Validation](VALIDATION.md) for checks and runtime limitations.
+This release fixes the outstanding model/migration mismatch for the AlertRule statuses default. Migration 0025 aligns the serialized default function without changing existing alert rules. Run migrate after installing the package. CI and release publication now require real NetBox 4.5.9/4.5.10 migration-state and PostgreSQL upgrade checks. Earlier claims that 1.3.3 had no outstanding migration requirements were incorrect. See [Upgrade](UPGRADE.md) for pip-only deployment and [Validation](VALIDATION.md) for checks and runtime limitations.
