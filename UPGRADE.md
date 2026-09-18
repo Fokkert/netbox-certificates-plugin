@@ -1,6 +1,6 @@
-# Upgrade to 1.3.4
+# Upgrade to 1.3.5
 
-Upgrade 1.3.3 (or an earlier version) in place; older migrations remain available. Supported NetBox versions remain 4.5.9 and 4.5.10 with Python 3.12+. Run the following on the Linux VM. These commands assume `/opt/netbox`, PostgreSQL database `netbox`, and systemd units `netbox` and `netbox-rq`. Adapt paths/service names if your installation differs. Container deployments should install the pinned package when rebuilding their image.
+Upgrade 1.3.4 (or an earlier version) in place; older migrations remain available. Supported NetBox versions remain 4.5.9 and 4.5.10 with Python 3.12+. Run the following on the Linux VM. These commands assume `/opt/netbox`, PostgreSQL database `netbox`, and systemd units `netbox` and `netbox-rq`. Adapt paths/service names if your installation differs. Container deployments should install the pinned package when rebuilding their image.
 
 ## Preserve existing data
 
@@ -9,24 +9,24 @@ Keep the existing plugin Fernet encryption key unchanged. Back up the database, 
 ```bash
 sudo systemctl stop netbox netbox-rq
 umask 077
-sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.3.4.dump"
-sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.3.4
+sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.3.5.dump"
+sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.3.5
 ```
 
 Use your normal backup command if PostgreSQL is remote. Confirm the backup succeeded before continuing.
 
 ## Install with pip
 
-Wait until GitHub Actions has successfully published 1.3.4 to PyPI. No source copying, cloning, or uninstall is needed:
+Wait until GitHub Actions has successfully published 1.3.5 to PyPI. No source copying, cloning, or uninstall is needed:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.3.4'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.3.5'
 ```
 
 If the tag has been pushed but PyPI publication is pending, pip can instead install the tagged source archive:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.3.4.zip'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.3.5.zip'
 ```
 
 Update the persistent package pin automatically so NetBox's upgrade script keeps this version:
@@ -39,7 +39,7 @@ path = Path('/opt/netbox/local_requirements.txt')
 lines = path.read_text().splitlines() if path.exists() else []
 pattern = re.compile(r'^\s*netbox[-_]certificates[-_]plugin(?:\[.*?\])?(?:\s|[=<>!~@]|$)', re.I)
 lines = [line for line in lines if not pattern.match(line)]
-lines.append('netbox-certificates-plugin==1.3.4')
+lines.append('netbox-certificates-plugin==1.3.5')
 path.write_text('\n'.join(lines) + '\n')
 PY
 ```
@@ -60,13 +60,17 @@ sudo systemctl start netbox netbox-rq
 sudo systemctl status netbox netbox-rq --no-pager
 ```
 
-The installed version must be `1.3.4`. Hard-refresh your browser after static files are collected.
+The installed version must be `1.3.5`. Hard-refresh your browser after static files are collected.
 
-## Changes in 1.3.4
+## Changes in 1.3.5
+
+Fix form submissions for Services, Object Links, and Alert Channels. No new migration is introduced beyond 0025 from 1.3.4; that migration remains required when upgrading older versions. CI now exercises actual NetBox forms/views as well as migration state.
+
+## Migration repair retained from 1.3.4
 
 Migration `0025_alertrule_statuses_default` is required. It aligns the Python default callable for AlertRule.statuses with the model. The old migration and model used different functions that both returned `["active"]`; Django still considered them different. The repair leaves existing alert-rule values unchanged.
 
-The earlier statement that 1.3.3 had no outstanding migration requirements was incorrect. If `showmigrations` shows 0001 through 0024 applied and `migrate` warns about unrecorded model changes, install 1.3.4 and run `migrate` to apply 0025. Do not generate or fake migrations on the VM for this repair. `manage.py` is a Python script: invoke it as `/opt/netbox/venv/bin/python manage.py ...` from `/opt/netbox/netbox`.
+The earlier statement that 1.3.3 had no outstanding migration requirements was incorrect. If `showmigrations` shows 0001 through 0024 applied and `migrate` warns about unrecorded model changes, install 1.3.5 and run `migrate` to apply 0025. Do not generate or fake migrations on the VM for this repair. `manage.py` is a Python script: invoke it as `/opt/netbox/venv/bin/python manage.py ...` from `/opt/netbox/netbox`.
 
 Afterward, `showmigrations netbox_certificates` must show `[X] 0025_alertrule_statuses_default`, and `makemigrations --check --dry-run netbox_certificates` must report no changes. Earlier UI improvements remain available.
 
@@ -105,7 +109,7 @@ Earlier migrations remain unchanged: 0021 fixes the CSRs label; 0020 defaults ce
 - Verify that Preferences and Alerts Configuration are centered, Group Search/Clear buttons align, and inventory export checkboxes toggle visibly with either their labels or the keyboard.
 - Use Select all/Clear selection in Groups and Health. For Health, check that all-pages selection affects only the filtered results.
 - Add/remove Group members with the native selectors and verify the changes persist.
-- Send an email sample: verify HTML formatting and version 1.3.4. Generate a fresh export and check its manifest version.
+- Send an email sample: verify HTML formatting and version 1.3.5. Generate a fresh export and check its manifest version.
 - Choose a webhook method and send a sample to your endpoint. GET/HEAD/OPTIONS use a `payload` query parameter; POST/PUT/PATCH/DELETE send a JSON body.
 
 - Delete disposable Certificates individually and with Delete Selected, including objects with automatic links; confirm dependent links are removed.

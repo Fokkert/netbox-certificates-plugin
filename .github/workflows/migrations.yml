@@ -64,3 +64,5 @@ jobs:
           python netbox-source/netbox/manage.py migrate --no-input
           python netbox-source/netbox/manage.py makemigrations --check --dry-run netbox_certificates
           python netbox-source/netbox/manage.py migrate --check
+      - name: Exercise plugin forms and views against real NetBox
+        run: python netbox-source/netbox/manage.py test netbox_certificates.tests --no-input --verbosity 2

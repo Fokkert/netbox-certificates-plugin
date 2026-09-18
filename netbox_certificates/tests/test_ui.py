@@ -64,14 +64,14 @@ class RevisionUIIntegrationTests(TestCase):
             response = self.client.get(self.url(name, **kwargs))
             self.assertContains(response, "Group service")
         response = self.client.post(self.url("artifactgroup_add"), {
-            "name": "New group", "parent": self.parent.pk, "members": [f"service:{service.pk}"],
+            "name": "New group", "parent": self.parent.pk, "member_service": [service.pk],
         })
         self.assertEqual(response.status_code, 302)
         group = ArtifactGroup.objects.get(name="New group")
         self.assertEqual(group.parent, self.parent)
         self.assertTrue(group.services.filter(pk=service.pk).exists())
         response = self.client.post(self.url("artifactgroup_edit", pk=group.pk), {
-            "name": "Renamed group", "parent": self.parent.pk, "members": [f"service:{service.pk}"],
+            "name": "Renamed group", "parent": self.parent.pk, "member_service": [service.pk],
         })
         self.assertEqual(response.status_code, 302)
         group.refresh_from_db()

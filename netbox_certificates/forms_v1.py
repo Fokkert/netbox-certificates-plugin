@@ -139,7 +139,9 @@ class ServiceForm(AcronymFormMixin, PrimaryModelForm):
         self.fields["primary_url"].help_text = "Enter the service URL; hostname and SNI are filled from it when left blank."
 
     def clean(self):
-        cleaned = super().clean()
+        # NetBox's CheckLastUpdatedMixin validates in place and returns None.
+        super().clean()
+        cleaned = self.cleaned_data
         if cleaned.get("deployment") == "custom":
             if not cleaned.get("custom_deployment"):
                 self.add_error("custom_deployment", "Enter a deployment name.")
@@ -288,7 +290,8 @@ class ObjectLinkForm(AcronymFormMixin, PrimaryModelForm):
 
     def clean(self):
         from .permissions import action_queryset
-        data = super().clean()
+        super().clean()
+        data = self.cleaned_data
         if self.user:
             for prefix in ("source", "target"):
                 content_type = data.get(f"{prefix}_type")
@@ -369,7 +372,8 @@ class AlertChannelForm(AcronymFormMixin, PrimaryModelForm):
             self.fields["webhook_headers"].initial = decrypt_json(self.instance.webhook_headers_encrypted)
 
     def clean(self):
-        cleaned = super().clean()
+        super().clean()
+        cleaned = self.cleaned_data
         for field, validator in (("webhook_url", lambda value: validate_endpoint_url(value, http_only=True)), ("webhook_headers", validate_headers)):
             if cleaned.get(field):
                 try:

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.5
+
+- Fix Service, Object Link, and Alert Channel forms using NetBox's in-place cleaned_data after parent validation, avoiding NoneType.get failures on add/edit.
+- Retain NetBox custom-field handling, stale-edit protection, object visibility checks, and input validation.
+- Run plugin database-backed form/view tests on NetBox 4.5.9 and 4.5.10 before publishing, alongside migration checks.
+- Restore the prominent README AI disclosure and align NOTICE/AI_ASSISTANCE with the license disclaimer.
+- No new model changes; migration 0025 from 1.3.4 remains packaged.
+
 ## 1.3.4
 
 - Add migration 0025_alertrule_statuses_default to align AlertRule.statuses with the runtime default callable. Migration 0014 referenced a different function with the same return value, leaving a persistent pending-model-change warning.

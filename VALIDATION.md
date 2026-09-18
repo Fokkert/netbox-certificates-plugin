@@ -1,4 +1,12 @@
-# Validation for 1.3.4
+# Validation for 1.3.5
+
+The Service, Object Link, and Alert Channel form overrides incorrectly assumed parent clean() returns a dictionary. NetBox's CheckLastUpdatedMixin validates in place and returns None. They now call the parent and use self.cleaned_data, preserving NetBox validation.
+
+The mandatory NetBox 4.5.9/4.5.10 CI/release matrix runs the plugin integration suite on disposable PostgreSQL/Redis databases. It covers Service create/edit, endpoint defaults, custom deployment, invalid ports/metadata, stale edits, Object Link visibility, Alert Channel create/edit and validation, and existing inventory/UI workflows. No tests run against the user's VM or send real notifications.
+
+Standalone checks, compilation, distribution checks, real model/migration comparison, and 0024-to-0025 data preservation remain required. No new model/migration change is intended in 1.3.5. Run migrate on upgrades to apply any previously outstanding migrations.
+
+## Historical validation for 1.3.4
 
 ## Migration-state repair
 
