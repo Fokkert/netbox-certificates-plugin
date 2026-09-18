@@ -1,15 +1,16 @@
-# Validation for 1.3.2
+# Validation for 1.3.3
 
 ## Completed in the development workspace
 
-- Started from published v1.3.1 (`7a14220`).
-- 127 standalone Python tests pass, retaining the existing cryptographic/import/export/permission regressions. New tests render the actual Django inventory selector and verify styled checkbox inputs, matching label IDs, initial values, retained bound selections, and empty/unknown selection errors.
-- Headless Edge checks use the rendered production inventory partial, Bootstrap 5.3, and the production CSS and selection JavaScript. They cover checkbox/label clicks, keyboard selection, Select all/Clear, submitted form values, selected-state colors, and dark/light layouts at 1920px and 375px.
-- Browser checks confirm bounded forms are centered, remain at most 1088px wide, and do not overflow on mobile; Group Search/Clear controls have matching heights and alignment. This is a component fixture, not a running NetBox UI.
-- The actual critical, test, and recovery email templates were rendered and inspected at desktop/mobile widths. Existing tests verify escaping and multipart delivery with Django's in-memory backend. These checks do not establish rendering in every email client.
-- Release metadata, compilation, whitespace, standalone route/name contracts, wheel/sdist builds, and distribution metadata are checked by the publishing helper. No database migration, API, or permission definition changes in this patch.
+- Started from published v1.3.2 (`8a9b984`).
+- 133 standalone Python tests pass. New tests execute the production Health filter declarations against real Django forms and a small SQLite model: blank/reset choices, repeated values, combined filters, invalid choices, and label/widget behavior. Workflow tests verify preserved resolution timestamps and reopening.
+- Reviewed NetBox 4.5.9 filter/form implementations and replaced the dashboard's modifier widgets with simple optional controls. The shared filterset continues to serve UI, REST, export, and bulk operations.
+- Rendered the actual Health, Groups, and CSR templates in component fixtures. Headless Edge checks cover filter clearing, invalid-filter recovery, bulk Group selection, saved tree expansion during search, lowercase IP/URI SAN round trips, add/remove SANs, existing-key selection, algorithm controls, and CA path-length enablement.
+- Inspected light/dark desktop/mobile previews and verified no page overflow at 1440px and 375px. Fixtures use Bootstrap and production CSS/JavaScript; they do not emulate the entire NetBox frontend.
+- Reviewed canonical serializer discovery, routes, derived-field restrictions, action querysets, superuser/write-token checks, stale-link deletion cleanup, and finding reconciliation. Existing regressions for permissions, cryptography, imports/exports, and deletion remain passing. No installed database was inspected or cleaned.
+- Release metadata, compilation, undefined-name checks, whitespace, wheel/sdist builds, and distribution metadata are checked by the publishing helper. No new database migration or permission definition.
 
-No external email or webhook was sent during these checks. Delivery tests use mocks or Django's in-memory mail backend. No live NetBox/PostgreSQL/Redis stack is available here; runtime testing remains on the user's VM after pip installation.
+No external email or webhook was sent. No live NetBox/PostgreSQL/Redis stack is available here; full runtime and migration verification remains on the user's VM after pip installation. These checks do not establish that every possible defect has been eliminated.
 
 ## Release checks
 

@@ -1,4 +1,5 @@
 from .constants import WEBHOOK_METHOD_CHOICES
+from .filter_fields import OptionalMultipleChoiceFilter
 import json
 
 import django_filters
@@ -103,6 +104,8 @@ class ServiceFilterSet(PrimaryModelFilterSet):
 @register_filterset
 class HealthFindingFilterSet(PrimaryModelFilterSet):
     q = django_filters.CharFilter(method="search")
+    severity = OptionalMultipleChoiceFilter(choices=HealthFinding._meta.get_field("severity").choices)
+    status = OptionalMultipleChoiceFilter(choices=HealthFinding._meta.get_field("status").choices)
     details = django_filters.CharFilter(method="filter_json")
     evidence = django_filters.CharFilter(method="filter_json")
     object_type_id = django_filters.ModelMultipleChoiceFilter(

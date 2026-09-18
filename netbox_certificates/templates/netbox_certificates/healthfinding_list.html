@@ -9,12 +9,26 @@
 {% if perms.netbox_certificates.archive_export_healthfinding %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:healthfinding_archive_export' %}?{{ filter_query }}">Export findings</a>{% endif %}
 </div>
 <h2>Certificate expiration</h2>
-<div class="row g-3 mb-3">{% for label,value in counts.items %}<div class="col"><div class="card"><div class="card-body"><div class="text-muted">{{ label|title }}</div><div class="display-6">{{ value }}</div></div></div></div>{% endfor %}</div>
+<div class="row row-cols-2 row-cols-md-5 g-3 mb-3">{% for label,value in counts.items %}<div class="col"><div class="card"><div class="card-body"><div class="text-muted">{{ label|title }}</div><div class="h2 mb-0">{{ value }}</div></div></div></div>{% endfor %}</div>
 <div class="card mb-4"><h3 class="card-header">Expired and upcoming certificates</h3><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Certificate</th><th>Expires</th><th>Days remaining</th><th>State</th></tr></thead><tbody>{% for cert,state in upcoming %}<tr><td><a href="{{ cert.get_absolute_url }}">{{ cert }}</a></td><td>{{ cert.valid_to }}</td><td>{{ state.days }}</td><td>{{ state.label }}</td></tr>{% empty %}<tr><td colspan="4">No expired or upcoming certificates.</td></tr>{% endfor %}</tbody></table></div><div class="card-footer">Showing up to 50 certificates, earliest expiration first. <a href="{% url 'plugins:netbox_certificates:certificate_list' %}">All certificates</a></div></div>
 <h2>Health findings</h2>
 <div class="d-flex flex-wrap gap-2 mb-3">{% for severity,count in health_counts.items %}<span class="badge text-bg-secondary">{{ severity|title }}: {{ count }}</span>{% endfor %}</div>
 <p class="text-muted">Counts include active and acknowledged findings. Ignored and resolved findings remain searchable below.</p>
-<details class="card mb-3"><summary class="card-header">Filter findings</summary><form method="get" class="card-body">{% render_field filter_form.q %}{% render_field filter_form.severity %}{% render_field filter_form.status %}{% render_field filter_form.category %}<div class="nbcert-actions"><button type="submit" class="btn btn-primary">Apply filters</button> <a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:health' %}">Clear</a></div></form></details>
+<section class="card mb-3" aria-labelledby="finding-filters-title">
+  <h3 class="card-header" id="finding-filters-title">Filter findings</h3>
+  <form method="get" class="card-body" action="{% url 'plugins:netbox_certificates:health' %}" novalidate>
+    {% if filter_errors %}<div class="alert alert-danger" role="alert">Correct the filters below or use Clear filters.
+      <ul class="mb-0">{% for field,errors in filter_errors.items %}<li>{{ field }}: {{ errors|join:', ' }}</li>{% endfor %}</ul>
+    </div>{% endif %}
+    <div class="row g-3 mb-3">
+      {% for field in filter_form %}<div class="col-md-6 col-xl-4">
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+      </div>{% endfor %}
+    </div>
+    <div class="nbcert-actions"><button type="submit" class="btn btn-primary">Apply filters</button><a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:health' %}">Clear filters</a></div>
+  </form>
+</section>
 <form method="post" data-bulk-select>{% csrf_token %}
 {% if perms.netbox_certificates.change_healthfinding or perms.netbox_certificates.delete_healthfinding %}
 {% include "netbox_certificates/inc/bulk_selection.html" %}
@@ -34,7 +48,7 @@
       <td class="small text-break">{{ finding.evidence_display|default:'—' }}</td>
       <td class="small text-nowrap">{{ finding.last_detected }}</td>
     </tr>
-  {% empty %}<tr><td colspan="7">No findings match. Run a health scan to refresh results.</td></tr>{% endfor %}
+  {% empty %}<tr><td colspan="7">{% if filter_errors %}Correct or clear the filters to show findings.{% else %}No findings match. Run a health scan to refresh results.{% endif %}</td></tr>{% endfor %}
   </tbody>
 </table>
 </div></div>

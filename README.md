@@ -9,7 +9,7 @@ NetBox Certificates Plugin adds certificate inventory and lifecycle management t
 | NetBox | 4.5.9, 4.5.10 |
 | Python | 3.12+ |
 | `cryptography` | 42+ |
-| Release | 1.3.2 |
+| Release | 1.3.3 |
 | Upgrade source | 1.3.0 (older migrations retained) |
 
 ## Features
@@ -177,7 +177,7 @@ See [docs/API.md](docs/API.md).
 Add the package to `/opt/netbox/local_requirements.txt`:
 
 ```text
-netbox-certificates-plugin==1.3.2
+netbox-certificates-plugin==1.3.3
 ```
 
 Enable the plugin:
@@ -254,6 +254,6 @@ See [SECURITY.md](SECURITY.md).
 
 Apache-2.0. See `LICENSE` and `NOTICE`.
 
-## Release 1.3.2
+## Release 1.3.3
 
-This release adds a navy header and readable status colors to all email alerts, centers bounded settings and export forms, repairs inventory export checkboxes with clickable labels and visible selections, and aligns search and action buttons. Selection supports keyboard input and responsive light/dark layouts. No database migration or API/permission change is required from 1.3.1. See [Upgrade](UPGRADE.md) for pip-only deployment and [Validation](VALIDATION.md) for checks and runtime limitations.
+This release fixes clearing Health filters, labels the query field Search, and shows invalid filter errors with a working reset link. Severity/status filters support multiple values consistently in the UI, API, and exports. Groups uses simpler tree rows and preserves expansion preferences during search. CSR generation uses consistent sections and preserves lowercase SAN types on redisplay. Editing resolved findings retains their resolution timestamp. No new database migration or permission definition is required. See [Upgrade](UPGRADE.md) for pip-only deployment and [Validation](VALIDATION.md) for checks and runtime limitations.

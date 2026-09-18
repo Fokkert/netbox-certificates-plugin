@@ -11,6 +11,7 @@ from netbox.models import NetBoxModel
 from netbox.models.features import model_is_public
 from utilities.forms import add_blank_choice
 from utilities.forms.fields import DynamicModelMultipleChoiceField
+from .filter_fields import OptionalMultipleChoiceField
 from utilities.forms.rendering import FieldSet
 
 from .choices_v1 import (
@@ -247,26 +248,21 @@ class HealthFindingForm(AcronymFormMixin, PrimaryModelForm):
     def save(self, commit=True):
         from django.utils import timezone
         instance = super().save(commit=False)
-        instance.resolved_at = timezone.now() if instance.status == "resolved" else None
+        instance.resolved_at = (instance.resolved_at or timezone.now()) if instance.status == "resolved" else None
         if commit:
             instance.save()
             self.save_m2m()
         return instance
 
 
-class HealthFindingFilterForm(AcronymFormMixin, PrimaryModelFilterSetForm):
+class HealthFindingFilterForm(AcronymFormMixin, forms.Form):
+    """Simple filters for the dashboard, without NetBox lookup modifier widgets."""
     model = HealthFinding
-    q = forms.CharField(required=False)
-    code = forms.CharField(required=False)
-    category = forms.CharField(required=False)
-    severity = forms.MultipleChoiceField(choices=FindingSeverityChoices, required=False)
-    status = forms.MultipleChoiceField(choices=FindingStatusChoices, required=False)
-    object_type_id = forms.ModelMultipleChoiceField(queryset=ContentType.objects.all(), required=False)
-    related_type_id = forms.ModelMultipleChoiceField(queryset=ContentType.objects.all(), required=False)
-    object_id = forms.IntegerField(required=False)
-    related_object_id = forms.IntegerField(required=False)
-    details = forms.CharField(required=False)
-    evidence = forms.CharField(required=False)
+    q = forms.CharField(required=False, label="Search", widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Summary, code, or category"}))
+    severity = OptionalMultipleChoiceField(choices=FindingSeverityChoices, required=False, widget=forms.SelectMultiple(attrs={"class": "form-select"}))
+    status = OptionalMultipleChoiceField(choices=FindingStatusChoices, required=False, widget=forms.SelectMultiple(attrs={"class": "form-select"}))
+    category = forms.CharField(required=False, widget=forms.TextInput(attrs={"class": "form-control"}))
+    code = forms.CharField(required=False, widget=forms.TextInput(attrs={"class": "form-control"}))
 
 
 class ObjectLinkForm(AcronymFormMixin, PrimaryModelForm):

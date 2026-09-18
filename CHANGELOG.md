@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.3
+
+- Fix optional Health severity/status filters: cleared values are accepted, multiple values are combined with OR, and unknown values remain invalid across UI, API, exports, and bulk actions.
+- Replace the Health query label Q with Search, remove lookup-modifier widgets from the dashboard, show filter errors, and provide a direct Clear filters link.
+- Simplify Groups to plain tree rows and text buttons; preserve saved expansion preferences during search.
+- Use consistent CSR form sections, lighter SAN rows, and readable Remove buttons. Preserve case-insensitive SAN prefixes and invalid input during redisplay.
+- Preserve the resolution timestamp when editing metadata on resolved findings.
+- Review routes, serializers, permission restrictions, stale-link cleanup, and scan reconciliation; retain the existing regression coverage. No new migration or permission definition.
+
 ## 1.3.2
 
 - Add a navy email header, status colors, tinted summary panels, and alternating detail rows across all notifications; retain escaping and plain-text alternatives.

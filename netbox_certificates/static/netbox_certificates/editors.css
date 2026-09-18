@@ -1,11 +1,10 @@
 .san-row {
   display: grid;
   grid-template-columns: minmax(8rem, 11rem) minmax(12rem, 1fr) auto;
-  gap: 1rem;
+  gap: .75rem;
   align-items: end;
-  padding: 1rem;
-  border: 1px solid var(--bs-border-color, #dce0e5);
-  border-radius: .5rem;
+  padding-block: .5rem;
+  border-bottom: 1px solid var(--bs-border-color, #dce0e5);
 }
 .san-editor { display: grid; gap: .75rem; }
 .san-editor[hidden] { display: none; }

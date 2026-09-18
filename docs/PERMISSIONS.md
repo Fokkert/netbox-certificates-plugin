@@ -81,3 +81,7 @@ Derived cryptographic fields and relationships cannot be overridden by edit form
 ## Changes in 1.3.1
 
 No new public permission objects are introduced. Webhook method changes use the existing settings/channel permissions; sample sends still require existing test authorization and a write-enabled API token. Native Group selectors validate each selected object against the change-permitted queryset and preserve memberships outside that scope. Bulk selection does not grant edit/delete permission.
+
+## Review in 1.3.3
+
+No permission definitions or database migrations change in this patch. Health list/filter operations still start from the caller's restricted view queryset; archive export and bulk mutations retain their separate action restrictions. Invalid non-empty filter values are rejected. Global Preferences and Alert Configuration remain superuser-only, and sensitive API operations continue to require writable tokens. Existing serializer discovery, derived-field protection, and deletion cleanup coverage remains in the regression suite.

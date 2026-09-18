@@ -19,7 +19,7 @@ class AcronymFormMixin:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
-            field.label = display_label(field.label or name.replace("_", " ").capitalize())
+            field.label = display_label(field.label or ("Search" if name == "q" else name.replace("_", " ").capitalize()))
 
 
 class AcronymTableMixin:

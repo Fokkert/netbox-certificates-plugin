@@ -359,6 +359,7 @@ class HealthFindingListView(LoginRequiredMixin, View):
         filtered = HealthFindingFilterSet(request.GET, queryset=visible, request=request)
         context = self.get_extra_context(request)
         context["filter_form"] = HealthFindingFilterForm(request.GET or None)
+        context["filter_errors"] = filtered.errors
         context["findings"] = Paginator(filtered.qs if filtered.is_valid() else visible.none(), 50).get_page(request.GET.get("page"))
         for finding in context["findings"]:
             finding.affected_link = finding_object_link(finding.affected_object, request.user)

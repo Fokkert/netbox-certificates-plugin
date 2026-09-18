@@ -181,3 +181,7 @@ CA REST endpoints are retained. The removed UI page redirects to `certificates/?
 `alert-settings/` and `alert-channels/` expose `webhook_method`, one of POST, GET, PUT, PATCH, DELETE, HEAD, OPTIONS. Omitted values on settings updates preserve the current method; new channels default to POST. Invalid methods return a field validation error. Channel filtering and bulk editing also support this field. Existing settings and object permissions remain unchanged.
 
 Both sample and live webhooks use the selected method. GET/HEAD/OPTIONS carry JSON in the `payload` query parameter; the other methods carry a JSON body. Notification payloads include `plugin_version` from the same runtime constant as all export manifests. GET delivery does not change the settings/test API verbs: test endpoints still require POST and a write-enabled token.
+
+## Health filtering (1.3.3)
+
+`health-findings/` accepts repeated `severity` and `status` query parameters (OR within each field, AND across fields). For example, `?severity=critical&severity=warning&status=active`. Empty severity/status values mean no constraint; unknown non-empty choices return validation errors. UI, archive export, and bulk operations share this filterset. `q` remains the API search parameter; its UI label is Search. Endpoint names, permissions, and object restrictions are unchanged.

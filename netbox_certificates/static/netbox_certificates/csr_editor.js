@@ -26,7 +26,7 @@
         </select></div>
         <div><label class="form-label" for="${id}-value">Value</label>
           <input id="${id}-value" class="form-control san-value" type="text" autocomplete="off" spellcheck="false"></div>
-        <button type="button" class="btn btn-outline-danger san-remove" aria-label="Remove SAN"><i class="mdi mdi-close" aria-hidden="true"></i></button>`;
+        <button type="button" class="btn btn-outline-secondary san-remove" aria-label="Remove SAN">Remove</button>`;
       const select = row.querySelector('.san-type');
       const input = row.querySelector('.san-value');
       select.value = Object.hasOwn(examples, type) ? type : 'DNS';
@@ -44,9 +44,13 @@
     }
 
     const saved = storage.value;
-    saved.split(/\r?\n/).filter(Boolean).forEach(entry => {
+    saved.split(/\r?\n/).map(entry => entry.trim()).filter(Boolean).forEach(entry => {
       const separator = entry.indexOf(':');
-      addRow(separator > 0 ? entry.slice(0, separator) : 'DNS', separator > 0 ? entry.slice(separator + 1) : entry);
+      const prefix = entry.slice(0, separator).toUpperCase();
+      // Match the server's case-insensitive prefixes and preserve invalid
+      // entries in full so redisplaying a validation error cannot lose data.
+      const typed = separator > 0 && Object.hasOwn(examples, prefix);
+      addRow(typed ? prefix : 'DNS', typed ? entry.slice(separator + 1).trim() : entry);
     });
     if (!editor.children.length) addRow();
     document.getElementById('san-fallback').hidden = true;

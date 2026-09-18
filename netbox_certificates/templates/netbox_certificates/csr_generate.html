@@ -8,15 +8,18 @@
   {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
   {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
 
-  <div class="mb-4">
-    <h2>NetBox Metadata</h2>
+  <section class="card mb-3">
+    <h2 class="card-header">NetBox metadata</h2>
+    <div class="card-body">
     {% render_field form.name %}
     {% render_field form.owner %}
     {% render_field form.groups %}
-  </div>
+    </div>
+  </section>
 
-  <div class="mb-4">
-    <h2>Subject</h2>
+  <section class="card mb-3">
+    <h2 class="card-header">Subject</h2>
+    <div class="card-body">
     {% render_field form.common_name %}
     {% render_field form.organization %}
     {% render_field form.organizational_unit %}
@@ -27,64 +30,59 @@
     {% render_field form.postal_code %}
     {% render_field form.subject_serial_number %}
     {% render_field form.email %}
-  </div>
+    </div>
+  </section>
 
-  <section class="card mb-4" aria-labelledby="san-title">
-    <div class="card-header"><h2 class="mb-0" id="san-title">Subject Alternative Names (SANs)</h2></div>
+  <section class="card mb-3" aria-labelledby="san-title">
+    <h2 class="card-header" id="san-title">Subject Alternative Names (SANs)</h2>
     <div class="card-body">
       <p class="text-muted">Add the DNS names, IP addresses, email addresses, or URIs this CSR should cover.</p>
       <div id="san-fallback">{% render_field form.sans %}</div>
       <div id="san-editor" class="san-editor" hidden></div>
-      <div class="d-flex align-items-center gap-3 mt-3">
-        <button type="button" id="add-san" class="btn btn-outline-primary" hidden><i class="mdi mdi-plus" aria-hidden="true"></i> Add SAN</button>
+      <div class="nbcert-actions mt-3">
+        <button type="button" id="add-san" class="btn btn-outline-secondary" hidden>Add SAN</button>
         <span id="san-count" class="text-muted small" aria-live="polite"></span>
       </div>
       {% if form.sans.errors %}<div class="text-danger mt-2" role="alert">{{ form.sans.errors }}</div>{% endif %}
     </div>
   </section>
 
-  <div class="mb-4">
-    <h2>Private Key &amp; Signature</h2>
+  <section class="card mb-3">
+    <h2 class="card-header">Private key and signature</h2>
+    <div class="card-body">
     {% render_field form.existing_private_key %}
     <div id="key-algorithm-row">{% render_field form.key_algorithm %}</div>
     <div id="rsa-bits-row">{% render_field form.rsa_bits %}</div>
     <div id="ec-curve-row">{% render_field form.ec_curve %}</div>
     <div id="signature-hash-row">{% render_field form.signature_hash %}</div>
     <div id="rsa-signature-row">{% render_field form.rsa_signature %}</div>
-  </div>
+    </div>
+  </section>
 
-  <div class="mb-4">
-    <h2>Requested X.509 Extensions</h2>
+  <section class="card mb-3">
+    <h2 class="card-header">Requested X.509 extensions</h2>
+    <div class="card-body">
     <div class="row g-4">
       <div class="col-lg-6">
-        <div class="card h-100">
-          <div class="card-header"><h3 class="mb-0">Key Usage</h3></div>
-          <div class="card-body">
+          <h3 class="h5 mb-3">Key usage</h3>
             {% for field in ku_fields %}
               <div class="form-check mb-2">{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
             {% endfor %}
-          </div>
-        </div>
       </div>
       <div class="col-lg-6">
-        <div class="card h-100">
-          <div class="card-header"><h3 class="mb-0">Extended Key Usage</h3></div>
-          <div class="card-body">
+          <h3 class="h5 mb-3">Extended key usage</h3>
             {% for field in eku_fields %}
               <div class="form-check mb-2">{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
             {% endfor %}
-          </div>
-        </div>
       </div>
     </div>
-    <div class="card mt-3">
-      <div class="card-header"><h3 class="mb-0">CA Request</h3></div>
-      <div class="card-body">
+    <div class="border-top mt-3 pt-3">
+      <h3 class="h5 mb-3">CA request</h3>
         {% render_field form.request_ca %}
         <div id="path-length-row">{% render_field form.path_length %}</div>
-      </div>
     </div>
-  </div>
+    </div>
+  </section>
 
   <script src="{% static 'netbox_certificates/csr_editor.js' %}" defer></script>
 </div>
