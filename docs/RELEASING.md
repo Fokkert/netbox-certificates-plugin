@@ -2,7 +2,7 @@
 
 GitHub Actions already creates a GitHub Release and publishes the same wheel/sdist to PyPI when a `v*` tag is pushed. Version 1.3.5 preserves that trusted-publisher workflow and installs the behavioral test dependencies before release builds.
 
-CI and tagged releases also run `.github/workflows/migrations.yml` against NetBox 4.5.9 and 4.5.10 with PostgreSQL and Redis. It compares real model/migration state, applies migrations, runs Django system checks, and verifies that upgrading from 0024 to 0025 preserves stored alert-rule values. Publication depends on this job succeeding.
+CI and tagged releases also run `.github/workflows/migrations.yml` against NetBox 4.5.9 and 4.5.10 with PostgreSQL and Redis. It compares real model/migration state, applies migrations, runs Django system checks, verifies that upgrading from 0024 to 0025 preserves stored alert-rule values, and executes the plugin's form/view integration tests. Publication depends on this job succeeding.
 
 The repository's `scripts/release.py` makes the local operation repeatable:
 

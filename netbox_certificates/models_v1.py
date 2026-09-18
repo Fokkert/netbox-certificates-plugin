@@ -304,8 +304,8 @@ class ObjectLink(PrimaryModel):
 
         errors = {}
         for prefix, content_type, object_id in (
-            ("source", self.source_type, self.source_object_id),
-            ("target", self.target_type, self.target_object_id),
+            ("source", self.source_type if self.source_type_id else None, self.source_object_id),
+            ("target", self.target_type if self.target_type_id else None, self.target_object_id),
         ):
             model = content_type.model_class() if content_type else None
             if (

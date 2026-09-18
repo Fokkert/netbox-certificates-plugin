@@ -68,6 +68,10 @@ class ModelFormValidationTests(TestCase):
             form = ObjectLinkForm({**data, "target_object_id": target}, user=user)
             self.assertFalse(form.is_valid())
             self.assertIn("target_object_id", form.errors)
+        for field in ("source_type", "target_type"):
+            form = ObjectLinkForm({**data, field: ""}, user=self.user)
+            self.assertFalse(form.is_valid())
+            self.assertIn(field, form.errors)
 
     def test_alert_channels_create_edit_and_reject_invalid_values(self):
         data = {"name": "Test channel", "channel_type": "webhook", "smtp_port": 587,

@@ -4,6 +4,7 @@
 
 - Fix Service, Object Link, and Alert Channel forms using NetBox's in-place cleaned_data after parent validation, avoiding NoneType.get failures on add/edit.
 - Retain NetBox custom-field handling, stale-edit protection, object visibility checks, and input validation.
+- Reject incomplete Object Link submissions with field errors instead of accessing missing related objects.
 - Run plugin database-backed form/view tests on NetBox 4.5.9 and 4.5.10 before publishing, alongside migration checks.
 - Restore the prominent README AI disclosure and align NOTICE/AI_ASSISTANCE with the license disclaimer.
 - No new model changes; migration 0025 from 1.3.4 remains packaged.
