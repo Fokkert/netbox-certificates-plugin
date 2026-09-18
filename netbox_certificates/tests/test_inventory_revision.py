@@ -112,7 +112,8 @@ class InventoryRevisionTests(TestCase):
         self.import_batch()
         with self.captureOnCommitCallbacks(execute=True):
             response = self.client.post(reverse("plugins:netbox_certificates:certificate_bulk_delete"),
-                                        {"pk": list(Certificate.objects.values_list("pk", flat=True)), "_confirm": True})
+                                        {"pk": list(Certificate.objects.values_list("pk", flat=True)),
+                                         "_confirm": True, "confirm": True})
         self.assertEqual(response.status_code, 302)
         self.assertFalse(Certificate.objects.exists())
         self.assertFalse(ObjectLink.objects.filter(source_type__model="certificate").exists())

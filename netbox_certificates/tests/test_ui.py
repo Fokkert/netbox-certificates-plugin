@@ -62,7 +62,8 @@ class RevisionUIIntegrationTests(TestCase):
         service = Service.objects.create(name="Group service")
         for name, kwargs in (("artifactgroup_add", {}), ("artifactgroup_edit", {"pk": self.child.pk})):
             response = self.client.get(self.url(name, **kwargs))
-            self.assertContains(response, "Group service")
+            self.assertContains(response, 'id="id_member_service"')
+            self.assertTrue(response.context["form"].fields["member_service"].queryset.filter(pk=service.pk).exists())
         response = self.client.post(self.url("artifactgroup_add"), {
             "name": "New group", "parent": self.parent.pk, "member_service": [service.pk],
         })
