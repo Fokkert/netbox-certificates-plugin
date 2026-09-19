@@ -63,7 +63,12 @@ class RevisionUIIntegrationTests(TestCase):
         for name, kwargs in (("artifactgroup_add", {}), ("artifactgroup_edit", {"pk": self.child.pk})):
             response = self.client.get(self.url(name, **kwargs))
             self.assertContains(response, 'id="id_member_service"')
-            self.assertTrue(response.context["form"].fields["member_service"].queryset.filter(pk=service.pk).exists())
+            # APISelect intentionally limits its rendered queryset to selected
+            # objects. Verify discovery through the actual widget endpoint.
+            endpoint = response.context["form"].fields["member_service"].widget.attrs["data-url"]
+            options = self.client.get(endpoint, {"q": "Group service"})
+            self.assertEqual(options.status_code, 200)
+            self.assertIn(service.pk, [item["id"] for item in options.json()["results"]])
         response = self.client.post(self.url("artifactgroup_add"), {
             "name": "New group", "parent": self.parent.pk, "member_service": [service.pk],
         })
