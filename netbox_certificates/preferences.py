@@ -11,7 +11,7 @@ from .models_v1 import AlertSettings
 
 
 PREFERENCE_FIELDS = (
-    "service_checks_enabled", "health_scan_enabled", "health_scan_interval_minutes", "alert_interval_minutes",
+    "health_scan_enabled", "health_scan_interval_minutes", "alert_interval_minutes",
     "expiration_warning_days", "import_chain_default", "preserve_archive_default", "csr_rsa_bits",
     "vault_findings_per_page", "vault_expiration_limit", "vault_show_expiration", "vault_show_assignments", "vault_show_evidence",
 )
@@ -23,8 +23,6 @@ def get_preferences():
 
 
 class PreferencesForm(forms.ModelForm):
-    service_checks_enabled = forms.BooleanField(required=False, label="Allow live service certificate checks",
-        help_text="Off means no endpoint connections. Also enable Check live certificate on each Service. Checks use the health scan schedule.")
     vault_findings_per_page = forms.TypedChoiceField(choices=[(n, str(n)) for n in (25, 50, 100, 200)], coerce=int, label="Findings per page")
     vault_expiration_limit = forms.TypedChoiceField(choices=[(n, str(n)) for n in (10, 25, 50, 100)], coerce=int, label="Certificates in expiration list")
     vault_show_expiration = forms.BooleanField(required=False, label="Show certificate expiration")
@@ -79,8 +77,8 @@ class PreferencesView(LoginRequiredMixin, View):
     @staticmethod
     def page(request, form):
         groups = (
-            ("Background processing", ("service_checks_enabled", "health_scan_enabled", "health_scan_interval_minutes", "alert_interval_minutes")),
-            ("Cryptographic Vault", ("vault_findings_per_page", "vault_expiration_limit", "vault_show_expiration", "vault_show_assignments", "vault_show_evidence", "expiration_warning_days")),
+            ("Background processing", ("health_scan_enabled", "health_scan_interval_minutes", "alert_interval_minutes")),
+            ("Dashboard", ("vault_findings_per_page", "vault_expiration_limit", "vault_show_expiration", "vault_show_assignments", "vault_show_evidence", "expiration_warning_days")),
             ("Import defaults", ("import_chain_default", "preserve_archive_default")),
             ("CSR defaults", ("csr_rsa_bits",)),
         )

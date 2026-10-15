@@ -459,7 +459,7 @@ class HealthRefreshView(LoginRequiredMixin, View):
         from .services.health_v1 import refresh_health_findings
         result = refresh_health_findings()
         messages.success(request, f"Health scan complete: {result['active']} active findings.")
-        return redirect("plugins:netbox_certificates:vault")
+        return redirect("plugins:netbox_certificates:dashboard")
 
 
 class ObjectLinkListView(EmptyListExportMixin, generic.ObjectListView):
@@ -673,5 +673,5 @@ class AlertRuleTestView(LoginRequiredMixin, View):
         return redirect(rule.get_absolute_url())
 
 
-class CryptographicVaultView(HealthFindingListView):
+class DashboardView(HealthFindingListView):
     template_name = "netbox_certificates/vault.html"

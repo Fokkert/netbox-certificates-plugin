@@ -1,26 +1,26 @@
 {% extends 'generic/_base.html' %}
 {% load form_helpers static %}
-{% block title %}Cryptographic Vault{% endblock %}
+{% block title %}Dashboard{% endblock %}
 {% block head %}{{ block.super }}<link rel="stylesheet" href="{% static 'netbox_certificates/editors.css' %}"><link rel="stylesheet" href="{% static 'netbox_certificates/vault.css' %}">{% endblock %}
 {% block content %}
 <div class="nbcert-dashboard">
 {% include "netbox_certificates/inc/vault_inventory.html" %}
-<div class="nbcert-actions mb-3">
+{% if vault_preferences.vault_show_expiration %}
+<details class="card dashboard-expiration mb-4">
+<summary class="card-header"><span class="fw-semibold">Certificate expiration</span><span class="d-inline-flex flex-wrap gap-3 ms-3 small">{% for label,value in counts.items %}<span class="dashboard-stat dashboard-stat-{{ label }}">{{ label|title }} <strong>{{ value }}</strong></span>{% endfor %}</span></summary>
+<div><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Certificate</th><th>Expires</th><th>Days remaining</th><th>State</th></tr></thead><tbody>{% for cert,state in upcoming %}<tr><td><a href="{{ cert.get_absolute_url }}">{{ cert }}</a></td><td>{{ cert.valid_to }}</td><td>{{ state.days }}</td><td>{{ state.label }}</td></tr>{% empty %}<tr><td colspan="4">No expired or upcoming certificates.</td></tr>{% endfor %}</tbody></table></div><div class="card-footer">Showing up to {{ vault_preferences.vault_expiration_limit }} certificates, earliest expiration first. <a href="{% url 'plugins:netbox_certificates:certificate_list' %}">All certificates</a></div></div></details>
+{% endif %}
+<div class="dashboard-section-heading"><h2 id="health-findings">Health findings</h2><div class="nbcert-actions">
 {% if perms.netbox_certificates.run_healthscan_healthfinding %}<form method="post" action="{% url 'plugins:netbox_certificates:health_refresh' %}">{% csrf_token %}<button class="btn btn-primary">Run health scan</button></form>{% endif %}
 
 {% if perms.netbox_certificates.archive_export_healthfinding %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:healthfinding_archive_export' %}?{{ filter_query }}">Export findings</a>{% endif %}
 </div>
-{% if vault_preferences.vault_show_expiration %}
-<details class="card mb-4">
-<summary class="card-header"><span class="fw-semibold">Certificate expiration</span><span class="d-inline-flex flex-wrap gap-3 ms-3 small">{% for label,value in counts.items %}<span>{{ label|title }} <strong>{{ value }}</strong></span>{% endfor %}</span></summary>
-<div><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Certificate</th><th>Expires</th><th>Days remaining</th><th>State</th></tr></thead><tbody>{% for cert,state in upcoming %}<tr><td><a href="{{ cert.get_absolute_url }}">{{ cert }}</a></td><td>{{ cert.valid_to }}</td><td>{{ state.days }}</td><td>{{ state.label }}</td></tr>{% empty %}<tr><td colspan="4">No expired or upcoming certificates.</td></tr>{% endfor %}</tbody></table></div><div class="card-footer">Showing up to {{ vault_preferences.vault_expiration_limit }} certificates, earliest expiration first. <a href="{% url 'plugins:netbox_certificates:certificate_list' %}">All certificates</a></div></div></details>
-{% endif %}
-<h2 id="health-findings">Health findings</h2>
-<div class="d-flex flex-wrap gap-2 mb-3">{% for severity,count in health_counts.items %}<span class="badge text-bg-secondary">{{ severity|title }}: {{ count }}</span>{% endfor %}</div>
+</div>
+<div class="d-flex flex-wrap gap-2 mb-3">{% for severity,count in health_counts.items %}<span class="badge {% if severity == 'critical' or severity == 'high' %}text-bg-danger{% elif severity == 'warning' or severity == 'medium' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">{{ severity|title }}: {{ count }}</span>{% endfor %}</div>
 
 <details class="card mb-3"{% if request.GET or filter_errors %} open{% endif %}>
   <summary class="card-header">Filter findings</summary>
-  <form method="get" class="card-body" action="{% url 'plugins:netbox_certificates:vault' %}" novalidate>
+  <form method="get" class="card-body" action="{% url 'plugins:netbox_certificates:dashboard' %}" novalidate>
     {% if filter_errors %}<div class="alert alert-danger" role="alert">Correct the filters below or use Clear filters.
       <ul class="mb-0">{% for field,errors in filter_errors.items %}<li>{{ field }}: {{ errors|join:', ' }}</li>{% endfor %}</ul>
     </div>{% endif %}
@@ -30,7 +30,7 @@
         {{ field }}
       </div>{% endfor %}
     </div>
-    <div class="nbcert-actions"><button type="submit" class="btn btn-primary">Apply filters</button><a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:vault' %}">Clear filters</a></div>
+    <div class="nbcert-actions"><button type="submit" class="btn btn-primary">Apply filters</button><a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:dashboard' %}">Clear filters</a></div>
   </form>
 </details>
 <form method="post" data-bulk-select>{% csrf_token %}

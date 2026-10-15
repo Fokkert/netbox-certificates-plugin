@@ -1,6 +1,6 @@
 # Alerts
 
-1.0 alerting is based on Health Findings instead of an expiration-only worker.
+Alerting is based on Health Findings instead of an expiration-only worker.
 
 ## Settings page
 
@@ -74,7 +74,7 @@ A rule test runs the configured rule against matching findings while bypassing t
 
 ## Background processing
 
-The unified 1.0 system job:
+The scheduled system job:
 
 1. refreshes established certificate validity/status fields;
 2. refreshes Health Findings;
@@ -95,3 +95,9 @@ Every email uses a navy header with a teal accent, a tinted summary, and alterna
 All email notifications use the shared `notification_email.html` template: a neutral, 640px-wide card with summary, object/rule/status, details, evidence, generation time, and the current plugin version. Test messages, recoveries, and legacy expiration reports use the same design. HTML escapes object names and other supplied content. Messages are multipart with a readable plain-text fallback.
 
 Choose **Webhook HTTP method** in Alerts Configuration or the Alert Channel editor. Supported methods are POST (default), GET, PUT, PATCH, DELETE, HEAD, and OPTIONS. POST/PUT/PATCH/DELETE send the notification as a JSON request body. GET/HEAD/OPTIONS send the JSON-encoded notification in a single `payload` query parameter. Custom headers, TLS verification settings, the 15-second timeout, and redirect rejection apply to every method. The sample test uses the saved method, including when normal delivery is disabled. Existing channels remain POST after migration.
+
+## Live Service certificates
+
+Under **When and what to send**, enable **Check live Service certificates for mismatches**. Also enable Check live certificate on each Service and select the Service alert category if notifications are wanted. The global off switch prevents all endpoint connections. Schedules remain in Preferences. Existing values survive the move from Preferences in 1.8.0.
+
+The **Weak or reused keys and outdated signatures** category is no longer offered by this page. Migration 0030 removes it from the managed rule; a rule that selected only that category is disabled to avoid enabling unrelated alerts. Local health findings and separate advanced rules remain available. Explicit certificate requirements (including minimum RSA size) still report under the configuration category.

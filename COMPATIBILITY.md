@@ -9,7 +9,7 @@
 | PostgreSQL | The version supported by the selected NetBox 4.5 installation |
 | `cryptography` | 42+ |
 | `requests` | 2.32+ |
-| Upgrade source | 1.3.0 (older migrations retained) |
+| Upgrade source | Existing installations; all earlier migrations retained |
 
 The plugin enforces `PluginConfig.min_version = "4.5.9"` and `max_version = "4.5.10"`.
 

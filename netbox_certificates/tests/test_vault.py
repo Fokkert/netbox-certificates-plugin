@@ -27,11 +27,11 @@ class VaultTests(TestCase):
 
     def setUp(self):
         self.client.force_login(self.user)
-        self.url = reverse("plugins:netbox_certificates:vault")
+        self.url = reverse("plugins:netbox_certificates:dashboard")
 
     def test_combined_dashboard_and_legacy_filters(self):
         response = self.client.get(self.url)
-        for text in ("Cryptographic Vault", "Inventory", "Certificate expiration", "Health findings", "Visible endpoint"):
+        for text in ("Dashboard", "Inventory", "Certificate expiration", "Health findings", "Visible endpoint"):
             self.assertContains(response, text)
         for name in ("health", "healthfinding_list", "expiration_dashboard"):
             self.assertRedirects(self.client.get(reverse(f"plugins:netbox_certificates:{name}") + "?severity=warning"), self.url + "?severity=warning")

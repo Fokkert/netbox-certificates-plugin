@@ -7,7 +7,7 @@
     </div>
   </div>
   <div class="vault-inventory card-body">
-    {% for label,value,url in vault_cards %}<a class="vault-tile" href="{{ url }}"><span>{{ label }}</span><strong>{{ value }}</strong></a>{% endfor %}
+    {% for label,value,url in vault_cards %}<a class="vault-tile" href="{{ url }}"><span class="vault-tile-label"><i class="mdi {% if label == 'Certificates' %}mdi-certificate-outline{% elif label == 'Certificate Authorities' %}mdi-shield-check-outline{% elif label == 'Private Keys' %}mdi-key-outline{% elif label == 'CSRs' %}mdi-file-sign{% elif label == 'Bundles' %}mdi-package-variant-closed{% else %}mdi-server-network{% endif %}" aria-hidden="true"></i>{{ label }}</span><strong>{{ value }}</strong></a>{% endfor %}
   </div>
   {% if vault_preferences.vault_show_assignments %}
   <details class="card-footer"><summary>Without a direct service assignment</summary>

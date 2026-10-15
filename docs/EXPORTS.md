@@ -2,7 +2,7 @@
 
 ## Portable backups and Groups/Services imports
 
-Version 1.5.0 adds **Backup and Restore** under Operations. Groups/Services JSON exports can be merged back, resolving available members by portable identity and skipping missing references. Full plugin snapshots include all plugin objects, material, relationships, settings, credentials, and history, with optional password protection. Full restore replaces existing plugin data and requires explicit confirmation. Both operations have superuser-only API endpoints. See [Backup and Restore](BACKUPS.md) for limits and examples.
+Services and Groups have Backup and Restore buttons on their respective lists. Restores merge matching names and resolve available relationships, skipping missing members. The standalone backup page is removed. Existing full-snapshot APIs remain available for compatibility. See [Metadata restore and backup APIs](BACKUPS.md).
 
 ## Native metadata export
 
@@ -76,7 +76,7 @@ If a Bundle has no certificate, its Bundle name is used. Unsafe path characters 
 
 ## Mixed inventory ZIP
 
-Use **Export inventory** on the Vault, or API `POST export-inventory/`. Choose any combination of crypto types and metadata types. Material includes the matching bundle chain and separate PEM files; use the individual/bulk Bundle exporter for PFX choices. The mixed exporter iterates records in chunks and spools the ZIP to disk beyond 8 MiB. It includes per-file SHA-256 checksums and object references in a manifest. All types use their existing scoped export permissions; any unauthorized selection rejects the request.
+Use **Export inventory** on the Dashboard, or API `POST export-inventory/`. Choose any combination of crypto types and metadata types. Material includes the matching bundle chain and separate PEM files; use the individual/bulk Bundle exporter for PFX choices. The mixed exporter iterates records in chunks and spools the ZIP to disk beyond 8 MiB. It includes per-file SHA-256 checksums and object references in a manifest. All types use their existing scoped export permissions; any unauthorized selection rejects the request.
 
 Non-crypto records are JSON snapshots under `metadata/`, without encrypted secrets or private material. Related IDs are visibility-scoped. Reimporting this ZIP restores/reuses crypto objects and reconstructs their crypto relationships, but skips metadata snapshots; it is not a complete database restore. The importer has documented upload/expansion limits, so exceptionally large exports may need to be split into filtered batches before reimport.
 

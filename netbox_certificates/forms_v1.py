@@ -96,7 +96,7 @@ class LineListField(forms.CharField):
 
 class ServiceForm(AcronymFormMixin, PrimaryModelForm):
     certificate_check_enabled = forms.BooleanField(required=False, label="Check live certificate",
-        help_text="Checks the primary URL (or hostname), using this protocol and SNI. Requires live service checks in Preferences.")
+        help_text="Checks the primary URL (or hostname), using this protocol and SNI. Requires live service checks in Alerts Configuration.")
     deployment = forms.ChoiceField(choices=[(p, p) for p in DeploymentTextInput.presets] + [("custom", "Custom deployment")])
     custom_deployment = forms.CharField(required=False, max_length=120, label="Custom deployment name")
     protocol = forms.ChoiceField(choices=[(p, p.upper()) for p in ("https", "tls", "ldaps", "smtps", "imaps", "pop3s", "mqtts", "postgresql", "mysql")])

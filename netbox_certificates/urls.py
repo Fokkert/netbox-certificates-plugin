@@ -1,6 +1,6 @@
 from .retired import RetiredPolicyView, CertificateAuthoritiesRedirectView
 from .preferences import PreferencesView
-from .backup import BackupView, ObjectRestoreView
+from .backup import ObjectRestoreView
 from .inventory_export import InventoryExportView
 from django.urls import path
 from django.views.generic import RedirectView
@@ -13,18 +13,18 @@ app_name = "netbox_certificates"
 urlpatterns = (
     path("services/restore/", ObjectRestoreView.as_view(), {"kind": "service"}, name="service_restore"),
     path("groups/restore/", ObjectRestoreView.as_view(), {"kind": "artifactgroup"}, name="artifactgroup_restore"),
-    path("backup/", BackupView.as_view(), name="backup"),
     # OVERVIEW
     path("preferences/", PreferencesView.as_view(), name="preferences"),
-    path("expiration-dashboard/", RedirectView.as_view(pattern_name="plugins:netbox_certificates:vault", query_string=True), name="expiration_dashboard"),
+    path("expiration-dashboard/", RedirectView.as_view(pattern_name="plugins:netbox_certificates:dashboard", query_string=True), name="expiration_dashboard"),
     path("certificate-authorities/", CertificateAuthoritiesRedirectView.as_view(), name="certificateauthority_list"),
     path("certificate-authorities/import/", views.CACertificateImportView.as_view(), name="certificateauthority_import"),
     path("certificate-authorities/export-material/", bulk_export.CertificateAuthorityMaterialExportView.as_view(), name="certificateauthority_material_export"),
-    path("vault/", views_v1.CryptographicVaultView.as_view(), name="vault"),
-    path("health/", RedirectView.as_view(pattern_name="plugins:netbox_certificates:vault", query_string=True), name="health"),
+    path("dashboard/", views_v1.DashboardView.as_view(), name="dashboard"),
+    path("vault/", RedirectView.as_view(pattern_name="plugins:netbox_certificates:dashboard", query_string=True), name="vault"),
+    path("health/", RedirectView.as_view(pattern_name="plugins:netbox_certificates:dashboard", query_string=True), name="health"),
     path("health/refresh/", views_v1.HealthRefreshView.as_view(), name="health_refresh"),
     path("health/<int:pk>/", views_v1.HealthFindingView.as_view(), name="healthfinding"),
-    path("health/findings/", RedirectView.as_view(pattern_name="plugins:netbox_certificates:vault", query_string=True), name="healthfinding_list"),
+    path("health/findings/", RedirectView.as_view(pattern_name="plugins:netbox_certificates:dashboard", query_string=True), name="healthfinding_list"),
     path("health/<int:pk>/edit/", views_v1.HealthFindingEditView.as_view(), name="healthfinding_edit"),
     path("health/<int:pk>/delete/", views_v1.HealthFindingDeleteView.as_view(), name="healthfinding_delete"),
     path("health/edit/", views_v1.HealthFindingBulkEditView.as_view(), name="healthfinding_bulk_edit"),

@@ -1,6 +1,8 @@
-# Backup, restore, and metadata import
+# Metadata restore and backup APIs
 
-Open **SSL Certificates → Operations → Backup and Restore**. All three operations require an active NetBox superuser. API calls additionally require a write-enabled NetBox API token; session-only API requests are rejected.
+Use **Backup services / Restore services** on Services and **Backup groups / Restore groups** on Groups. Exports respect object permissions and current filters. Restores require an active superuser and merge matching names, skipping missing relationships. Material imports/exports remain on artifact pages.
+
+The standalone Backup and Restore page was removed in 1.8.0. Full snapshots are now API-only compatibility operations; the sections below document those APIs. API calls require a write-enabled NetBox API token.
 
 ## Full backup
 
@@ -16,7 +18,7 @@ Backups are limited to 64 MiB as uploaded/downloaded and 128 MiB of expanded JSO
 
 Install the **same plugin version** on a supported destination NetBox first. Restore the backup and then upgrade the plugin normally if needed. Matching versions ensure every stored field has the same meaning.
 
-**Restoring erases all existing SSL Certificates plugin data and replaces it with the snapshot.** Download a current backup first. Type `REPLACE ALL PLUGIN DATA` in the confirmation field. The API requires that exact confirmation too. Wrong passwords, corrupted archives, invalid object values, and failed relationships abort the operation; database changes roll back as one transaction. Restore does not send a test notification, but restored delivery settings and history apply to subsequent scheduled alert checks.
+**Restoring erases all existing SSL Certificates plugin data and replaces it with the snapshot.** Download a current backup first. Send `confirmation=REPLACE ALL PLUGIN DATA` to the API. Wrong passwords, corrupted archives, invalid object values, and failed relationships abort the operation; database changes roll back as one transaction. Restore does not send a test notification, but restored delivery settings and history apply to subsequent scheduled alert checks.
 
 Plugin primary keys are remapped, and generic links/health-finding identities are adjusted. This prevents the backup's database IDs from accidentally selecting unrelated destination objects. Cryptographic metadata is parsed from the restored material. Only restore files from trusted sources.
 
@@ -24,7 +26,7 @@ This is a **plugin data backup**, not a backup of the entire NetBox server. Othe
 
 ## Merge Groups and Services exports
 
-Use **Import Groups and Services** for existing Groups/Services archive exports or an Inventory ZIP containing their JSON. This operation creates missing objects and updates objects with matching names without erasing the other inventory. Import artifact material first if you want memberships resolved immediately. Missing certificate/key/CSR/Bundle/group references are skipped with warnings; available relationships are restored. Typed membership constraints and service value validation still apply.
+Use the per-page restore buttons, or API `POST import-metadata/` for mixed Groups/Services files for existing Groups/Services archive exports or an Inventory ZIP containing their JSON. This operation creates missing objects and updates objects with matching names without erasing the other inventory. Import artifact material first if you want memberships resolved immediately. Missing certificate/key/CSR/Bundle/group references are skipped with warnings; available relationships are restored. Typed membership constraints and service value validation still apply.
 
 New exports carry relationship names/fingerprints for cross-installation matching. Older exports containing only numeric IDs can restore names and editable properties, but cannot reliably identify relationships on another NetBox; those relationships are left unresolved instead of guessing. The metadata operation does not import artifacts, credentials, health findings, or alert settings; use material import or full restore for those.
 

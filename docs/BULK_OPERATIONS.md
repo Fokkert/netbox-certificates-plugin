@@ -25,7 +25,7 @@ See [EXPORTS.md](EXPORTS.md).
 
 In 1.1.1, Groups and Health and Validity support selected-row bulk actions from their main pages. Automatic ObjectLinks are excluded from bulk edits/deletes. Invalid export filters produce readable field errors; an empty matching queryset displays a warning without downloading an archive. Group metadata export requires the `archive_export` action.
 
-The Vault’s **Export inventory** combines selected object types in one archive. Groups use padded hierarchy rows and separate action buttons. Bulk edit/delete continue to use standard confirmation pages and permission-scoped querysets.
+The Dashboard’s **Export inventory** combines selected object types in one archive. Groups use padded hierarchy rows and separate action buttons. Bulk edit/delete continue to use standard confirmation pages and permission-scoped querysets.
 
 ## Deletion (1.3.0)
 

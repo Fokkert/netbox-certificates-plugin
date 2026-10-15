@@ -146,9 +146,9 @@ class BackupTests(TestCase):
         with self.assertRaises(PermissionDenied):
             create_backup(other)
         self.client.force_login(other)
-        self.assertEqual(self.client.get(reverse("plugins:netbox_certificates:backup")).status_code, 403)
+        self.assertEqual(self.client.get("/plugins/ssl-certificates/backup/").status_code, 404)
         self.client.force_login(self.user)
-        self.assertContains(self.client.get(reverse("plugins:netbox_certificates:backup")), "erases all existing")
+        self.assertEqual(self.client.get("/plugins/ssl-certificates/backup/").status_code, 404)
         request = APIRequestFactory().post("/backup/restore/", {"upload": SimpleUploadedFile("backup.zip", create_backup(self.user))}, format="multipart")
         force_authenticate(request, user=self.user, token=SimpleNamespace(write_enabled=True))
         response = BackupRestoreAPIView.as_view()(request)

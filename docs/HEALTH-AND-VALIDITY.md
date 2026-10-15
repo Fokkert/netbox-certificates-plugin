@@ -1,4 +1,6 @@
-# Health and Validity
+# Dashboard health findings
+
+Open **Overview → Dashboard** for inventory, expiration, and health findings. The old Vault and Health URLs redirect here.
 
 HealthFinding stores certificate-management problems as persistent NetBox objects.
 

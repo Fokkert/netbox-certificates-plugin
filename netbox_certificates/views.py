@@ -406,7 +406,7 @@ class UnifiedImportView(LoginRequiredMixin, View):
     template_name = "netbox_certificates/import_objects.html"
     def _context(self, request, form=None):
         return {"form": form or UnifiedImportForm(user=request.user), "ca_only": self.ca_only,
-                "return_url": reverse("plugins:netbox_certificates:certificateauthority_list" if self.ca_only else "plugins:netbox_certificates:vault")}
+                "return_url": reverse("plugins:netbox_certificates:certificateauthority_list" if self.ca_only else "plugins:netbox_certificates:dashboard")}
     def get(self, request):
         return render(request, self.template_name, self._context(request))
     def post(self, request):
@@ -460,7 +460,7 @@ class UnifiedImportView(LoginRequiredMixin, View):
         if kinds == {Certificate}: return redirect("plugins:netbox_certificates:certificate_list")
         if kinds == {PrivateKey}: return redirect("plugins:netbox_certificates:privatekey_list")
         if kinds == {CSR}: return redirect("plugins:netbox_certificates:csr_list")
-        return redirect("plugins:netbox_certificates:vault")
+        return redirect("plugins:netbox_certificates:dashboard")
 
 
 class CACertificateImportView(PermissionRequiredMixin, UnifiedImportView):

@@ -9,25 +9,8 @@ from django.views import View
 
 from .bulk_export import _secure_file_response
 from .constants import MAX_UPLOAD_BYTES
-from .services.backup import BackupError, CONFIRMATION, create_backup, require_backup_user, restore_backup
+from .services.backup import BackupError, require_backup_user
 from .services.metadata_import import import_metadata
-
-
-class BackupExportForm(forms.Form):
-    password = forms.CharField(required=False, max_length=1024, widget=forms.PasswordInput,
-                               help_text="Optional. Without a password, the ZIP contains readable private keys and alert credentials.")
-
-
-class BackupRestoreForm(BackupExportForm):
-    password = forms.CharField(required=False, max_length=1024, widget=forms.PasswordInput, label="Backup password (if set)")
-    upload = forms.FileField(label="Backup file")
-    confirmation = forms.CharField(label=f"Type {CONFIRMATION}", max_length=100)
-
-    def clean_confirmation(self):
-        value = self.cleaned_data["confirmation"]
-        if value != CONFIRMATION:
-            raise forms.ValidationError("The confirmation text does not match.")
-        return value
 
 
 class MetadataImportForm(forms.Form):
@@ -46,47 +29,6 @@ def backup_response(data, password):
     if password:
         response["Content-Type"] = "application/octet-stream"
     return response
-
-
-class BackupView(LoginRequiredMixin, View):
-    def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated:
-            require_backup_user(request.user)
-        return super().dispatch(request, *args, **kwargs)
-
-    def get(self, request):
-        return self.render(request)
-
-    def render(self, request, action=None, form=None):
-        forms_by_action = {"export": BackupExportForm(prefix="export"), "restore": BackupRestoreForm(prefix="restore"), "metadata": MetadataImportForm(prefix="metadata")}
-        if action in forms_by_action:
-            forms_by_action[action] = form
-        return render(request, "netbox_certificates/backup.html", {"forms": forms_by_action})
-
-    def post(self, request):
-        action = request.POST.get("action")
-        cls = {"export": BackupExportForm, "restore": BackupRestoreForm, "metadata": MetadataImportForm}.get(action)
-        if cls is None:
-            return self.render(request)
-        form = cls(request.POST, request.FILES, prefix=action)
-        if form.is_valid():
-            values = form.cleaned_data
-            try:
-                if action == "export":
-                    return backup_response(create_backup(request.user, values["password"]), values["password"])
-                data = read_upload(values["upload"])
-                result = (restore_backup(data, request.user, values["confirmation"], values["password"])
-                          if action == "restore" else import_metadata(data, request.user))
-                messages.success(request, f"{result.get('restored', result.get('imported'))} objects {'restored' if action == 'restore' else 'imported'} successfully.")
-                for warning in result["warnings"]:
-                    messages.warning(request, warning)
-                return redirect("plugins:netbox_certificates:backup")
-            except BackupError as exc:
-                form.add_error(None, str(exc))
-            except ValueError:
-                # Do not expose secret values from parsing/database exceptions.
-                form.add_error(None, "Operation failed: invalid file, password, configuration, or object values. No partial changes were saved. Check that source and destination use the same plugin version.")
-        return self.render(request, action, form)
 
 
 class ObjectRestoreView(LoginRequiredMixin, View):

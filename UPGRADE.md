@@ -1,4 +1,4 @@
-# Upgrade to 1.7.0
+# Upgrade to 1.8.0
 
 Upgrade 1.5.0 (or an earlier version) in place; older migrations remain available. Supported NetBox versions remain 4.5.9 and 4.5.10 with Python 3.12+. Run the following on the Linux VM. These commands assume `/opt/netbox`, PostgreSQL database `netbox`, and systemd units `netbox` and `netbox-rq`. Adapt paths/service names if your installation differs. Container deployments should install the pinned package when rebuilding their image.
 
@@ -9,24 +9,24 @@ Keep the existing plugin Fernet encryption key unchanged. Back up the database, 
 ```bash
 sudo systemctl stop netbox netbox-rq
 umask 077
-sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.7.0.dump"
-sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.7.0
+sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.8.0.dump"
+sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.8.0
 ```
 
 Use your normal backup command if PostgreSQL is remote. Confirm the backup succeeded before continuing.
 
 ## Install with pip
 
-Wait until GitHub Actions has successfully published 1.7.0 to PyPI. No source copying, cloning, or uninstall is needed:
+Wait until GitHub Actions has successfully published 1.8.0 to PyPI. No source copying, cloning, or uninstall is needed:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.7.0'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.8.0'
 ```
 
 If the tag has been pushed but PyPI publication is pending, pip can instead install the tagged source archive:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.7.0.zip'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.8.0.zip'
 ```
 
 Update the persistent package pin automatically so NetBox's upgrade script keeps this version:
@@ -39,7 +39,7 @@ path = Path('/opt/netbox/local_requirements.txt')
 lines = path.read_text().splitlines() if path.exists() else []
 pattern = re.compile(r'^\s*netbox[-_]certificates[-_]plugin(?:\[.*?\])?(?:\s|[=<>!~@]|$)', re.I)
 lines = [line for line in lines if not pattern.match(line)]
-lines.append('netbox-certificates-plugin==1.7.0')
+lines.append('netbox-certificates-plugin==1.8.0')
 path.write_text('\n'.join(lines) + '\n')
 PY
 ```
@@ -60,112 +60,51 @@ sudo systemctl start netbox netbox-rq
 sudo systemctl status netbox netbox-rq --no-pager
 ```
 
-The installed version must be `1.7.0`. Hard-refresh your browser after static files are collected.
+The installed version must be `1.8.0`. Hard-refresh your browser after static files are collected.
 
-## Changes in 1.7.0
+## Changes in 1.8.0
 
-**Migration `0029_service_certificate_checks` is required.** It adds global and per-Service switches, both disabled by default. Enable Preferences → Allow live service certificate checks, then Check live certificate on each Service. Configure the service category and notification delivery in Alerts Configuration. Checks follow the health scan schedule and also run during manual scans when enabled. A global off switch prevents endpoint connections.
+**Migration `0030_retire_security_alert_option` is required.** It removes the retired security category from the managed settings rule. A managed rule selecting only that category is disabled instead of being broadened to unrelated notifications. Other categories, separate rules, inventory, and the saved Service-check switch are preserved. Reversing this migration does not restore removed selections.
 
-Services and Groups now offer their own Backup and Restore controls. These merge matching names and skip missing relationships; they do not erase the inventory. The full replacement backup feature remains available.
+The global Service check is now in **Alerts Configuration → Check live Service certificates for mismatches**. Per-Service opt-in and scan schedules are unchanged. API clients must send `service_checks_enabled` to `alert-settings/`, not `preferences/`.
 
-## Changes retained from 1.6.0
+Open **Overview → Dashboard** at `/plugins/ssl-certificates/dashboard/`. `/vault/` and old health URLs redirect with filters preserved. The standalone Backup and Restore page is removed. Use the Services/Groups list controls and artifact import/export actions; full-snapshot APIs remain for compatibility.
 
-**Migration 0028_vault_preferences is required.** Run the migrate command above before restarting NetBox. It adds five dashboard settings with defaults that retain visible sections and 50-row limits. Existing preferences, alert configuration, and inventory are preserved. Do not generate or fake migrations on the VM.
+The following sections describe earlier upgrade changes; current configuration locations are given above.
 
-Cryptographic Vault now contains inventory, expiration, and health findings. Old health URLs redirect with their filters intact. Adjust the dashboard in Overview → Preferences. Backup and Restore retains the same operations with shorter descriptions.
+## Earlier migrations
 
-## Changes retained from 1.5.0
+All earlier migration files remain included. Upgrade in place and apply every pending migration. In particular:
 
-Release 1.5.0 introduced type icons in Groups and **Backup and Restore** under Operations. Those features remain available. Run all pending migrations through **0029_service_certificate_checks** when installing 1.7.0.
+- **0025** repairs the AlertRule statuses default without changing saved selections.
+- **0026/0027** introduce typed Groups and repair recognizable generated artifact names. Existing mixed memberships and custom names are retained. These data repairs do not automatically reverse.
+- **0028** adds Dashboard preferences with existing visibility and list-limit defaults.
+- **0029** adds the global and per-Service live-check switches, both initially disabled. Existing saved values are preserved by 1.8.0.
+- **0030** removes the retired alert category from the managed rule, as described above.
 
-See [Backup and Restore](docs/BACKUPS.md) before using the replacement operation. Full restore replaces all plugin data, including alert settings, and requires the same plugin version on source and destination. The separate Groups/Services merge does not erase the inventory. Both are superuser-only, including API access.
+If an older installation reported unrecorded model changes, install this release and run the supplied migrations. Do not run `makemigrations` to generate new files or fake migrations on the VM. `manage.py` is a Python script; invoke it through the NetBox virtual environment as shown above.
 
-## Changes retained from 1.4.0
+Verify migration state:
 
-Run migrate: **0026_typed_groups** and **0027_readable_generated_names** are required. Group memberships, hierarchy, cryptographic material, and existing alert intervals are preserved. Single-type groups are classified automatically. Groups containing different member types remain Mixed (legacy); new groups must select a specific type. Display names matching old generated patterns are repaired from SAN/CN metadata; custom names are retained. These data repairs do not automatically revert if the migration is reversed.
+```bash
+cd /opt/netbox/netbox
+sudo /opt/netbox/venv/bin/python manage.py showmigrations netbox_certificates
+sudo /opt/netbox/venv/bin/python manage.py makemigrations --check --dry-run netbox_certificates
+```
 
-After upgrading, configure **Alerts Configuration → Repeat unresolved alerts every (days)**. Enter your desired interval, e.g. 7; 0 sends once per unresolved occurrence. Existing daily settings remain daily until changed. Additional legacy rules have their own schedules; review the additional-rules notice on that page if you receive duplicate notifications.
-
-Tables expose new optional columns through Configure Table. For mixed imports, selected typed groups receive only compatible objects; a Bundle is not added to a Certificate group merely because it contains that certificate.
-
-## Migration repair retained from 1.3.4
-
-Migration `0025_alertrule_statuses_default` is required. It aligns the Python default callable for AlertRule.statuses with the model. The old migration and model used different functions that both returned `["active"]`; Django still considered them different. The repair leaves existing alert-rule values unchanged.
-
-The earlier statement that 1.3.3 had no outstanding migration requirements was incorrect. If `showmigrations` shows 0001 through 0024 applied and `migrate` warns about unrecorded model changes, install 1.7.0 and run `migrate` to apply 0025. Do not generate or fake migrations on the VM for this repair. `manage.py` is a Python script: invoke it as `/opt/netbox/venv/bin/python manage.py ...` from `/opt/netbox/netbox`.
-
-Afterward, `showmigrations netbox_certificates` must show `[X]` for `0025_alertrule_statuses_default`, `0026_typed_groups`, `0027_readable_generated_names`, `0028_vault_preferences`, and `0029_service_certificate_checks`. The command `makemigrations --check --dry-run netbox_certificates` must report no changes. Earlier UI improvements remain available.
-
-## Earlier data migrations
-
-`0024_webhook_method` adds the HTTP method to alert channels, defaulting every existing channel to POST. It preserves destinations, credentials, TLS preferences, rules, and all inventory objects. After upgrading, use **Alerts Configuration → Webhook HTTP method** to choose POST, GET, PUT, PATCH, DELETE, HEAD, or OPTIONS. Sample tests use the selected method.
-
-All email paths now send the same minimal HTML template plus a readable plain-text alternative. Manifest files and notification versions come from the shared runtime version. Old exports and emails are not rewritten; generate a new export/test after installation.
-
-Group membership now uses six native searchable selectors, preserving the existing hierarchy, permissions, and membership data. Preferences, Alerts, Group editing, and export options have responsive bounded widths. Run collectstatic and hard-refresh the browser for these UI changes.
-
-### Upgrading from 1.2.0 or earlier
-
-
-`0023_preferences_and_derived_fields` adds Preferences with existing 15-minute scan/evaluation defaults and marks derived fields read-only. It preserves certificate/key/CSR material, delivery configuration, encryption keys, Groups, and Service assignments. The first health scan recalculates issuer and Supersedes relationships, including stale values that were previously entered manually. Names remain editable, including Bundle names. The migration repairs legacy mirrored links so their relationship, automatic flag, and enabled state match the internal engine; unverified historic manual cryptographic claims are disabled. Identifiable obsolete mirror rows are removed.
-
-Open **Overview → Preferences** to adjust scheduling and defaults. Keep `netbox-rq` running: a five-minute worker cycle checks the configured intervals. Notification transports, certificate checks, and repeat/cooldown settings remain in **Alerts Configuration**. The Vault's CA card opens the filtered Certificates list; existing CA bookmarks redirect.
-
-### Earlier migrations
-
-
-`0022_global_certificate_checks` adds five fields to AlertSettings, retires Certificate Policy permissions, and adds Private Key `use` permission. When exactly one enabled policy exists, its supported settings are copied. With no enabled policy or several enabled policies, defaults apply; review **Alerts Configuration** after the upgrade. Unsupported historic RSA/validity values fall back to defaults. Algorithm/curve/issuer allowlists and CA eligibility are not converted into settings. Legacy policies and assignments remain stored privately but inactive.
-
-Policy categories and explicit finding codes on rules are updated to the new configuration category/code. Existing policy scopes are inactive; other rule scopes continue. Review additional rules to avoid unexpectedly broad notification scope. The next health scan resolves obsolete policy findings. No certificate, key, CSR, or encryption key is rewritten.
-
-Earlier migrations remain unchanged: 0021 fixes the CSRs label; 0020 defaults certificate expiration alerts to 1 month only where both fields were unset; 0019 creates the settings singleton. Clear both certificate trigger fields to disable its expiration alerts. Existing custom timing, delivery settings, and encrypted secrets are preserved.
-
-## Verify after installation
-
-- Confirm 0025 is applied and the dry-run migration check reports no changes. Check that custom alert-rule statuses are preserved.
-
-- In Health, select multiple severities/statuses, apply, deselect, apply again, and use Clear filters. Invalid choices should show an error with a working Clear filters link.
-- Collapse a Group, search, then clear the search: the saved collapsed state should remain.
-- Generate a CSR with SAN rows and an existing key; check the new layout and preserved SAN values after a validation error.
-
-- Verify that Preferences and Alerts Configuration are centered, Group Search/Clear buttons align, and inventory export checkboxes toggle visibly with either their labels or the keyboard.
-- Use Select all/Clear selection in Groups and Health. For Health, check that all-pages selection affects only the filtered results.
-- Add/remove Group members with the native selectors and verify the changes persist.
-- Send an email sample: verify HTML formatting and version 1.7.0. Generate a fresh export and check its manifest version.
-- Choose a webhook method and send a sample to your endpoint. GET/HEAD/OPTIONS use a `payload` query parameter; POST/PUT/PATCH/DELETE send a JSON body.
-
-- Delete disposable Certificates individually and with Delete Selected, including objects with automatic links; confirm dependent links are removed.
-- Open Preferences, save a supported scan interval, and verify successful scheduled timestamps after the worker runs.
-- Add/remove SAN rows, including IP addresses and URIs, and check the resulting CSR. Verify Group membership selections persist after saving.
-- Verify derived fields and Supersedes are absent from edit forms and rejected by API updates; metadata remains editable.
-- Open the CA card from the Vault and confirm the Certificates `IS CA` filter is applied.
-
-- Open Alerts Configuration and review Certificate checks. Invalid email/port/header values should produce field errors. Use the sample email/webhook buttons to verify your destinations.
-- Add, rename, move, and delete a disposable Group; inspect hierarchy spacing and existing membership.
-- Generate a CSR using an existing key, and confirm the key count stays unchanged. Non-admin operators need Private Key `use` and view permissions plus CSR add and applicable Bundle permissions.
-- Import a mixed batch, check deduplication and certificate/key/CSR/bundle/chain relationships, then export inventory. Empty list exports should show a warning.
-- Confirm old encrypted material is still decryptable. Verify constrained accounts cannot access other objects or key material.
-- Ensure `netbox-rq` is running for the periodic health/alert job.
+Every migration through `0030_retire_security_alert_option` must show `[X]`, and the dry run must report no changes.
 
 ## API and URL changes
 
-| Interface | Current behavior |
-| --- | --- |
-| `preferences/` REST | New superuser-only GET/PATCH/PUT; mutations require a write-enabled token |
-| CA UI bookmark | Redirects to Certificates with `is_ca=true`; REST CA routes remain compatible |
-| Cryptographic writes | Derived fields rejected; replacement material must be imported as a new object |
-| Policy UI bookmarks | Redirect to Alerts Configuration; writes unavailable |
-| `certificate-policies/` REST and policy GraphQL | Retired |
-| `alert-settings/` | Adds five global certificate check fields |
-| `csrs/generate/` | Adds scoped `existing_private_key` selection |
-| `import-objects/` | Mixed content detection, typed options, atomic deduplication/reconciliation |
-| `export-inventory/` | New POST endpoint for selected material and metadata types |
-| Empty exports | HTTP 200 warning, no attachment; API returns JSON with `count: 0` |
+- `/dashboard/` is the canonical dashboard. `/vault/`, `/health/`, `/health/findings/`, and `/expiration-dashboard/` redirect with query parameters preserved.
+- The legacy `/inventory/` and `/inventory/<pk>/` hierarchy routes are not current interfaces; use Groups.
+- `/backup/` has been removed from the UI. Services and Groups retain their own restore routes. Full-snapshot API endpoints remain available for existing clients.
+- `service_checks_enabled` is read/written through `alert-settings/`. The Preferences API rejects updates to the moved field instead of silently ignoring them.
+- `object-links/` remains the API for links to NetBox objects. Automatic cryptographic links and derived fields remain protected from manual edits.
+- The standalone Certificate Authorities page is replaced by a filtered Certificates list; CA import/export APIs remain available.
 
-The older `/expiration-dashboard/` redirect to `/health/`, `/alerts/` settings page, and `/alerts/rules/` advanced rule list remain. For upgrades from 0.5.0, `/inventory/` was replaced by `/vault/` and legacy ArtifactLink REST by `object-links/`.
+## After upgrading
 
-See [API](docs/API.md), [Permissions](docs/PERMISSIONS.md), and [Imports](docs/IMPORTS.md). Inventory export metadata snapshots are not a substitute for a full database backup or an automatic restoration of Services, Groups, and alert history.
+Hard-refresh your browser after `collectstatic`. Confirm Dashboard, Groups, Services, Alerts Configuration, and Preferences load. For optional live checking, use Alerts Configuration and each Service's Endpoints controls; scheduling remains in Preferences. Test notification buttons send real samples and should only be used when wanted.
 
-## Rollback
-
-Stop NetBox and the worker, restore the pre-upgrade database/configuration/local requirements backup, reinstall `netbox-certificates-plugin==1.3.3` using pip, run `collectstatic --no-input` and `check`, and restart. Keep the original encryption key. An older package alone does not undo database migrations or settings changes. If upgrading from an earlier version, reinstall the exact version represented by your backup instead.
+Keep `netbox-rq` running. A five-minute worker cycle evaluates the configured health and alert schedules. Alerts use existing per-certificate timing and repeat intervals. Import/export and scoped restore instructions are in [README](README.md) and [metadata restore](docs/BACKUPS.md).

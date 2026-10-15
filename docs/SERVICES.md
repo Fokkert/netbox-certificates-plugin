@@ -32,7 +32,7 @@ Service fields include:
 - description
 - comments
 
-`deployment` provides common a dropdown of common technologies and a custom-name option. `deployment_metadata` is a JSON object for deployment-specific details such as namespace, secret name, ingress, virtual host, configuration reference, or other platform metadata.
+`deployment` provides a dropdown of common technologies and a custom-name option. `deployment_metadata` is a JSON object for deployment-specific details such as namespace, secret name, ingress, virtual host, configuration reference, or other platform metadata.
 
 ## Relationships
 
@@ -68,3 +68,11 @@ The Health engine compares these identities with linked Certificate SANs and rep
 Every section is visible: Service, Endpoints, Cryptographic artifacts, Organization, and Metadata. Certificates and private keys are adjacent, followed by CSRs and bundles. There is no collapsible Advanced section. Additional URLs use one URL per line, and empty hostname/SNI/port fields derive from the primary URL and protocol.
 
 Ports must be integers from 1 to 65535. Hostname/SNI and every endpoint URL are validated in the model, including API and bulk updates. Deployment metadata must be a JSON object. Certificate requirements are configured globally in Alerts Configuration; Services no longer have policy assignments.
+
+## Live certificate comparison
+
+Enable **Alerts Configuration → Check live Service certificates for mismatches**, then **Check live certificate** in the Service's Endpoints section. The Service must be enabled and have a linked certificate or certificate-bearing bundle. Both switches default off; the global off switch prevents all endpoint connections. Scan scheduling remains in Preferences; Dashboard provides a manual scan button.
+
+Only the primary URL (or hostname/port fallback) is probed, using the Service protocol and SNI. Additional URLs are used for local name-coverage checks only. The checker compares SHA-256 leaf-certificate fingerprints, accepts any linked certificate/bundle certificate, and reports connection failures separately. It sends no credentials or HTTP request. Direct TLS and PostgreSQL/MySQL TLS negotiation are supported. Private CA/expired certificates can be compared without CA trust validation. Alerts use the Service category and the existing repeat interval.
+
+Use Backup services and Restore services on the Services list for metadata transfer. Restore merges names and skips missing relationships; it does not import private cryptographic material.

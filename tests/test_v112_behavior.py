@@ -245,7 +245,7 @@ class FindingDisplayRegression(unittest.TestCase):
         routes.urlpatterns = [path("plugins/", include(([path("ssl/", include(([
             path("certificates/", lambda request: None, name="certificate_list"),
             path("health/", lambda request: None, name="health"),
-            path("vault/", lambda request: None, name="vault"),
+            path("vault/", lambda request: None, name="dashboard"),
         ], "netbox_certificates")))], "plugins")))]
         engine = Engine(loaders=[("django.template.loaders.locmem.Loader", {
             "generic/_base.html": "{% block content %}{% endblock %}",

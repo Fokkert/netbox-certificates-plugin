@@ -20,6 +20,8 @@ from .services.secret_v1 import SecretConfigurationError, encrypt_text, encrypt_
 
 
 class AlertSettingsForm(AcronymFormMixin, forms.Form):
+    service_checks_enabled = forms.BooleanField(required=False, label="Check live Service certificates for mismatches",
+        help_text="Off means no endpoint connections. Also enable Check live certificate on each Service; checks follow the health scan schedule.")
     minimum_rsa_bits = forms.TypedChoiceField(coerce=int, required=False, empty_value=2048, choices=[(n, str(n)) for n in (2048, 3072, 4096, 8192)], initial=2048, label="Minimum RSA key size")
     max_validity_days = forms.IntegerField(required=False, min_value=1, max_value=365000, label="Maximum certificate validity (days)")
     require_san = forms.BooleanField(required=False, initial=True, label="Require SANs on end-entity certificates and CSRs")
@@ -29,10 +31,10 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
     enabled = forms.BooleanField(required=False, label="Enable certificate alerts")
     categories = forms.MultipleChoiceField(required=True, choices=[
         ("validity", "Expired, expiring, or not-yet-valid certificates"), ("chain", "Missing or invalid issuing certificates"),
-        ("security", "Weak or reused keys and outdated signatures"), ("relationship", "Missing or mismatched certificates, keys, and CSRs"),
+        ("relationship", "Missing or mismatched certificates, keys, and CSRs"),
         ("duplicate", "Duplicate certificates, keys, or CSRs"), ("service", "Missing or mismatched certificates on services"),
         ("configuration", "Certificates that do not meet your requirements"),
-    ], label="Notify me about", initial=["validity", "chain", "security", "relationship", "duplicate", "service", "configuration"])
+    ], label="Notify me about", initial=["validity", "chain", "relationship", "duplicate", "service", "configuration"])
     repeat_days = forms.FloatField(min_value=0, max_value=3650, initial=7, required=False,
         label="Repeat unresolved alerts every (days)",
         help_text="0 sends once per unresolved problem.")
@@ -70,13 +72,14 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
         self.test_method = test_method
         initial = {}
         if config:
-            for name in ("minimum_rsa_bits", "max_validity_days", "require_san", "allow_wildcards", "forbid_key_reuse"):
+            for name in ("service_checks_enabled", "minimum_rsa_bits", "max_validity_days", "require_san", "allow_wildcards", "forbid_key_reuse"):
                 if hasattr(config, name):
                     initial[name] = getattr(config, name)
             rule, email, webhook = config.rule, config.email_channel, config.webhook_channel
             if rule:
                 for field in ("enabled", "categories", "severities", "cooldown_minutes", "repeat_minutes", "notify_on_recovery"):
                     initial[field] = getattr(rule, field)
+                initial["categories"] = [value for value in (rule.categories or self.base_fields["categories"].initial) if value != "security"]
                 initial["repeat_days"] = rule.repeat_minutes / 1440
             if email:
                 for field in ("recipients", "smtp_host", "smtp_port", "smtp_username", "smtp_verify_tls", "from_email", "subject_prefix"):
@@ -165,7 +168,7 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
         webhook.save()
         rule.channels.set([email, webhook])
         config.rule, config.email_channel, config.webhook_channel = rule, email, webhook
-        for name in ("minimum_rsa_bits", "max_validity_days", "require_san", "allow_wildcards", "forbid_key_reuse"):
+        for name in ("service_checks_enabled", "minimum_rsa_bits", "max_validity_days", "require_san", "allow_wildcards", "forbid_key_reuse"):
             setattr(config, name, data[name])
         config.full_clean()
         config.save()
@@ -187,7 +190,7 @@ class AlertSettingsView(LoginRequiredMixin, View):
     def page(self, request, form):
         sections = [
             ("Certificate checks", ("minimum_rsa_bits", "max_validity_days", "require_san", "allow_wildcards", "forbid_key_reuse")),
-            ("When and what to send", ("enabled", "categories", "severities", "cooldown_minutes", "repeat_days", "notify_on_recovery")),
+            ("When and what to send", ("enabled", "service_checks_enabled", "categories", "severities", "cooldown_minutes", "repeat_days", "notify_on_recovery")),
             ("Email alerts", ("email_enabled", "recipients", "smtp_host", "smtp_port", "smtp_username", "smtp_password", "clear_smtp_password", "smtp_security", "smtp_verify_tls", "from_email", "subject_prefix")),
             ("Webhook alerts", ("webhook_enabled", "webhook_method", "webhook_url", "webhook_headers", "webhook_verify_tls")),
         ]

@@ -1,4 +1,4 @@
-# Validation for 1.7.0
+# Validation for 1.8.0
 
 The release gate runs standalone checks, real NetBox 4.5.9/4.5.10 model/migration comparisons, PostgreSQL migration application and upgrade-data preservation, and the plugin integration suite.
 
@@ -17,3 +17,7 @@ Version 1.6.0 adds required migration 0028. Dashboard tests cover the combined p
 ## 1.7.0 validation
 
 Protocol tests use fake sockets for direct TLS, SNI, PostgreSQL and MySQL negotiation, unknown protocols, and truncated responses. NetBox integration tests cover both opt-in switches, disabled Services, certificate matches/mismatches, connection failures, scoped restore validation, UI controls, and restore authorization. Migration 0029 is compared against real model state on supported NetBox versions. No live endpoint is contacted by tests.
+
+## 1.8.0 validation
+
+Integration coverage checks canonical Dashboard/legacy redirects, removal of the backup page, the moved setting's UI/API representation and persistence, rejection of its old Preferences API location, and migration 0030's behavior for mixed and security-only category selections. Existing import/export, permissions, protocol, and cryptographic tests remain in the release gate.

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.8.0
+
+- Rename Cryptographic Vault to Dashboard, add `/dashboard/` with old URL redirects, and refresh the theme-aware layout.
+- Remove the standalone Backup and Restore UI; retain per-page imports/exports and compatibility snapshot APIs.
+- Move the global live Service-check switch from Preferences to Alerts Configuration without resetting it; move its API field to `alert-settings/`.
+- Remove the weak/reused keys alert category from managed settings. Required data migration 0030 removes saved selections and disables security-only managed rules instead of broadening them.
+- Rewrite README for the current release, navigation, feature behavior, API, and installation; update supporting guides.
+
+
 ## 1.7.0
 
 - Add opt-in live Service certificate checks, protocol negotiation, mismatch and connection-failure findings, and UI/API settings. Both switches default off.

@@ -2,7 +2,7 @@
 
 ## Dashboard preferences (1.6.0)
 
-The existing superuser-only `/api/plugins/ssl-certificates/preferences/` endpoint now includes `vault_findings_per_page` (25/50/100/200), `vault_expiration_limit` (10/25/50/100), and Boolean fields `vault_show_expiration`, `vault_show_assignments`, and `vault_show_evidence`. Partial updates preserve omitted settings; invalid choices return HTTP 400. Writes require a write-enabled token. These settings control the merged Cryptographic Vault UI; existing Health Finding endpoints and permissions are unchanged.
+The existing superuser-only `/api/plugins/ssl-certificates/preferences/` endpoint now includes `vault_findings_per_page` (25/50/100/200), `vault_expiration_limit` (10/25/50/100), and Boolean fields `vault_show_expiration`, `vault_show_assignments`, and `vault_show_evidence`. Partial updates preserve omitted settings; invalid choices return HTTP 400. Writes require a write-enabled token. These settings control the merged Dashboard UI; existing Health Finding endpoints and permissions are unchanged.
 
 Base path:
 
@@ -178,7 +178,7 @@ Supported intervals are 5, 15, 30, 60, 180, 360, 720, and 1440 minutes; the warn
 
 Existing Certificate/CSR/Private Key material cannot be replaced with different cryptographic identity. Import renewal/replacement material as a new object. Creating/importing artifacts still parses material automatically; CSR generation still accepts the requested subject and SANs before signing. Manual ObjectLinks cannot claim `key_match`, `csr_match`, `issuer`, `bundle_member`, or `supersedes` relationships. Automatic links remain excluded from manual updates/deletes.
 
-CA REST endpoints are retained. The removed UI page redirects to `certificates/?is_ca=true`; the Vault uses that filtered URL. All public model serializers are exported from the canonical module required by NetBox event serialization, including cascaded delete events with no HTTP request.
+CA REST endpoints are retained. The removed UI page redirects to `certificates/?is_ca=true`; the Dashboard uses that filtered URL. All public model serializers are exported from the canonical module required by NetBox event serialization, including cascaded delete events with no HTTP request.
 
 ## 1.3.1 notification changes
 
@@ -192,6 +192,10 @@ Both sample and live webhooks use the selected method. GET/HEAD/OPTIONS carry JS
 
 ## Live Service checks and scoped restores (1.7.0)
 
-Service create/update, detail, filtering, and export support `certificate_check_enabled` (boolean, default false). Preferences supports `service_checks_enabled` (boolean, default false; superuser only). Both must be enabled for network checks. Existing Service change permissions apply.
+Service create/update, detail, filtering, and export support `certificate_check_enabled` (boolean, default false). Alerts Configuration (`alert-settings/`) supports `service_checks_enabled` (boolean, default false; superuser only). Both must be enabled for network checks. Existing Service change permissions apply.
 
 `POST import-metadata/` accepts optional `kind=service` or `kind=artifactgroup` with `upload`. A mismatched type rejects the restore atomically. The existing superuser and write-enabled token requirement remains. Service/Group archive exports are directly reusable for restore; unavailable relationships are skipped with warnings.
+
+## 1.8.0 changes
+
+`service_checks_enabled` moved from `preferences/` to `alert-settings/`. It retains its existing saved value and remains superuser-only. Preferences rejects writes to that moved field with HTTP 400. The managed alert settings category choices no longer include `security`; migration 0030 removes it from the managed rule without broadening security-only rules. Inventory and legacy full-backup API endpoints remain available. The standalone backup UI is removed; Dashboard's canonical UI URL is `/plugins/ssl-certificates/dashboard/`, with `/vault/` retained as a filtered redirect.

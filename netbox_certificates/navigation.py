@@ -12,8 +12,8 @@ menu = PluginMenu(
                     link_text="Preferences",
                 ),
                 PluginMenuItem(
-                    link="plugins:netbox_certificates:vault",
-                    link_text="Cryptographic Vault",
+                    link="plugins:netbox_certificates:dashboard",
+                    link_text="Dashboard",
                 ),
             ),
         ),
@@ -51,10 +51,6 @@ menu = PluginMenu(
         (
             "Operations",
             (
-                PluginMenuItem(
-                    link="plugins:netbox_certificates:backup",
-                    link_text="Backup and Restore",
-                ),
                 PluginMenuItem(
                     link="plugins:netbox_certificates:import_objects",
                     link_text="Import Objects",

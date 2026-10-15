@@ -29,7 +29,7 @@ Proxy and NetBox request limits may impose a lower upload limit. Split larger ba
 
 The cryptographic importer skips and reports known manifests, README files, operating-system metadata, and inventory `metadata/*.json` files inside archives. Unknown invalid files reject the request. Metadata-only archives contain no cryptographic objects and receive a validation message directing users to the appropriate operation.
 
-As of 1.5.0, **Backup and Restore → Import Groups and Services** merges their exported ZIP/JSON metadata without erasing other inventory. Available relationships are matched by portable identity; missing members are skipped with warnings. Use **Restore full plugin backup** for complete replacement of plugin objects, relationships, cryptographic material, settings, and history, including optional password protection. These operations are available through superuser-only APIs. See [Backup and Restore](BACKUPS.md).
+Services and Groups have Backup and Restore buttons on their respective lists. Restores merge matching names and resolve available relationships, skipping missing members. The standalone backup page is removed. Existing full-snapshot APIs remain available for compatibility. See [Metadata restore and backup APIs](BACKUPS.md).
 
 ## API results
 
@@ -39,4 +39,4 @@ A successful request returns created objects, reused identities, reconciled bund
 
 Preferences controls the initial chain-import and source-archive-preservation options in both UI and API. Explicit request options override these defaults. Existing cryptographic objects retain their material: import renewal/replacement material as new objects, allowing fingerprint matching, issuer verification, and automatic Supersedes reconciliation to maintain relationships. Friendly names and organizational metadata remain editable.
 
-The Vault CA card opens the filtered Certificates list. Its **Import CA Certificates** action retains strict CA-only validation. CA import/export API routes remain available.
+The Dashboard CA card opens the filtered Certificates list. Its **Import CA Certificates** action retains strict CA-only validation. CA import/export API routes remain available.

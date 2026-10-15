@@ -17,7 +17,7 @@ Open **SSL Certificates → Overview → Preferences**. Only NetBox superusers c
 | Show service assignment summary | Enabled | Show counts of artifacts without a direct Service assignment |
 | Show finding evidence | Enabled | Show the Evidence column in the vault; finding detail pages remain available |
 
-Cryptographic Vault now combines inventory, expiration, and health findings. The warning-days setting applies to both scanning and the vault expiration overview. Hiding a dashboard section does not disable scanning or alerts. All preferences are global. Migration **0028_vault_preferences** is required for the new dashboard options.
+Dashboard now combines inventory, expiration, and health findings. The warning-days setting applies to both scanning and the vault expiration overview. Hiding a dashboard section does not disable scanning or alerts. All preferences are global. Migration **0028_vault_preferences** is required for the new dashboard options.
 
 The corresponding REST fields are `vault_findings_per_page`, `vault_expiration_limit`, `vault_show_expiration`, `vault_show_assignments`, and `vault_show_evidence`. Existing clients can omit these fields when updating other preferences; omitted values are preserved.
 
@@ -27,6 +27,6 @@ The page displays last successful scheduled scan and alert evaluation times. Man
 
 REST: `GET`, `PATCH`, and `PUT /api/plugins/ssl-certificates/preferences/`. PATCH and PUT update supplied fields, preserving omitted settings, and require a superuser with a write-enabled NetBox API token. Invalid intervals/key sizes/ranges return HTTP 400. Timestamps are read-only. See [API](API.md).
 
-## Live service checks
+## Live service checks moved to Alerts Configuration
 
-`service_checks_enabled` defaults to false. Enable **Allow live service certificate checks**, and enable `certificate_check_enabled` on each Service. Both switches are required before any endpoint connection. Checks use the health scan interval (including manual scans), a five-second socket timeout, and the primary URL or hostname. Connection failures are findings; comparison accepts any linked certificate or bundle certificate. Migration 0029 is required.
+The global `service_checks_enabled` switch is configured through **Alerts Configuration → Check live Service certificates for mismatches** and the `alert-settings/` API. Its saved value is preserved. It is no longer a Preferences field; attempting to update it through the Preferences API returns HTTP 400 with the new endpoint. Scan frequency remains here. See [Services](SERVICES.md).
