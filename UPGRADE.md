@@ -76,7 +76,7 @@ Cryptographic Vault now contains inventory, expiration, and health findings. Old
 
 ## Changes retained from 1.5.0
 
-Release 1.5.0 introduced type icons in Groups and **Backup and Restore** under Operations. Those features remain available. Version 1.7.0 requires migration **0028_vault_preferences**, as described above.
+Release 1.5.0 introduced type icons in Groups and **Backup and Restore** under Operations. Those features remain available. Run all pending migrations through **0029_service_certificate_checks** when installing 1.7.0.
 
 See [Backup and Restore](docs/BACKUPS.md) before using the replacement operation. Full restore replaces all plugin data, including alert settings, and requires the same plugin version on source and destination. The separate Groups/Services merge does not erase the inventory. Both are superuser-only, including API access.
 

@@ -1,9 +1,9 @@
 import json
-from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
 
@@ -67,3 +67,18 @@ class ServiceCheckTests(TestCase):
         self.client.force_login(self.user)
         response = self.client.get(reverse("plugins:netbox_certificates:service_edit", args=[self.service.pk]))
         self.assertContains(response, 'name="certificate_check_enabled"')
+
+    def test_invalid_opt_in_endpoint_is_rejected(self):
+        self.service.hostname = ""
+        with self.assertRaises(ValidationError):
+            self.service.full_clean()
+        self.service.hostname = "example.com"
+        self.service.protocol = "http"
+        with self.assertRaises(ValidationError):
+            self.service.full_clean()
+
+    @patch("netbox_certificates.services.endpoint_check.certificate_fingerprint")
+    def test_no_expected_certificate_skips_connection(self, fetch):
+        self.service.certificates.clear()
+        _live_service_findings(self.service, self.settings)
+        fetch.assert_not_called()
