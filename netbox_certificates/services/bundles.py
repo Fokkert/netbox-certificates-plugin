@@ -14,7 +14,7 @@ from netbox_certificates.models import Bundle, Certificate, CSR, PrivateKey
 from .certificate_authorities import sync_all_certificate_authorities
 from .duplicates import artifact_identity, find_duplicate
 from .encryption import encrypt_private_key
-from .importing import _check_created_permission
+from .importing import _check_created_permission, _assign_groups
 from .linker import link_matching_artifacts, resolve_certificate_parent, sync_bundle_links
 from .parser import ArtifactParseError, ParsedArtifact, parse_blob
 
@@ -238,9 +238,7 @@ def import_bundle(*, name, archive_bytes, source_filename, allowed_kinds, archiv
             if chain_objs:
                 bundle.chain_certificates.set(chain_objs)
             if groups:
-                bundle.groups.add(*groups)
-                for obj in set(cert_objs + key_objs + csr_objs):
-                    obj.groups.add(*groups)
+                _assign_groups([bundle, *set(cert_objs + key_objs + csr_objs)], groups)
             sync_bundle_links(bundle, origin=LinkOriginChoices.BUNDLE)
             for cert in cert_objs:
                 resolve_certificate_parent(cert)

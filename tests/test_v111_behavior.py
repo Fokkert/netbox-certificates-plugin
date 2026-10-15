@@ -234,10 +234,12 @@ class PermissionsAndSettings(unittest.TestCase):
     def test_reused_ca_requires_change_permission_only_for_new_memberships(self):
         check = definitions("netbox_certificates/services/importing.py", ["_check_reused_group_permissions"],
                             object_allowed=lambda *args: False, PermissionDenied=PermissionDenied)["_check_reused_group_permissions"]
-        certificate = SimpleNamespace(groups=SimpleNamespace(values_list=lambda *args, **kwargs: [1]))
-        check([certificate], [SimpleNamespace(pk=1)], object())
+        certificate = SimpleNamespace(_meta=SimpleNamespace(model_name="certificate"),
+                                      groups=SimpleNamespace(values_list=lambda *args, **kwargs: [1]))
+        check([certificate], [SimpleNamespace(pk=1, group_type="certificate")], object())
+        check([certificate], [SimpleNamespace(pk=2, group_type="bundle")], object())
         with self.assertRaises(PermissionDenied):
-            check([certificate], [SimpleNamespace(pk=2)], object())
+            check([certificate], [SimpleNamespace(pk=2, group_type="certificate")], object())
 
     def test_status_permission_is_checked_before_netbox_mutates_instance(self):
         class MutatingSerializer(serializers.Serializer):

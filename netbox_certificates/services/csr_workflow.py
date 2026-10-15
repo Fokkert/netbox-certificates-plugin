@@ -4,9 +4,9 @@ from django.db import transaction
 
 from ..models import Bundle, Certificate, CSR, PrivateKey
 from ..permissions import object_allowed, require_action_permission
-from .csr import generate_csr
+from .csr import CSRGenerationError, generate_csr
 from .encryption import decrypt_private_key
-from .importing import _create, _check_created_permission
+from .importing import _create, _check_created_permission, _assign_groups
 from .ingest import after_artifact_save
 from .linker import find_matching_bundle
 from .parser import parse_blob
@@ -16,6 +16,9 @@ from .parser import parse_blob
 def save_generated_csr(data, user):
     require_action_permission(CSR, user, "add")
     key = data.get("existing_private_key")
+    allowed_groups = {"csr", "bundle", "mixed"} | ({"privatekey"} if key is None else set())
+    if any(group.group_type not in allowed_groups for group in data.get("groups") or []):
+        raise CSRGenerationError("Select CSR or Bundle groups, or Private Key groups when generating a new key.")
     if key is not None:
         if not object_allowed(user, key, "use"):
             raise PermissionDenied("You do not have permission to sign with this private key.")
@@ -36,7 +39,7 @@ def save_generated_csr(data, user):
     new_key = key is None
     if new_key:
         parsed = parse_blob(generated_key, filename="generated.key")[0]
-        parsed.name = ((data.get("name") or data["common_name"])[:196] + " key")
+        parsed.name = data["common_name"][:188] + " Private key"
         key = _create(parsed, "generated.key", owner=data.get("owner"))
     parsed = parse_blob(csr_pem, filename="generated.csr")[0]
     parsed.name = data.get("name") or data["common_name"]
@@ -53,9 +56,9 @@ def save_generated_csr(data, user):
     else:
         require_action_permission(Bundle, user, "add")
     if data.get("groups"):
-        csr.groups.add(*data["groups"])
+        _assign_groups([csr], data["groups"])
         if new_key:
-            key.groups.add(*data["groups"])
+            _assign_groups([key], data["groups"])
     _check_created_permission(user, csr)
     if new_key:
         _check_created_permission(user, key)
@@ -66,4 +69,6 @@ def save_generated_csr(data, user):
         bundle = Bundle.objects.filter(identity_fingerprint=fingerprint).first()
         if bundle is not None:
             _check_created_permission(user, bundle)
+    if bundle is not None:
+        _assign_groups([bundle], data.get("groups"))
     return csr, key

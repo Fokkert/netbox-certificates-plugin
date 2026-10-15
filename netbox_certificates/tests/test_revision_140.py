@@ -117,6 +117,27 @@ class Revision140Tests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Select only members matching this group type")
         self.assertFalse(ArtifactGroup.objects.filter(name="Wrong type").exists())
+        group = ArtifactGroup.objects.create(name="Endpoints", group_type="service")
+        group.services.add(service)
+        detail = self.client.get(group.get_absolute_url())
+        self.assertContains(detail, "Endpoint")
+        self.assertContains(detail, "Group type")
+        self.assertNotContains(detail, '<h3 class="h6">Private Keys</h3>')
+
+    def test_generated_csr_assigns_only_matching_group_types(self):
+        csr_group = ArtifactGroup.objects.create(name="Requests", group_type="csr")
+        key_group = ArtifactGroup.objects.create(name="Keys", group_type="privatekey")
+        bundle_group = ArtifactGroup.objects.create(name="Generated bundles", group_type="bundle")
+        response = self.client.post(reverse("plugins:netbox_certificates:csr_generate"), {
+            "common_name": "generated.example.test", "key_algorithm": "rsa", "rsa_bits": 2048,
+            "ec_curve": "secp256r1", "signature_hash": "sha256", "rsa_signature": "pkcs1v15",
+            "sans": "DNS:generated.example.test", "groups": [csr_group.pk, key_group.pk, bundle_group.pk],
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(list(CSR.objects.get().groups.all()), [csr_group])
+        self.assertEqual(list(PrivateKey.objects.get().groups.all()), [key_group])
+        self.assertEqual(list(Bundle.objects.get().groups.all()), [bundle_group])
+        self.assertEqual(PrivateKey.objects.get().name, "generated.example.test Private key")
 
     def test_table_options_and_relationship_permissions(self):
         self.import_pfx()
@@ -136,9 +157,9 @@ class Revision140Tests(TestCase):
         table = ServiceTable([service])
         table.request = self.request
         for field, obj in (("certificates", certificate), ("private_keys", key), ("bundles", bundle)):
-            self.assertIn(obj.get_absolute_url(), str(table.rows[0][field]))
+            self.assertIn(obj.get_absolute_url(), str(table.rows[0].get_cell(field)))
         self.request.user = get_user_model().objects.create_user(username="no-related-access")
-        self.assertNotIn(certificate.name, str(table.rows[0]["certificates"]))
+        self.assertNotIn(certificate.name, str(table.rows[0].get_cell("certificates")))
 
     def test_repeat_days_validation(self):
         values = {"categories": ["validity"], "cooldown_minutes": 60, "repeat_days": 7,

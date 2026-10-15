@@ -85,10 +85,10 @@ def _assign_groups(objects, groups):
 
 
 def _check_reused_group_permissions(reused, groups, user):
-    desired = {group.pk for group in (groups or [])}
-    if user is None or not desired:
+    if user is None or not groups:
         return
     for obj in reused:
+        desired = {group.pk for group in groups if group.group_type in (obj._meta.model_name, "mixed")}
         if desired - set(obj.groups.values_list("pk", flat=True)) and not object_allowed(user, obj, "change"):
             raise PermissionDenied("Change permission is required to assign groups to an existing object.")
 

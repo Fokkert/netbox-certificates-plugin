@@ -708,6 +708,8 @@ class CSRGenerateForm(AcronymFormMixin, forms.Form):
         super().__init__(*args, **kwargs)
         from .preferences import get_preferences
         self.fields["rsa_bits"].initial = get_preferences().csr_rsa_bits
+        self.fields["groups"].queryset = self.fields["groups"].queryset.filter(group_type__in=("csr", "privatekey", "bundle", "mixed"))
+        self.fields["groups"].help_text = "Objects go only into matching group types. Using an existing key does not change its groups."
         if user:
             from .permissions import action_queryset
             self.fields["existing_private_key"].queryset = action_queryset(PrivateKey, user, "use")

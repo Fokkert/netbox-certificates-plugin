@@ -1,5 +1,5 @@
 {% extends 'generic/object.html' %}
-{% block content %}{% if object.group_type == "service" or object.group_type == "mixed" %}<div class="card mb-3"><h2 class="card-header">Services</h2><div class="card-body">{% for service in services %}<a class="me-3" href="{{ service.get_absolute_url }}">{{ service }}</a>{% empty %}<span class="text-muted">No services assigned.</span>{% endfor %}</div></div>{% endif %}
+{% block content %}
 <div class="row">
   <div class="col-md-5">
     <div class="card mb-3">
@@ -21,6 +21,11 @@
     <div class="card mb-3">
       <h2 class="card-header">Members</h2>
       <div class="card-body">
+{% if object.group_type == "service" or object.group_type == "mixed" %}
+        <section class="mb-3"><h3 class="h6">Services</h3>
+        <ul class="mb-0">{% for item in services %}<li><a href="{{ item.get_absolute_url }}">{{ item }}</a></li>{% empty %}<li class="text-muted">No members.</li>{% endfor %}</ul>
+        </section>
+{% endif %}
 {% if object.group_type == "group" or object.group_type == "mixed" %}
         <section class="mb-3"><h3 class="h6">Groups</h3>
         <ul class="mb-0">{% for item in child_groups %}<li><a href="{{ item.get_absolute_url }}">{{ item }}</a></li>{% empty %}<li class="text-muted">No members.</li>{% endfor %}</ul>
