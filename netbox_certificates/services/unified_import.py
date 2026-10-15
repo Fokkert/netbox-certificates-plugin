@@ -81,7 +81,7 @@ def parse_uploads(uploads, *, password=None, archive_password=None, import_chain
     for item in uploads:
         read(item)
     if not records:
-        raise UnifiedImportError("No certificate, CSR, or private key was found. Nothing was imported.")
+        raise UnifiedImportError("No certificate, CSR, or private key was found. Nothing was imported. Use Backup and Restore for exported Groups, Services, or full plugin backups.")
     return records, ignored
 
 

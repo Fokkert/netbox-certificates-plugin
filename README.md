@@ -145,7 +145,7 @@ Limits are 64 MiB combined upload, 128 MiB expanded content, 10,000 counted file
 
 Bundle export opens an options form. Choose separate files or PFX, optional PFX password protection, and whether to include the chain. Single bundles support ZIP/TAR; bulk bundles use ZIP. Exporting private keys still requires a superuser.
 
-**Export inventory** in the Vault downloads selected object types together as one ZIP. It includes material for Certificates, Private Keys, CSRs, and Bundles and can include metadata for Groups, Services, Object Links, Health findings, and alert objects. Cryptographic files can be reimported together; metadata snapshots are for reference, not a replacement for a database backup.
+**Export inventory** in the Vault downloads selected object types together as one ZIP. It includes material for Certificates, Private Keys, CSRs, and Bundles and can include metadata for Groups, Services, Object Links, Health findings, and alert objects. Cryptographic files can be reimported together. Groups and Services can be merged through **Backup and Restore**; use that page's full backup/restore operations to transfer every plugin object, relationship, secret, and setting. Other inventory-export metadata remains reference-only. See [Backup and Restore](docs/BACKUPS.md).
 
 NetBox-native export remains available for metadata tables. Empty exports show a warning; the API returns HTTP 200 with a warning and `count: 0`, without an attachment.
 
