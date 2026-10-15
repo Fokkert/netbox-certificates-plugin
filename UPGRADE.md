@@ -70,7 +70,7 @@ Cryptographic Vault now contains inventory, expiration, and health findings. Old
 
 ## Changes retained from 1.5.0
 
-This version adds type icons in Groups and **Backup and Restore** under Operations. It adds no new model fields or migrations; CI compares models against migration state on both supported NetBox versions. Run `migrate` anyway so older outstanding migrations are applied.
+Release 1.5.0 introduced type icons in Groups and **Backup and Restore** under Operations. Those features remain available. Version 1.6.0 requires migration **0028_vault_preferences**, as described above.
 
 See [Backup and Restore](docs/BACKUPS.md) before using the replacement operation. Full restore replaces all plugin data, including alert settings, and requires the same plugin version on source and destination. The separate Groups/Services merge does not erase the inventory. Both are superuser-only, including API access.
 
@@ -88,7 +88,7 @@ Migration `0025_alertrule_statuses_default` is required. It aligns the Python de
 
 The earlier statement that 1.3.3 had no outstanding migration requirements was incorrect. If `showmigrations` shows 0001 through 0024 applied and `migrate` warns about unrecorded model changes, install 1.6.0 and run `migrate` to apply 0025. Do not generate or fake migrations on the VM for this repair. `manage.py` is a Python script: invoke it as `/opt/netbox/venv/bin/python manage.py ...` from `/opt/netbox/netbox`.
 
-Afterward, `showmigrations netbox_certificates` must show `[X] 0025_alertrule_statuses_default`, `[X] 0026_typed_groups`, and `[X] 0027_readable_generated_names`, `[X] 0028_vault_preferences`, and `makemigrations --check --dry-run netbox_certificates` must report no changes. Earlier UI improvements remain available.
+Afterward, `showmigrations netbox_certificates` must show `[X]` for `0025_alertrule_statuses_default`, `0026_typed_groups`, `0027_readable_generated_names`, and `0028_vault_preferences`. The command `makemigrations --check --dry-run netbox_certificates` must report no changes. Earlier UI improvements remain available.
 
 ## Earlier data migrations
 
