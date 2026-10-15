@@ -15,7 +15,7 @@
   </summary>
   <ul class="group-children list-unstyled">
     {% include 'netbox_certificates/inc/group_tree_nodes.html' with nodes=node.children %}
-    {% for member in node.members %}<li class="group-member"><a href="{{ member.url }}">{{ member.name }}</a><span class="text-muted small">{{ member.type }}</span></li>{% endfor %}
+    {% for member in node.members %}<li class="group-member"><i class="mdi mdi-{{ member.icon }}" title="{{ member.type }}" aria-hidden="true"></i><a href="{{ member.url }}">{{ member.name }}</a><span class="badge text-bg-secondary">{{ member.type }}</span></li>{% endfor %}
     {% if not node.children and not node.members %}<li class="group-member text-muted">No objects in this group.</li>{% endif %}
   </ul>
 </details>

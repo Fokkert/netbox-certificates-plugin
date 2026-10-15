@@ -56,6 +56,10 @@ menu = PluginMenu(
             "Operations",
             (
                 PluginMenuItem(
+                    link="plugins:netbox_certificates:backup",
+                    link_text="Backup and Restore",
+                ),
+                PluginMenuItem(
                     link="plugins:netbox_certificates:import_objects",
                     link_text="Import Objects",
                 ),

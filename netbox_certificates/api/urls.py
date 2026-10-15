@@ -4,12 +4,16 @@ from .views import UnifiedImportAPIView
 from .v1_urls import register_v1_routes
 from .v1_views import CAImportAPIView
 from .inventory import InventoryExportAPIView
+from .backup import BackupExportAPIView, BackupRestoreAPIView, MetadataImportAPIView
 from .preferences import PreferencesAPIView
 from .alert_settings import AlertSettingsAPIView, AlertSettingsTestAPIView
 app_name = 'netbox_certificates'
 router = NetBoxRouter()
 register_v1_routes(router)
 urlpatterns = [
+    path("backup/export/", BackupExportAPIView.as_view(), name="backup-export"),
+    path("backup/restore/", BackupRestoreAPIView.as_view(), name="backup-restore"),
+    path("import-metadata/", MetadataImportAPIView.as_view(), name="import-metadata"),
     path("preferences/", PreferencesAPIView.as_view(), name="preferences"),
     path("export-inventory/", InventoryExportAPIView.as_view(), name="export-inventory"),
     path('import-objects/', UnifiedImportAPIView.as_view(), name='import-objects'),

@@ -62,6 +62,7 @@ def _safe_value(obj, field, user=None):
 
 
 def serialize_object(obj, user=None):
+    from .services.backup import reference
     values = {}
     sensitive_names = {"smtp_password_encrypted", "webhook_url_encrypted", "webhook_headers_encrypted", "encrypted_material", "material", "policy"}
     for field in obj._meta.get_fields():
@@ -86,11 +87,24 @@ def serialize_object(obj, user=None):
         values["service_ids"] = _visible_ids(obj.services, user)
         values["group_ids"] = _visible_ids(obj.groups, user)
 
+    relationships = {}
+    if isinstance(obj, (ArtifactGroup, Service)):
+        names = ("parent", "certificates", "private_keys", "csrs", "bundles", "services", "owner", "tags") if isinstance(obj, ArtifactGroup) else ("groups", "certificates", "private_keys", "csrs", "bundles", "owner", "tags")
+        for name in names:
+            value = getattr(obj, name, None)
+            if hasattr(value, "all"):
+                queryset = value.all()
+                if user is not None and hasattr(queryset, "restrict"):
+                    queryset = queryset.restrict(user, "view")
+                relationships[name] = [reference(related) for related in queryset]
+            else:
+                relationships[name] = reference(value) if value is not None and (user is None or object_allowed(user, value)) else None
     return {
         "type": obj._meta.label_lower,
         "id": obj.pk,
         "display": str(obj),
         "attributes": values,
+        "relationships": relationships,
     }
 
 

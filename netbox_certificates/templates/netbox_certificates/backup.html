@@ -1,0 +1,39 @@
+{% extends 'base/layout.html' %}
+{% load form_helpers %}
+{% block title %}Backup and Restore{% endblock %}
+{% block content %}
+<div class="mx-auto" style="max-width: 960px;">
+  <div class="card mb-4">
+    <h2 class="card-header h5">Export full plugin backup</h2>
+    <div class="card-body">
+      <p>Includes all plugin objects, groups, relationships, settings, alert history, private keys, and delivery credentials. NetBox users, permissions, tags, custom-field definitions, and external devices are not included. Existing external objects are matched by name or other portable identity when possible.</p>
+      <p>Restore on a compatible NetBox running the same plugin version. The destination may use a different plugin encryption key. Maximum file size: 64 MiB (128 MiB expanded).</p>
+      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="export">
+        {% render_form forms.export %}
+        <button class="btn btn-primary" type="submit"><i class="mdi mdi-download" aria-hidden="true"></i> Download full backup</button>
+      </form>
+    </div>
+  </div>
+  <div class="card mb-4">
+    <h2 class="card-header h5">Import Groups and Services</h2>
+    <div class="card-body">
+      <p>Merge a Groups, Services, or Inventory export. Objects with matching names are updated. Missing members and external references are skipped with a warning. Certificates and keys are not imported by this operation; import their material first.</p>
+      <form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="metadata">
+        {% render_form forms.metadata %}
+        <button class="btn btn-primary" type="submit">Import Groups and Services</button>
+      </form>
+    </div>
+  </div>
+  <div class="card mb-4 border-danger">
+    <h2 class="card-header h5">Restore full plugin backup</h2>
+    <div class="card-body">
+      <div class="alert alert-danger" role="alert"><strong>This erases all existing SSL Certificates plugin data</strong> and replaces it with the backup. Download a current backup first. NetBox's other inventory is not erased. Restored notification settings will apply to scheduled alerts.</div>
+      <p>Only restore backups from a trusted source. Invalid files or failed validation roll back the entire operation. Missing external references are left blank; records requiring a missing external object are skipped and reported.</p>
+      <form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="restore">
+        {% render_form forms.restore %}
+        <button class="btn btn-danger" type="submit">Replace all plugin data and restore</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

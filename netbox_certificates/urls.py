@@ -1,5 +1,6 @@
 from .retired import RetiredPolicyView, CertificateAuthoritiesRedirectView
 from .preferences import PreferencesView
+from .backup import BackupView
 from .inventory_export import InventoryExportView
 from django.urls import path
 from django.views.generic import RedirectView
@@ -10,6 +11,7 @@ from .alert_settings import AlertSettingsView
 app_name = "netbox_certificates"
 
 urlpatterns = (
+    path("backup/", BackupView.as_view(), name="backup"),
     # OVERVIEW
     path("preferences/", PreferencesView.as_view(), name="preferences"),
     path("expiration-dashboard/", RedirectView.as_view(pattern_name="plugins:netbox_certificates:health", query_string=True), name="expiration_dashboard"),

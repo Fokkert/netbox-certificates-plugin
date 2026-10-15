@@ -108,6 +108,8 @@ def _legacy_link_values(instance):
 
 @receiver(post_save, sender=LegacyArtifactLink)
 def mirror_legacy_artifact_link(sender, instance, **kwargs):
+    if kwargs.get("raw"):
+        return
     values = _legacy_link_values(instance)
     if values is None:
         return

@@ -236,6 +236,7 @@ class ArtifactGroupTreeListView(LoginRequiredMixin, View):
                 obj = model(pk=row["pk"], name=row["name"])
                 counts[name][row["groups"]] += 1
                 members[row["groups"]].append({"name": obj.name, "url": obj.get_absolute_url(),
+                                              "icon": {"certificates": "certificate-outline", "private_keys": "key-outline", "csrs": "file-document-edit-outline", "bundles": "package-variant-closed", "services": "server-network"}[name],
                                               "type": display_label(str(model._meta.verbose_name).title())})
 
         def relation_count(group, name):
