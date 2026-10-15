@@ -1,0 +1,12 @@
+{% extends 'generic/_base.html' %}
+{% load form_helpers static %}
+{% block title %}Restore {{ label }}{% endblock %}
+{% block head %}{{ block.super }}<link rel="stylesheet" href="{% static 'netbox_certificates/editors.css' %}">{% endblock %}
+{% block content %}
+<div class="nbcert-settings">
+<div class="alert alert-warning">Matching names are updated. Missing related objects are skipped. Other inventory is retained.</div>
+<form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.non_field_errors }}
+<div class="card mb-3"><div class="card-body">{% render_field form.upload %}</div></div>
+<div class="nbcert-actions"><button class="btn btn-primary">Restore {{ label }}</button><a class="btn btn-outline-secondary" href="{% url list_route %}">Cancel</a></div>
+</form></div>
+{% endblock %}

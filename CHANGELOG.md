@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.0
+
+- Add opt-in live Service certificate checks, protocol negotiation, mismatch and connection-failure findings, and UI/API settings. Both switches default off.
+- Add migration 0029 for the two opt-in fields.
+- Add per-page Services/Groups backup and scoped merge restore controls; expose scoped metadata restores through the API.
+- Simplify the vault into compact inventory, expandable expiration/filter sections, and visible findings; shorten settings descriptions and update the menu icon.
+
+
 ## 1.6.0
 
 - Combine inventory and health/expiration into Cryptographic Vault, preserving filtered legacy URLs and health operations.

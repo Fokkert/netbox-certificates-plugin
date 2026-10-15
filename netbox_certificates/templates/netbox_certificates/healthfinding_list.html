@@ -11,15 +11,15 @@
 {% if perms.netbox_certificates.archive_export_healthfinding %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:healthfinding_archive_export' %}?{{ filter_query }}">Export findings</a>{% endif %}
 </div>
 {% if vault_preferences.vault_show_expiration %}
-<h2>Certificate expiration</h2>
-<div class="row row-cols-2 row-cols-md-5 g-3 mb-3">{% for label,value in counts.items %}<div class="col"><div class="card"><div class="card-body"><div class="text-muted">{{ label|title }}</div><div class="h2 mb-0">{{ value }}</div></div></div></div>{% endfor %}</div>
-<div class="card mb-4"><h3 class="card-header">Expired and upcoming certificates</h3><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Certificate</th><th>Expires</th><th>Days remaining</th><th>State</th></tr></thead><tbody>{% for cert,state in upcoming %}<tr><td><a href="{{ cert.get_absolute_url }}">{{ cert }}</a></td><td>{{ cert.valid_to }}</td><td>{{ state.days }}</td><td>{{ state.label }}</td></tr>{% empty %}<tr><td colspan="4">No expired or upcoming certificates.</td></tr>{% endfor %}</tbody></table></div><div class="card-footer">Showing up to {{ vault_preferences.vault_expiration_limit }} certificates, earliest expiration first. <a href="{% url 'plugins:netbox_certificates:certificate_list' %}">All certificates</a></div></div>
+<details class="card mb-4">
+<summary class="card-header"><span class="fw-semibold">Certificate expiration</span><span class="d-inline-flex flex-wrap gap-3 ms-3 small">{% for label,value in counts.items %}<span>{{ label|title }} <strong>{{ value }}</strong></span>{% endfor %}</span></summary>
+<div><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Certificate</th><th>Expires</th><th>Days remaining</th><th>State</th></tr></thead><tbody>{% for cert,state in upcoming %}<tr><td><a href="{{ cert.get_absolute_url }}">{{ cert }}</a></td><td>{{ cert.valid_to }}</td><td>{{ state.days }}</td><td>{{ state.label }}</td></tr>{% empty %}<tr><td colspan="4">No expired or upcoming certificates.</td></tr>{% endfor %}</tbody></table></div><div class="card-footer">Showing up to {{ vault_preferences.vault_expiration_limit }} certificates, earliest expiration first. <a href="{% url 'plugins:netbox_certificates:certificate_list' %}">All certificates</a></div></div></details>
 {% endif %}
 <h2 id="health-findings">Health findings</h2>
 <div class="d-flex flex-wrap gap-2 mb-3">{% for severity,count in health_counts.items %}<span class="badge text-bg-secondary">{{ severity|title }}: {{ count }}</span>{% endfor %}</div>
-<p class="text-muted">Counts include active and acknowledged findings. Ignored and resolved findings remain searchable below.</p>
-<section class="card mb-3" aria-labelledby="finding-filters-title">
-  <h3 class="card-header" id="finding-filters-title">Filter findings</h3>
+
+<details class="card mb-3"{% if request.GET or filter_errors %} open{% endif %}>
+  <summary class="card-header">Filter findings</summary>
   <form method="get" class="card-body" action="{% url 'plugins:netbox_certificates:vault' %}" novalidate>
     {% if filter_errors %}<div class="alert alert-danger" role="alert">Correct the filters below or use Clear filters.
       <ul class="mb-0">{% for field,errors in filter_errors.items %}<li>{{ field }}: {{ errors|join:', ' }}</li>{% endfor %}</ul>
@@ -32,7 +32,7 @@
     </div>
     <div class="nbcert-actions"><button type="submit" class="btn btn-primary">Apply filters</button><a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:vault' %}">Clear filters</a></div>
   </form>
-</section>
+</details>
 <form method="post" data-bulk-select>{% csrf_token %}
 {% if perms.netbox_certificates.change_healthfinding or perms.netbox_certificates.delete_healthfinding %}
 {% include "netbox_certificates/inc/bulk_selection.html" %}
@@ -46,7 +46,7 @@
     <tr>
       <td>{% if perms.netbox_certificates.change_healthfinding or perms.netbox_certificates.delete_healthfinding %}<input class="form-check-input" type="checkbox" name="pk" value="{{ finding.pk }}" aria-label="Select finding {{ finding.pk }}">{% endif %}</td>
       <td><span class="badge {% if finding.severity == 'critical' or finding.severity == 'high' %}text-bg-danger{% elif finding.severity == 'warning' or finding.severity == 'medium' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">{{ finding.get_severity_display }}</span><div class="small text-muted mt-1">{{ finding.get_status_display }}</div></td>
-      <td class="text-break"><a class="fw-semibold" href="{{ finding.get_absolute_url }}">{{ finding.summary }}</a><div class="small text-muted">{{ finding.category }} · {{ finding.code }}</div>{% if finding.details_display %}<div class="small mt-1">{{ finding.details_display }}</div>{% endif %}</td>
+      <td class="text-break"><a class="fw-semibold" href="{{ finding.get_absolute_url }}">{{ finding.summary }}</a>{% if finding.details_display %}<div class="small mt-1">{{ finding.details_display }}</div>{% endif %}</td>
       <td class="text-break">{{ finding.affected_link|default:'—' }}</td>
       <td class="text-break">{{ finding.related_link|default:'—' }}</td>
       {% if vault_preferences.vault_show_evidence %}<td class="small text-break">{{ finding.evidence_display|default:'—' }}</td>{% endif %}

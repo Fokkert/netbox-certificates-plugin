@@ -189,3 +189,9 @@ Both sample and live webhooks use the selected method. GET/HEAD/OPTIONS carry JS
 ## Health filtering (1.3.3)
 
 `health-findings/` accepts repeated `severity` and `status` query parameters (OR within each field, AND across fields). For example, `?severity=critical&severity=warning&status=active`. Empty severity/status values mean no constraint; unknown non-empty choices return validation errors. UI, archive export, and bulk operations share this filterset. `q` remains the API search parameter; its UI label is Search. Endpoint names, permissions, and object restrictions are unchanged.
+
+## Live Service checks and scoped restores (1.7.0)
+
+Service create/update, detail, filtering, and export support `certificate_check_enabled` (boolean, default false). Preferences supports `service_checks_enabled` (boolean, default false; superuser only). Both must be enabled for network checks. Existing Service change permissions apply.
+
+`POST import-metadata/` accepts optional `kind=service` or `kind=artifactgroup` with `upload`. A mismatched type rejects the restore atomically. The existing superuser and write-enabled token requirement remains. Service/Group archive exports are directly reusable for restore; unavailable relationships are skipped with warnings.

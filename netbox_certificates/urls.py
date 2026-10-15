@@ -1,6 +1,6 @@
 from .retired import RetiredPolicyView, CertificateAuthoritiesRedirectView
 from .preferences import PreferencesView
-from .backup import BackupView
+from .backup import BackupView, ObjectRestoreView
 from .inventory_export import InventoryExportView
 from django.urls import path
 from django.views.generic import RedirectView
@@ -11,6 +11,8 @@ from .alert_settings import AlertSettingsView
 app_name = "netbox_certificates"
 
 urlpatterns = (
+    path("services/restore/", ObjectRestoreView.as_view(), {"kind": "service"}, name="service_restore"),
+    path("groups/restore/", ObjectRestoreView.as_view(), {"kind": "artifactgroup"}, name="artifactgroup_restore"),
     path("backup/", BackupView.as_view(), name="backup"),
     # OVERVIEW
     path("preferences/", PreferencesView.as_view(), name="preferences"),

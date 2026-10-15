@@ -23,6 +23,7 @@ class BackupRestoreSerializer(BackupExportSerializer):
 
 class MetadataImportSerializer(serializers.Serializer):
     upload = serializers.FileField()
+    kind = serializers.ChoiceField(choices=["service", "artifactgroup"], required=False)
 
 
 class BackupExportAPIView(APIView):
@@ -64,6 +65,7 @@ class MetadataImportAPIView(APIView):
         serializer = MetadataImportSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            return Response(import_metadata(read_upload(serializer.validated_data["upload"]), request.user))
+            return Response(import_metadata(read_upload(serializer.validated_data["upload"]), request.user,
+                                            kind=serializer.validated_data.get("kind")))
         except BackupError as exc:
             raise ValidationError(str(exc)) from exc

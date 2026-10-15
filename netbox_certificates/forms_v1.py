@@ -95,6 +95,8 @@ class LineListField(forms.CharField):
 
 
 class ServiceForm(AcronymFormMixin, PrimaryModelForm):
+    certificate_check_enabled = forms.BooleanField(required=False, label="Check live certificate",
+        help_text="Checks the primary URL (or hostname), using this protocol and SNI. Requires live service checks in Preferences.")
     deployment = forms.ChoiceField(choices=[(p, p) for p in DeploymentTextInput.presets] + [("custom", "Custom deployment")])
     custom_deployment = forms.CharField(required=False, max_length=120, label="Custom deployment name")
     protocol = forms.ChoiceField(choices=[(p, p.upper()) for p in ("https", "tls", "ldaps", "smtps", "imaps", "pop3s", "mqtts", "postgresql", "mysql")])
@@ -110,7 +112,7 @@ class ServiceForm(AcronymFormMixin, PrimaryModelForm):
     fieldsets = (
         FieldSet("name", "status", "service_type", "environment", "criticality", name="Service"),
         FieldSet("deployment", "custom_deployment", name="Deployment"),
-        FieldSet("protocol", "primary_url", "additional_urls", "hostname", "port", "sni_name", name="Endpoints"),
+        FieldSet("protocol", "primary_url", "additional_urls", "hostname", "port", "sni_name", "certificate_check_enabled", name="Endpoints"),
         FieldSet("external_reference", "contact", "enabled", name="Management"),
         FieldSet("groups", "certificates", "private_keys", "csrs", "bundles", name="Relationships"),
         FieldSet("owner", "description", "comments", "tags", name="NetBox"),
@@ -122,7 +124,7 @@ class ServiceForm(AcronymFormMixin, PrimaryModelForm):
         fields = (
             "name", "status", "service_type", "other_type", "deployment", "deployment_metadata", "environment",
             "protocol", "primary_url", "additional_urls", "hostname", "port", "sni_name",
-            "criticality", "external_reference", "contact", "enabled",
+            "criticality", "external_reference", "contact", "enabled", "certificate_check_enabled",
             "groups", "certificates", "private_keys", "csrs", "bundles",
             "owner", "description", "comments", "tags",
         )
@@ -163,6 +165,7 @@ class ServiceForm(AcronymFormMixin, PrimaryModelForm):
 
 
 class ServiceBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
+    certificate_check_enabled = forms.NullBooleanField(required=False, label="Check live certificate")
     status = forms.ChoiceField(choices=add_blank_choice(ServiceStatusChoices), required=False)
     service_type = forms.ChoiceField(choices=add_blank_choice(ServiceTypeChoices), required=False)
     other_type = forms.CharField(required=False)
@@ -188,7 +191,7 @@ class ServiceBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
     model = Service
     fieldsets = (
         FieldSet("status", "service_type", "other_type", "deployment", "deployment_metadata", "environment", "criticality"),
-        FieldSet("protocol", "primary_url", "additional_urls", "hostname", "port", "sni_name", name="Endpoints"),
+        FieldSet("protocol", "primary_url", "additional_urls", "hostname", "port", "sni_name", "certificate_check_enabled", name="Endpoints"),
         FieldSet("external_reference", "contact", "enabled", name="Management"),
         FieldSet("groups", "certificates", "private_keys", "csrs", "bundles", name="Relationships"),
         FieldSet("description", name="NetBox"),
@@ -200,6 +203,7 @@ class ServiceBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
 
 
 class ServiceFilterForm(AcronymFormMixin, PrimaryModelFilterSetForm):
+    certificate_check_enabled = forms.NullBooleanField(required=False, label="Check live certificate")
     model = Service
     q = forms.CharField(required=False, label="Search")
     status = forms.MultipleChoiceField(choices=ServiceStatusChoices, required=False)
@@ -225,7 +229,7 @@ class ServiceFilterForm(AcronymFormMixin, PrimaryModelFilterSetForm):
 
     fieldsets = (
         FieldSet("q"),
-        FieldSet("status", "service_type", "deployment", "deployment_metadata", "environment", "criticality", "enabled"),
+        FieldSet("status", "service_type", "deployment", "deployment_metadata", "environment", "criticality", "enabled", "certificate_check_enabled"),
         FieldSet("protocol", "primary_url", "additional_url", "hostname", "port", "sni_name", name="Endpoints"),
         FieldSet("external_reference", "contact", name="Management"),
         FieldSet("groups_id", "certificate_id", "private_key_id", "csr_id", "bundle_id", name="Relationships"),

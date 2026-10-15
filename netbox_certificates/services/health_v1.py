@@ -728,6 +728,33 @@ def _service_findings(service):
                 evidence={"public_key_fingerprint": fp},
             )
 
+def _live_service_findings(service, settings):
+    # Check both switches before any hostname resolution or socket operation.
+    if not settings.service_checks_enabled or not service.enabled or not service.certificate_check_enabled:
+        return
+    from .endpoint_check import certificate_fingerprint, normalize_fingerprint
+    certificates = list(service.certificates.all())
+    certificates += [bundle.certificate for bundle in service.bundles.all() if bundle.certificate_id]
+    expected = {normalize_fingerprint(cert.fingerprint_sha256) for cert in certificates if cert.fingerprint_sha256}
+    if not expected:
+        return  # The local SERVICE_WITHOUT_CERTIFICATE check explains this case.
+    try:
+        actual = certificate_fingerprint(service)
+    except (OSError, ValueError) as exc:
+        # An unreachable endpoint is not evidence that a previous mismatch was fixed.
+        HealthFinding.objects.filter(
+            fingerprint=_stable_fingerprint("SERVICE_CERTIFICATE_MISMATCH", service),
+        ).exclude(status=FindingStatusChoices.RESOLVED).update(last_detected=timezone.now())
+        _finding("SERVICE_CERTIFICATE_CHECK_FAILED", "service", FindingSeverityChoices.WARNING,
+                 service, "Could not read the Service's live certificate.",
+                 evidence={"reason": str(exc)})
+        return
+    if actual not in expected:
+        _finding("SERVICE_CERTIFICATE_MISMATCH", "service", FindingSeverityChoices.CRITICAL,
+                 service, "The live Service certificate differs from its linked certificates in NetBox.",
+                 evidence={"observed_sha256": actual, "expected_sha256": sorted(expected)})
+
+
 @transaction.atomic
 def refresh_health_findings():
     started = timezone.now()
@@ -752,6 +779,7 @@ def refresh_health_findings():
         "certificates", "private_keys", "csrs", "bundles__certificate", "bundles__private_key", "bundles__csr"
     ):
         _service_findings(service)
+        _live_service_findings(service, settings)
 
     for model in (Certificate, CSR):
         for artifact in model.objects.all().iterator(chunk_size=200):

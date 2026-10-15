@@ -1,8 +1,8 @@
-.nbcert-dashboard { max-width: 1560px; margin-inline: auto; }
-.nbcert-vault .vault-inventory { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
-.nbcert-vault .vault-tile { color: inherit; text-decoration: none; }
-.nbcert-vault .vault-tile:hover, .nbcert-vault .vault-tile:focus-visible { border-color: currentColor; }
-.nbcert-vault .vault-tile-label { font-weight: 500; }
-.nbcert-vault .vault-value { font-size: 2rem; font-weight: 600; line-height: 1.3; margin-top: .5rem; font-variant-numeric: tabular-nums; }
-@media (max-width: 1100px) { .nbcert-vault .vault-inventory { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 650px) { .nbcert-vault .vault-inventory { grid-template-columns: 1fr; } }
+.nbcert-dashboard { max-width: 1440px; margin-inline: auto; }
+.vault-inventory { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem 2rem; }
+.vault-tile { display: flex; justify-content: space-between; gap: 1rem; color: inherit; text-decoration: none; padding: .5rem 0; border-bottom: 1px solid var(--bs-border-color); }
+.vault-tile:hover, .vault-tile:focus-visible { color: var(--bs-link-color); }
+.vault-tile strong { font-variant-numeric: tabular-nums; }
+.nbcert-dashboard summary { cursor: pointer; }
+@media (max-width: 700px) { .vault-inventory { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 400px) { .vault-inventory { grid-template-columns: 1fr; } }

@@ -87,3 +87,36 @@ class BackupView(LoginRequiredMixin, View):
                 # Do not expose secret values from parsing/database exceptions.
                 form.add_error(None, "Operation failed: invalid file, password, configuration, or object values. No partial changes were saved. Check that source and destination use the same plugin version.")
         return self.render(request, action, form)
+
+
+class ObjectRestoreView(LoginRequiredMixin, View):
+    """Merge only the object type of the page which initiated restoration."""
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            require_backup_user(request.user)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, kind):
+        return self.page(request, kind, MetadataImportForm())
+
+    def post(self, request, kind):
+        form = MetadataImportForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                result = import_metadata(read_upload(form.cleaned_data["upload"]), request.user, kind=kind)
+                messages.success(request, f"Restored {result['imported']} objects.")
+                for warning in result["warnings"]:
+                    messages.warning(request, warning)
+                return redirect(f"plugins:netbox_certificates:{kind}_list")
+            except BackupError as exc:
+                form.add_error(None, str(exc))
+        return self.page(request, kind, form)
+
+    @staticmethod
+    def page(request, kind, form):
+        label = "Services" if kind == "service" else "Groups"
+        form.fields["upload"].label = f"{label} backup (ZIP or JSON)"
+        return render(request, "netbox_certificates/object_restore.html", {
+            "form": form, "label": label, "list_route": f"plugins:netbox_certificates:{kind}_list",
+        })

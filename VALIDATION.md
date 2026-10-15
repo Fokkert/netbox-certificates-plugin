@@ -13,3 +13,7 @@ Run local checks with `python scripts/release.py`; publish with `python scripts/
 Backup coverage includes encrypted and unencrypted archives, re-encryption with a different destination key, remapped relationships, invalid-file/password/confirmation rejection, transaction rollback, missing metadata members, and UI/API access checks. No actual user VM is modified by these checks.
 
 Version 1.6.0 adds required migration 0028. Dashboard tests cover the combined page, legacy redirects retaining filters, cleared filters, hidden sections/evidence, pagination and expiration limits, the warning window, API validation/partial updates, and restricted object visibility.
+
+## 1.7.0 validation
+
+Protocol tests use fake sockets for direct TLS, SNI, PostgreSQL and MySQL negotiation, unknown protocols, and truncated responses. NetBox integration tests cover both opt-in switches, disabled Services, certificate matches/mismatches, connection failures, scoped restore validation, UI controls, and restore authorization. Migration 0029 is compared against real model state on supported NetBox versions. No live endpoint is contacted by tests.

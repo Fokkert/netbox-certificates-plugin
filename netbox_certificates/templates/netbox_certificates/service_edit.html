@@ -10,7 +10,7 @@
 </div></div>
 <div class="card mb-3"><h2 class="card-header">Endpoints</h2><div class="card-body">
 {% render_field form.primary_url %}{% render_field form.protocol %}{% render_field form.port %}
-{% render_field form.hostname %}{% render_field form.sni_name %}{% render_field form.additional_urls %}
+{% render_field form.hostname %}{% render_field form.sni_name %}{% render_field form.additional_urls %}{% render_field form.certificate_check_enabled %}
 </div></div>
 <div class="card mb-3"><h2 class="card-header">Cryptographic artifacts</h2><div class="card-body">
 {% render_field form.certificates %}{% render_field form.private_keys %}{% render_field form.csrs %}{% render_field form.bundles %}

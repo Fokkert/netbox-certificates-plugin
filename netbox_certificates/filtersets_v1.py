@@ -67,6 +67,7 @@ class ServiceFilterSet(PrimaryModelFilterSet):
             "external_reference",
             "contact",
             "enabled",
+            "certificate_check_enabled",
             "description",
         )
 

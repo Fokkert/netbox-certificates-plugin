@@ -11,7 +11,7 @@ from .models_v1 import AlertSettings
 
 
 PREFERENCE_FIELDS = (
-    "health_scan_enabled", "health_scan_interval_minutes", "alert_interval_minutes",
+    "service_checks_enabled", "health_scan_enabled", "health_scan_interval_minutes", "alert_interval_minutes",
     "expiration_warning_days", "import_chain_default", "preserve_archive_default", "csr_rsa_bits",
     "vault_findings_per_page", "vault_expiration_limit", "vault_show_expiration", "vault_show_assignments", "vault_show_evidence",
 )
@@ -23,16 +23,18 @@ def get_preferences():
 
 
 class PreferencesForm(forms.ModelForm):
+    service_checks_enabled = forms.BooleanField(required=False, label="Allow live service certificate checks",
+        help_text="Off means no endpoint connections. Also enable Check live certificate on each Service. Checks use the health scan schedule.")
     vault_findings_per_page = forms.TypedChoiceField(choices=[(n, str(n)) for n in (25, 50, 100, 200)], coerce=int, label="Findings per page")
     vault_expiration_limit = forms.TypedChoiceField(choices=[(n, str(n)) for n in (10, 25, 50, 100)], coerce=int, label="Certificates in expiration list")
     vault_show_expiration = forms.BooleanField(required=False, label="Show certificate expiration")
     vault_show_assignments = forms.BooleanField(required=False, label="Show service assignment summary")
     vault_show_evidence = forms.BooleanField(required=False, label="Show finding evidence")
     health_scan_enabled = forms.BooleanField(required=False, label="Enable scheduled health scans",
-        help_text="Manual scans remain available. Alerts use the latest stored findings when scheduled scans are disabled.")
+        help_text="When off, alerts use stored findings; manual scans remain available.")
     health_scan_interval_minutes = forms.TypedChoiceField(choices=INTERVALS, coerce=int, label="Health scan frequency")
     alert_interval_minutes = forms.TypedChoiceField(choices=INTERVALS, coerce=int, label="Alert evaluation frequency",
-        help_text="Controls when delivery rules are evaluated; per-certificate expiration timing is unchanged.")
+        help_text="")
     expiration_warning_days = forms.IntegerField(min_value=30, max_value=3650, label="Upcoming-expiration findings (days)",
         help_text="The overview warning window. A certificate's own alert trigger can still create an earlier finding.")
     import_chain_default = forms.BooleanField(required=False, label="Include certificate chains by default")
@@ -77,7 +79,7 @@ class PreferencesView(LoginRequiredMixin, View):
     @staticmethod
     def page(request, form):
         groups = (
-            ("Background processing", ("health_scan_enabled", "health_scan_interval_minutes", "alert_interval_minutes")),
+            ("Background processing", ("service_checks_enabled", "health_scan_enabled", "health_scan_interval_minutes", "alert_interval_minutes")),
             ("Cryptographic Vault", ("vault_findings_per_page", "vault_expiration_limit", "vault_show_expiration", "vault_show_assignments", "vault_show_evidence", "expiration_warning_days")),
             ("Import defaults", ("import_chain_default", "preserve_archive_default")),
             ("CSR defaults", ("csr_rsa_bits",)),

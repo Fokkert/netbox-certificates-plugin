@@ -26,3 +26,7 @@ NetBox's worker checks schedules every five minutes. Intervals are measured from
 The page displays last successful scheduled scan and alert evaluation times. Manual health scans do not change the scheduled timestamp. Saving preferences preserves alert configuration and worker timestamps.
 
 REST: `GET`, `PATCH`, and `PUT /api/plugins/ssl-certificates/preferences/`. PATCH and PUT update supplied fields, preserving omitted settings, and require a superuser with a write-enabled NetBox API token. Invalid intervals/key sizes/ranges return HTTP 400. Timestamps are read-only. See [API](API.md).
+
+## Live service checks
+
+`service_checks_enabled` defaults to false. Enable **Allow live service certificate checks**, and enable `certificate_check_enabled` on each Service. Both switches are required before any endpoint connection. Checks use the health scan interval (including manual scans), a five-second socket timeout, and the primary URL or hostname. Connection failures are findings; comparison accepts any linked certificate or bundle certificate. Migration 0029 is required.

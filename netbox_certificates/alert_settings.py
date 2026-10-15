@@ -25,17 +25,17 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
     require_san = forms.BooleanField(required=False, initial=True, label="Require SANs on end-entity certificates and CSRs")
     allow_wildcards = forms.BooleanField(required=False, initial=True, label="Allow wildcard names")
     forbid_key_reuse = forms.BooleanField(required=False, label="Treat key reuse as a settings violation",
-                                         help_text="Reused keys are also reported under Weak or reused keys and outdated signatures.")
+                                         help_text="")
     enabled = forms.BooleanField(required=False, label="Enable certificate alerts")
     categories = forms.MultipleChoiceField(required=True, choices=[
         ("validity", "Expired, expiring, or not-yet-valid certificates"), ("chain", "Missing or invalid issuing certificates"),
         ("security", "Weak or reused keys and outdated signatures"), ("relationship", "Missing or mismatched certificates, keys, and CSRs"),
         ("duplicate", "Duplicate certificates, keys, or CSRs"), ("service", "Missing or mismatched certificates on services"),
         ("configuration", "Certificates that do not meet your requirements"),
-    ], label="Notify me about", help_text="Missing or mismatched items include a key without a matching certificate, or a bundle whose certificate and key do not match.", initial=["validity", "chain", "security", "relationship", "duplicate", "service", "configuration"])
+    ], label="Notify me about", initial=["validity", "chain", "security", "relationship", "duplicate", "service", "configuration"])
     repeat_days = forms.FloatField(min_value=0, max_value=3650, initial=7, required=False,
         label="Repeat unresolved alerts every (days)",
-        help_text="For example, 7 sends a reminder once a week for each unresolved problem. 0 sends only once. Fractions of a day are supported.")
+        help_text="0 sends once per unresolved problem.")
     severities = forms.MultipleChoiceField(required=False, choices=FindingSeverityChoices,
                                          help_text="Leave empty to include every severity.")
     cooldown_minutes = forms.IntegerField(min_value=15, max_value=5256000, initial=60, label="Minimum minutes between alerts")
@@ -52,7 +52,7 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
     clear_smtp_password = forms.BooleanField(required=False, label="Clear saved SMTP password")
     smtp_security = forms.ChoiceField(initial="starttls", choices=[("starttls", "STARTTLS"), ("ssl", "Implicit TLS / SSL"), ("none", "No TLS")])
     smtp_verify_tls = forms.BooleanField(required=False, initial=True, label="Verify SMTP TLS certificate",
-                                       help_text="Turn off to allow self-signed or otherwise untrusted SMTP certificates.")
+                                       help_text="")
     from_email = forms.EmailField(required=False)
     subject_prefix = forms.CharField(initial="[NetBox Certificates]", max_length=120)
     webhook_method = forms.ChoiceField(choices=WEBHOOK_METHOD_CHOICES, initial="POST", required=False, label="Webhook HTTP method",
@@ -63,7 +63,7 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
     webhook_headers = OptionalObjectJSONField(required=False, widget=forms.Textarea(attrs={"rows": 3}),
                                      help_text="Optional JSON object. Leave blank to keep saved headers; {} clears them.")
     webhook_verify_tls = forms.BooleanField(required=False, initial=True, label="Verify webhook TLS certificate",
-                                          help_text="Turn off to allow self-signed or otherwise untrusted HTTPS certificates.")
+                                          help_text="")
 
     def __init__(self, *args, config=None, test_method=None, **kwargs):
         self.config = config

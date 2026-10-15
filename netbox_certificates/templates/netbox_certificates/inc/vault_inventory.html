@@ -1,24 +1,17 @@
-<div class="nbcert-vault mb-4">
-  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
-    <h2 class="mb-0">Inventory</h2>
-    <div class="d-flex flex-wrap gap-2">
-      <a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:inventory_export' %}"><i class="mdi mdi-download me-1" aria-hidden="true"></i>Export inventory</a>
-      {% if perms.netbox_certificates.add_certificate or perms.netbox_certificates.add_privatekey or perms.netbox_certificates.add_csr %}<a class="btn btn-primary" href="{% url 'plugins:netbox_certificates:import_objects' %}">Import material</a>{% endif %}
-      {% if perms.netbox_certificates.view_artifactgroup %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_list' %}">Groups</a>{% endif %}
+<section class="card nbcert-vault mb-4" aria-labelledby="inventory-title">
+  <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <h2 class="h5 mb-0" id="inventory-title">Inventory</h2>
+    <div class="nbcert-actions">
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'plugins:netbox_certificates:inventory_export' %}">Export</a>
+      {% if perms.netbox_certificates.add_certificate or perms.netbox_certificates.add_privatekey or perms.netbox_certificates.add_csr %}<a class="btn btn-sm btn-outline-primary" href="{% url 'plugins:netbox_certificates:import_objects' %}">Import material</a>{% endif %}
     </div>
   </div>
-  <div class="vault-inventory">
-    {% for label,value,url in vault_cards %}<a class="vault-tile card" href="{{ url }}"><div class="card-body"><div class="vault-tile-label">{{ label }}</div><div class="vault-value">{{ value }}</div></div></a>{% endfor %}
+  <div class="vault-inventory card-body">
+    {% for label,value,url in vault_cards %}<a class="vault-tile" href="{{ url }}"><span>{{ label }}</span><strong>{{ value }}</strong></a>{% endfor %}
   </div>
   {% if vault_preferences.vault_show_assignments %}
-  <section class="card mt-3">
-    <h3 class="card-header h5">Without a direct service assignment</h3>
-    <div class="card-body row row-cols-2 row-cols-lg-4 g-3">
-      <div class="col">Certificates <strong>{{ unassigned_certificates }}</strong></div>
-      <div class="col">Private Keys <strong>{{ unassigned_private_keys }}</strong></div>
-      <div class="col">CSRs <strong>{{ unassigned_csrs }}</strong></div>
-      <div class="col">Bundles <strong>{{ unassigned_bundles }}</strong></div>
-    </div>
-  </section>
+  <details class="card-footer"><summary>Without a direct service assignment</summary>
+    <div class="d-flex flex-wrap gap-4 mt-2"><span>Certificates <strong>{{ unassigned_certificates }}</strong></span><span>Private Keys <strong>{{ unassigned_private_keys }}</strong></span><span>CSRs <strong>{{ unassigned_csrs }}</strong></span><span>Bundles <strong>{{ unassigned_bundles }}</strong></span></div>
+  </details>
   {% endif %}
-</div>
+</section>

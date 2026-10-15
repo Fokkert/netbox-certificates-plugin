@@ -2,7 +2,7 @@ from netbox.plugins import PluginMenu, PluginMenuItem
 
 menu = PluginMenu(
     label="SSL Certificates",
-    icon_class="mdi mdi-shield-key-outline",
+    icon_class="mdi mdi-certificate-outline",
     groups=(
         (
             "Overview",

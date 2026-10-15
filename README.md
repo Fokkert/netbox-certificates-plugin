@@ -185,7 +185,7 @@ See [docs/API.md](docs/API.md).
 Add the package to `/opt/netbox/local_requirements.txt`:
 
 ```text
-netbox-certificates-plugin==1.6.0
+netbox-certificates-plugin==1.7.0
 ```
 
 Enable the plugin:
@@ -261,6 +261,15 @@ See [SECURITY.md](SECURITY.md).
 ## License
 
 Apache-2.0. See `LICENSE` and `NOTICE`.
+
+## Release 1.7.0
+
+- Optional live Service certificate comparison, disabled globally and per Service by default. Enable it in Preferences and on each Service. Findings use the existing service alert category and repeat interval.
+- Compact Cryptographic Vault, shorter settings help, and a certificate menu icon.
+- Services and Groups have Backup and Restore buttons. Restores merge matching names and skip unavailable relationships; full replacement backups remain available separately.
+- **Migration `0029_service_certificate_checks` is required.** Run `migrate` and `collectstatic` when upgrading.
+
+Checks inspect the primary URL hostname and explicit URL port, otherwise the Service hostname/port, using the selected protocol and SNI. They support direct TLS (HTTPS, TLS, LDAPS, SMTPS, IMAPS, POP3S, MQTTS) and PostgreSQL/MySQL TLS negotiation. They do not fetch HTTP content, follow redirects, authenticate, or check additional URLs. Any linked certificate, including bundle certificates, can match. Private CA and expired certificates can be compared without requiring CA trust. A missing linked certificate produces a local finding; an unreachable endpoint produces a check-failed finding rather than a false mismatch recovery. Disabling the global switch prevents all endpoint connections, including manual scans.
 
 ## Release 1.6.0
 

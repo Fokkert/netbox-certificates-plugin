@@ -6,7 +6,8 @@
 <link rel="stylesheet" href="{% static 'netbox_certificates/groups.css' %}">
 <div class="nbcert-actions mb-3">
 {% if perms.netbox_certificates.add_artifactgroup %}<a class="btn btn-primary" href="{% url 'plugins:netbox_certificates:artifactgroup_add' %}">Create group</a>{% endif %}
-{% if perms.netbox_certificates.archive_export_artifactgroup %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_archive_export' %}?{{ request.GET.urlencode }}">Export groups</a>{% endif %}
+{% if perms.netbox_certificates.archive_export_artifactgroup %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_archive_export' %}?{{ request.GET.urlencode }}">Backup groups</a>{% endif %}
+{% if request.user.is_superuser %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_restore' %}">Restore groups</a>{% endif %}
 <button type="button" class="btn btn-outline-secondary" data-expand-all="true">Expand all</button><button type="button" class="btn btn-outline-secondary" data-expand-all="false">Collapse all</button>
 </div>
 <form method="get" class="nbcert-search mb-3">

@@ -66,3 +66,7 @@ curl --fail-with-body -X POST \
   -F 'upload=@groups-export.zip' \
   "$NETBOX_URL/api/plugins/ssl-certificates/import-metadata/"
 ```
+
+## Per-page backups
+
+Services and Groups each provide Backup and Restore buttons. Backup respects current list filters and export permissions. Restore is a superuser-only merge: matching names are updated, new names created, and unavailable relationships skipped. The Services restore accepts only Services; Groups restore accepts only Groups. Mixed exports can still use the combined metadata importer. These archives contain metadata and relationship references, not private cryptographic material. Full encrypted replacement backups remain available for disaster recovery.

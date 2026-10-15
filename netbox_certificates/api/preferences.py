@@ -10,6 +10,7 @@ from .views import _require_sensitive_token
 
 
 class PreferencesSerializer(serializers.Serializer):
+    service_checks_enabled = serializers.BooleanField(required=False)
     vault_findings_per_page = serializers.ChoiceField(choices=[25, 50, 100, 200], required=False)
     vault_expiration_limit = serializers.ChoiceField(choices=[10, 25, 50, 100], required=False)
     vault_show_expiration = serializers.BooleanField(required=False)

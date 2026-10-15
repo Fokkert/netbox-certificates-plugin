@@ -130,6 +130,7 @@ class Service(PrimaryModel):
         choices=ServiceEnvironmentChoices,
         default=ServiceEnvironmentChoices.PRODUCTION,
     )
+    certificate_check_enabled = models.BooleanField(default=False, verbose_name="Check live certificate")
     protocol = models.CharField(max_length=32, default="https")
     primary_url = models.URLField(max_length=500, blank=True)
     additional_urls = models.JSONField(default=list, blank=True)
@@ -208,6 +209,14 @@ class Service(PrimaryModel):
             raise ValidationError({"other_type": "Specify a type when Service Type is Other."})
         if self.port is not None and not 1 <= self.port <= 65535:
             raise ValidationError({"port": "Port must be between 1 and 65535."})
+        if self.certificate_check_enabled:
+            from .services.endpoint_check import SUPPORTED_PROTOCOLS, endpoint
+            if self.protocol.lower() not in SUPPORTED_PROTOCOLS:
+                raise ValidationError({"protocol": "Unsupported protocol for live certificate checks."})
+            try:
+                endpoint(self)
+            except ValueError as exc:
+                raise ValidationError({"primary_url": str(exc)}) from exc
         if not isinstance(self.additional_urls, list):
             raise ValidationError({"additional_urls": "Additional URLS must be a JSON list."})
         if not isinstance(self.deployment_metadata, dict):
@@ -504,6 +513,7 @@ class AlertSettings(models.Model):
     """Private singleton linking the settings page to the existing alert engine."""
     _netbox_private = True
 
+    service_checks_enabled = models.BooleanField(default=False)
     health_scan_enabled = models.BooleanField(default=True)
     health_scan_interval_minutes = models.PositiveIntegerField(default=15)
     alert_interval_minutes = models.PositiveIntegerField(default=15)

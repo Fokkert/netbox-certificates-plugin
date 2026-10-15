@@ -41,9 +41,14 @@ def read_metadata(data):
         raise BackupError("Invalid metadata export.") from exc
 
 
-def import_metadata(data, user):
+def import_metadata(data, user, kind=None):
     require_backup_user(user)
     rows = read_metadata(data)
+    if kind is not None:
+        if kind not in {"service", "artifactgroup"}:
+            raise BackupError("Unsupported restore object type.")
+        if any(row["type"] != f"netbox_certificates.{kind}" for row in rows):
+            raise BackupError("This file contains other object types. Use the matching page or the combined metadata importer.")
     try:
         return _merge(rows)
     except (KeyError, TypeError, ValueError, ValidationError, DatabaseError) as exc:

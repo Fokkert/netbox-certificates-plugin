@@ -20,7 +20,7 @@ class ServiceTable(AcronymTableMixin, PrimaryModelTable):
         fields = (
             "pk", "id", "name", "status", "service_type", "deployment", "deployment_metadata", "environment",
             "primary_url", "hostname", "port", "sni_name", "criticality",
-            "groups", "enabled", "description", "owner", "tags", "last_updated",
+            "groups", "enabled", "certificate_check_enabled", "description", "owner", "tags", "last_updated",
         )
         default_columns = (
             "pk", "name", "status", "service_type", "deployment", "environment",
