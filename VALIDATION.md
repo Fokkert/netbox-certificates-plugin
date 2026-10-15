@@ -1,4 +1,4 @@
-# Validation for 1.6.0
+# Validation for 1.7.0
 
 The release gate runs standalone checks, real NetBox 4.5.9/4.5.10 model/migration comparisons, PostgreSQL migration application and upgrade-data preservation, and the plugin integration suite.
 
