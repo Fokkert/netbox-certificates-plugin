@@ -1,0 +1,26 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'netbox_certificates/vault.css' %}">
+<div class="nbcert-vault mb-4">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+    <h2 class="mb-0">Inventory</h2>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:inventory_export' %}"><i class="mdi mdi-download me-1" aria-hidden="true"></i>Export inventory</a>
+      {% if perms.netbox_certificates.add_certificate or perms.netbox_certificates.add_privatekey or perms.netbox_certificates.add_csr %}<a class="btn btn-primary" href="{% url 'plugins:netbox_certificates:import_objects' %}">Import material</a>{% endif %}
+      {% if perms.netbox_certificates.view_artifactgroup %}<a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_list' %}">Groups</a>{% endif %}
+    </div>
+  </div>
+  <div class="vault-inventory">
+    {% for label,value,url in vault_cards %}<a class="vault-tile card" href="{{ url }}"><div class="card-body"><div class="vault-tile-label">{{ label }}</div><div class="vault-value">{{ value }}</div></div></a>{% endfor %}
+  </div>
+  {% if vault_preferences.vault_show_assignments %}
+  <section class="card mt-3">
+    <h3 class="card-header h5">Without a direct service assignment</h3>
+    <div class="card-body row row-cols-2 row-cols-lg-4 g-3">
+      <div class="col">Certificates <strong>{{ unassigned_certificates }}</strong></div>
+      <div class="col">Private Keys <strong>{{ unassigned_private_keys }}</strong></div>
+      <div class="col">CSRs <strong>{{ unassigned_csrs }}</strong></div>
+      <div class="col">Bundles <strong>{{ unassigned_bundles }}</strong></div>
+    </div>
+  </section>
+  {% endif %}
+</div>

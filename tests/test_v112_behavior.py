@@ -245,9 +245,11 @@ class FindingDisplayRegression(unittest.TestCase):
         routes.urlpatterns = [path("plugins/", include(([path("ssl/", include(([
             path("certificates/", lambda request: None, name="certificate_list"),
             path("health/", lambda request: None, name="health"),
+            path("vault/", lambda request: None, name="vault"),
         ], "netbox_certificates")))], "plugins")))]
         engine = Engine(loaders=[("django.template.loaders.locmem.Loader", {
             "generic/_base.html": "{% block content %}{% endblock %}",
+            "netbox_certificates/inc/vault_inventory.html": "",
         }), ("django.template.loaders.filesystem.Loader", [str(ROOT / "netbox_certificates/templates")])])
         tags = Library()
         tags.simple_tag(lambda field: "", name="render_field")
@@ -260,7 +262,7 @@ class FindingDisplayRegression(unittest.TestCase):
             get_absolute_url=lambda: "/health/7/", affected_link=format_html('<a href="{}">{}</a>', "/certificates/1/", "example.com"),
             related_link=None, details_display=None, evidence_display=helpers["finding_data_display"]({"days_remaining": -1}))
         with override_settings(ROOT_URLCONF=routes):
-            html = engine.get_template("netbox_certificates/healthfinding_list.html").render(Context({"findings": [finding]}))
+            html = engine.get_template("netbox_certificates/healthfinding_list.html").render(Context({"findings": [finding], "vault_preferences": SimpleNamespace(vault_show_evidence=True)}))
         self.assertIn('href="/certificates/1/"', html)
         self.assertIn("Days remaining:</strong> -1", html)
         self.assertIn("Expired &lt;script&gt;", html)

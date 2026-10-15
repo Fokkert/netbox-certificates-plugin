@@ -29,7 +29,7 @@ class RevisionUIIntegrationTests(TestCase):
         return reverse(f"plugins:netbox_certificates:{name}", kwargs=kwargs)
 
     def test_health_list_and_detail_render_for_superuser(self):
-        response = self.client.get(self.url("health"))
+        response = self.client.get(self.url("vault"))
         self.assertContains(response, "Test health finding")
         self.assertContains(response, "Certificate expiration")
         for response in (response, self.client.get(self.url("healthfinding", pk=self.finding.pk))):
@@ -37,7 +37,7 @@ class RevisionUIIntegrationTests(TestCase):
             self.assertContains(response, f'href="{self.child.get_absolute_url()}"')
             self.assertContains(response, "Days remaining")
         self.assertEqual(self.client.get(self.url("healthfinding_edit", pk=self.finding.pk)).status_code, 200)
-        self.assertRedirects(self.client.get(self.url("expiration_dashboard")), self.url("health"))
+        self.assertRedirects(self.client.get(self.url("expiration_dashboard")), self.url("vault"))
 
     def test_folders_and_services_render(self):
         response = self.client.get(self.url("artifactgroup_list"))

@@ -15,10 +15,6 @@ menu = PluginMenu(
                     link="plugins:netbox_certificates:vault",
                     link_text="Cryptographic Vault",
                 ),
-                PluginMenuItem(
-                    link="plugins:netbox_certificates:health",
-                    link_text="Health and Validity",
-                ),
             ),
         ),
         (

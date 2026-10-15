@@ -137,7 +137,9 @@ class InventoryRevisionTests(TestCase):
         self.assertContains(self.client.get(url), "Health scan frequency")
         response = self.client.post(url, {"health_scan_enabled": True, "health_scan_interval_minutes": 30,
             "alert_interval_minutes": 15, "expiration_warning_days": 90, "csr_rsa_bits": 3072,
-            "import_chain_default": True, "preserve_archive_default": True})
+            "import_chain_default": True, "preserve_archive_default": True,
+            "vault_findings_per_page": 50, "vault_expiration_limit": 50,
+            "vault_show_expiration": True, "vault_show_assignments": True, "vault_show_evidence": True})
         self.assertEqual(response.status_code, 302)
         user = get_user_model().objects.create_user(username="preferences-no-permission")
         self.client.force_login(user)

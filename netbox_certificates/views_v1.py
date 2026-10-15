@@ -162,20 +162,17 @@ class BundleListView(legacy_views.BundleListView):
     filterset_form = BundleV1FilterForm
 
 
-class CryptographicVaultView(LoginRequiredMixin, View):
-    template_name = "netbox_certificates/vault.html"
-
+class VaultInventoryMixin:
     @staticmethod
     def _visible(queryset, user):
         return queryset.restrict(user, "view") if hasattr(queryset, "restrict") else queryset
 
-    def get(self, request):
+    def get_vault_context(self, request):
         certificates = self._visible(Certificate.objects.all(), request.user)
         private_keys = self._visible(PrivateKey.objects.all(), request.user)
         csrs = self._visible(CSR.objects.all(), request.user)
         bundles = self._visible(Bundle.objects.all(), request.user)
         services = self._visible(Service.objects.all(), request.user)
-        health_active = self._visible(HealthFinding.objects.filter(status__in=("active", "acknowledged")), request.user)
 
         cards = (
             ("Certificates", certificates.count(), reverse("plugins:netbox_certificates:certificate_list")),
@@ -184,24 +181,14 @@ class CryptographicVaultView(LoginRequiredMixin, View):
             ("CSRs", csrs.count(), reverse("plugins:netbox_certificates:csr_list")),
             ("Bundles", bundles.count(), reverse("plugins:netbox_certificates:bundle_list")),
             ("Services", services.count(), reverse("plugins:netbox_certificates:service_list")),
-            ("Active Health Findings", health_active.count(), reverse("plugins:netbox_certificates:health")),
-            ("Critical Findings", health_active.filter(severity="critical").count(), reverse("plugins:netbox_certificates:health") + "?severity=critical"),
         )
-        return render(
-            request,
-            self.template_name,
-            {
-                "vault_cards": cards,
-                "vault_health_categories": list(
-                    health_active.values("category").annotate(total=Count("pk")).order_by("-total", "category")
-                ),
-                "unassigned_certificates": certificates.filter(services__isnull=True).distinct().count(),
-                "unassigned_private_keys": private_keys.filter(services__isnull=True).distinct().count(),
-                "unassigned_csrs": csrs.filter(services__isnull=True).distinct().count(),
-                "unassigned_bundles": bundles.filter(services__isnull=True).distinct().count(),
-            },
-        )
-
+        return {
+            "vault_cards": cards,
+            "unassigned_certificates": certificates.filter(services__isnull=True).distinct().count(),
+            "unassigned_private_keys": private_keys.filter(services__isnull=True).distinct().count(),
+            "unassigned_csrs": csrs.filter(services__isnull=True).distinct().count(),
+            "unassigned_bundles": bundles.filter(services__isnull=True).distinct().count(),
+        }
 
 class ArtifactGroupTreeListView(LoginRequiredMixin, View):
     queryset = ArtifactGroup.objects.all()
@@ -347,7 +334,7 @@ class ServiceBulkDeleteView(generic.BulkDeleteView):
     table = ServiceTable
 
 
-class HealthFindingListView(LoginRequiredMixin, View):
+class HealthFindingListView(VaultInventoryMixin, LoginRequiredMixin, View):
     queryset = HealthFinding.objects.all()
     table = HealthFindingTable
     filterset = HealthFindingFilterSet
@@ -356,20 +343,21 @@ class HealthFindingListView(LoginRequiredMixin, View):
     template_name = "netbox_certificates/healthfinding_list.html"
 
     def get(self, request):
-        if not (request.user.has_perm("netbox_certificates.view_healthfinding") or
-                request.user.has_perm("netbox_certificates.view_certificate")):
-            raise PermissionDenied
         visible = action_queryset(HealthFinding, request.user, "view")
         filtered = HealthFindingFilterSet(request.GET, queryset=visible, request=request)
+        from .preferences import get_preferences
+        preferences = get_preferences()
         context = self.get_extra_context(request)
+        context.update(self.get_vault_context(request))
+        context["vault_preferences"] = preferences
         context["filter_form"] = HealthFindingFilterForm(request.GET or None)
         context["filter_errors"] = filtered.errors
-        context["findings"] = Paginator(filtered.qs if filtered.is_valid() else visible.none(), 50).get_page(request.GET.get("page"))
+        context["findings"] = Paginator(filtered.qs if filtered.is_valid() else visible.none(), preferences.vault_findings_per_page).get_page(request.GET.get("page"))
         for finding in context["findings"]:
             finding.affected_link = finding_object_link(finding.affected_object, request.user)
             finding.related_link = finding_object_link(finding.related_object, request.user)
             finding.details_display = finding_data_display(finding.details)
-            finding.evidence_display = finding_data_display(finding.evidence)
+            finding.evidence_display = finding_data_display(finding.evidence) if preferences.vault_show_evidence else ""
         query = request.GET.copy()
         query.pop("page", None)
         context["filter_query"] = query.urlencode()
@@ -377,10 +365,10 @@ class HealthFindingListView(LoginRequiredMixin, View):
         certificates = action_queryset(Certificate, request.user, "view").order_by("valid_to")
         counts = dict.fromkeys(("healthy", "warning", "critical", "expired", "unknown"), 0)
         upcoming = []
-        for cert in certificates.iterator():
+        for cert in certificates.iterator() if preferences.vault_show_expiration else ():
             state = expiry_state(cert)
             counts[state["level"]] += 1
-            if state["level"] in {"warning", "critical", "expired"} and len(upcoming) < 50:
+            if state["level"] in {"warning", "critical", "expired"} and len(upcoming) < preferences.vault_expiration_limit:
                 upcoming.append((cert, state))
         context.update(counts=counts, upcoming=upcoming)
         return render(request, self.template_name, context)
@@ -469,7 +457,7 @@ class HealthRefreshView(LoginRequiredMixin, View):
         from .services.health_v1 import refresh_health_findings
         result = refresh_health_findings()
         messages.success(request, f"Health scan complete: {result['active']} active findings.")
-        return redirect("plugins:netbox_certificates:health")
+        return redirect("plugins:netbox_certificates:vault")
 
 
 class ObjectLinkListView(EmptyListExportMixin, generic.ObjectListView):
@@ -681,3 +669,7 @@ class AlertRuleTestView(LoginRequiredMixin, View):
             f"Rule test finished: {result['delivered']} delivered, {result['failed']} failed, {result['skipped']} skipped.",
         )
         return redirect(rule.get_absolute_url())
+
+
+class CryptographicVaultView(HealthFindingListView):
+    template_name = "netbox_certificates/vault.html"

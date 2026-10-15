@@ -511,6 +511,11 @@ class AlertSettings(models.Model):
     import_chain_default = models.BooleanField(default=True)
     preserve_archive_default = models.BooleanField(default=True)
     csr_rsa_bits = models.PositiveIntegerField(default=3072)
+    vault_findings_per_page = models.PositiveIntegerField(default=50)
+    vault_expiration_limit = models.PositiveIntegerField(default=50)
+    vault_show_expiration = models.BooleanField(default=True)
+    vault_show_assignments = models.BooleanField(default=True)
+    vault_show_evidence = models.BooleanField(default=True)
     last_health_scan = models.DateTimeField(null=True, blank=True, editable=False)
     last_alert_evaluation = models.DateTimeField(null=True, blank=True, editable=False)
 
@@ -530,6 +535,10 @@ class AlertSettings(models.Model):
         for name in ("health_scan_interval_minutes", "alert_interval_minutes"):
             if getattr(self, name) not in (5, 15, 30, 60, 180, 360, 720, 1440):
                 raise ValidationError({name: "Select a supported processing interval."})
+        if self.vault_findings_per_page not in (25, 50, 100, 200):
+            raise ValidationError({"vault_findings_per_page": "Select 25, 50, 100, or 200 findings."})
+        if self.vault_expiration_limit not in (10, 25, 50, 100):
+            raise ValidationError({"vault_expiration_limit": "Select 10, 25, 50, or 100 certificates."})
         if not 30 <= self.expiration_warning_days <= 3650:
             raise ValidationError({"expiration_warning_days": "Enter 30 to 3650 days."})
         if self.csr_rsa_bits not in (2048, 3072, 4096, 8192):

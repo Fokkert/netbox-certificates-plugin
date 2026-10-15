@@ -26,7 +26,6 @@ class ReleaseContractTests(unittest.TestCase):
             '"Overview"',
             'link_text="Preferences"',
             'link_text="Cryptographic Vault"',
-            'link_text="Health and Validity"',
             '"Inventory"',
             'link_text="Groups"',
             'link_text="Services"',

@@ -19,6 +19,7 @@ class BackupExportForm(forms.Form):
 
 
 class BackupRestoreForm(BackupExportForm):
+    password = forms.CharField(required=False, max_length=1024, widget=forms.PasswordInput, label="Backup password (if set)")
     upload = forms.FileField(label="Backup file")
     confirmation = forms.CharField(label=f"Type {CONFIRMATION}", max_length=100)
 

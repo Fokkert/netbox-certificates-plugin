@@ -153,7 +153,7 @@ class BackgroundPreferences(unittest.TestCase):
         scope = {"forms": forms, "INTERVALS": [(n, str(n)) for n in (5, 15, 30, 60, 180, 360, 720, 1440)]}
         exec(compile(ast.Module(body=assignments, type_ignores=[]), "preference_fields", "exec"), scope)
         form_type = type("PreferenceFields", (forms.Form,), {key: value for key, value in scope.items() if isinstance(value, forms.Field)})
-        values = {"health_scan_interval_minutes": 15, "alert_interval_minutes": 30, "expiration_warning_days": 90, "csr_rsa_bits": 3072}
+        values = {"health_scan_interval_minutes": 15, "alert_interval_minutes": 30, "expiration_warning_days": 90, "csr_rsa_bits": 3072, "vault_findings_per_page": 50, "vault_expiration_limit": 50}
         self.assertTrue(form_type(values).is_valid())
         for name, invalid in (("health_scan_interval_minutes", 0), ("alert_interval_minutes", 7),
                               ("expiration_warning_days", 29), ("expiration_warning_days", 3651), ("csr_rsa_bits", 1024)):
