@@ -1,5 +1,9 @@
 # REST API
 
+## Dashboard preferences (1.6.0)
+
+The existing superuser-only `/api/plugins/ssl-certificates/preferences/` endpoint now includes `vault_findings_per_page` (25/50/100/200), `vault_expiration_limit` (10/25/50/100), and Boolean fields `vault_show_expiration`, `vault_show_assignments`, and `vault_show_evidence`. Partial updates preserve omitted settings; invalid choices return HTTP 400. Writes require a write-enabled token. These settings control the merged Cryptographic Vault UI; existing Health Finding endpoints and permissions are unchanged.
+
 Base path:
 
 ```text

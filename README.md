@@ -17,7 +17,7 @@ OpenAI does not maintain, sponsor, or endorse this project. This disclosure does
 | NetBox | 4.5.9, 4.5.10 |
 | Python | 3.12+ |
 | `cryptography` | 42+ |
-| Release | 1.5.0 |
+| Release | 1.6.0 |
 | Upgrade source | 1.3.5 (older migrations retained) |
 
 ## Features
@@ -76,15 +76,15 @@ Select **Certificate Authorities** in the Cryptographic Vault to open Certificat
 
 ## Cryptographic Vault
 
-Cryptographic Vault uses a responsive, neutral layout with clickable inventory cards, service-assignment counts, and health categories. It provides a consolidated overview of Certificates, CA Certificates, Private Keys, CSRs, Bundles, Services, unassigned objects, and active Health findings.
+Cryptographic Vault combines inventory cards, service-assignment counts, certificate expiration, and health findings on one page. Scanning, filtering, exports, pagination, and bulk actions remain available. The former Health and Validity and Expiration Dashboard URLs redirect here, preserving filters.
 
 ## Preferences
 
 **Overview → Preferences** lets superusers configure health scanning, independent alert evaluation intervals, upcoming-expiration findings, chain/archive import defaults, and the default RSA size for new CSR keys. Scan and alert intervals default to 15 minutes and support 5 minutes through 24 hours. Notification destinations, TLS options, certificate checks, and repeat rules remain in Alerts Configuration. See [Preferences](docs/PREFERENCES.md).
 
-## Health and Validity
+## Health findings
 
-The combined page shows expiration counts, upcoming/expired certificates, findings, filtering and a health-scan action. The old Expiration Dashboard URL redirects here.
+Health findings and expiration details now appear inside Cryptographic Vault.
 
 Health findings are persistent, searchable NetBox objects with severity, status, evidence, affected object, related object, and detection timestamps.
 
@@ -185,7 +185,7 @@ See [docs/API.md](docs/API.md).
 Add the package to `/opt/netbox/local_requirements.txt`:
 
 ```text
-netbox-certificates-plugin==1.5.0
+netbox-certificates-plugin==1.6.0
 ```
 
 Enable the plugin:
@@ -261,6 +261,14 @@ See [SECURITY.md](SECURITY.md).
 ## License
 
 Apache-2.0. See `LICENSE` and `NOTICE`.
+
+## Release 1.6.0
+
+- Merge Health and Validity into **Cryptographic Vault**; retain old URL redirects with query parameters, object visibility restrictions, and existing health actions.
+- Reduce Backup and Restore to its controls and essential warnings.
+- Add five global dashboard preferences: findings per page (25/50/100/200), expiration list size (10/25/50/100), and toggles for expiration, service assignments, and evidence. The existing warning-days preference also controls the vault expiration overview.
+- Extend the Preferences API with the same validated fields. Saving preferences preserves notification settings and processing timestamps.
+- **Migration 0028_vault_preferences is required.** Defaults keep all dashboard sections visible and preserve the previous 50-row limits.
 
 ## Release 1.5.0
 

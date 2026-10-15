@@ -1,12 +1,15 @@
 from types import SimpleNamespace
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIRequestFactory, force_authenticate
 
 from netbox_certificates.api.preferences import PreferencesAPIView
+from netbox_certificates.models import Certificate
 from netbox_certificates.models_v1 import AlertSettings, HealthFinding, Service
 
 
@@ -60,6 +63,17 @@ class VaultTests(TestCase):
         self.assertEqual(response.data["vault_expiration_limit"], 10)
         self.assertFalse(response.data["vault_show_evidence"])
         self.assertTrue(response.data["vault_show_expiration"])
+
+    def test_expiration_limit_and_warning_window(self):
+        Certificate.objects.bulk_create([
+            Certificate(name=f"Certificate {n}", fingerprint_sha256=f"{n:064x}",
+                        valid_to=timezone.now() + timedelta(days=40 + n)) for n in range(12)
+        ])
+        AlertSettings.objects.update_or_create(pk=1, defaults={"vault_expiration_limit": 10, "expiration_warning_days": 90})
+        response = self.client.get(self.url)
+        self.assertEqual(len(response.context["upcoming"]), 10)
+        self.assertEqual(response.context["counts"]["warning"], 12)
+        self.assertContains(response, "Showing up to 10 certificates")
 
     def test_dashboard_does_not_disclose_unpermitted_objects(self):
         user = get_user_model().objects.create_user(username="vault-unprivileged")

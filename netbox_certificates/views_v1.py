@@ -367,6 +367,8 @@ class HealthFindingListView(VaultInventoryMixin, LoginRequiredMixin, View):
         upcoming = []
         for cert in certificates.iterator() if preferences.vault_show_expiration else ():
             state = expiry_state(cert)
+            if state["level"] == "healthy" and state["days"] <= preferences.expiration_warning_days:
+                state = {**state, "level": "warning", "label": "Warning"}
             counts[state["level"]] += 1
             if state["level"] in {"warning", "critical", "expired"} and len(upcoming) < preferences.vault_expiration_limit:
                 upcoming.append((cert, state))

@@ -11,6 +11,15 @@ Open **SSL Certificates → Overview → Preferences**. Only NetBox superusers c
 | Include certificate chains by default | Enabled | Initial value for object imports; individual requests can override |
 | Preserve single-bundle source archives | Enabled | Initial value for supported archive imports |
 | Default RSA size for new CSR keys | 3072 bits | 2048, 3072, 4096, or 8192; existing keys are unchanged |
+| Findings per page | 50 | 25, 50, 100, or 200 |
+| Certificates in expiration list | 50 | 10, 25, 50, or 100; earliest expiration first |
+| Show certificate expiration | Enabled | Show expiration counts and the upcoming/expired certificate list in the vault |
+| Show service assignment summary | Enabled | Show counts of artifacts without a direct Service assignment |
+| Show finding evidence | Enabled | Show the Evidence column in the vault; finding detail pages remain available |
+
+Cryptographic Vault now combines inventory, expiration, and health findings. The warning-days setting applies to both scanning and the vault expiration overview. Hiding a dashboard section does not disable scanning or alerts. All preferences are global. Migration **0028_vault_preferences** is required for the new dashboard options.
+
+The corresponding REST fields are `vault_findings_per_page`, `vault_expiration_limit`, `vault_show_expiration`, `vault_show_assignments`, and `vault_show_evidence`. Existing clients can omit these fields when updating other preferences; omitted values are preserved.
 
 NetBox's worker checks schedules every five minutes. Intervals are measured from the last successful scheduled operation; queue delays and scan duration can delay the next run. Failed scans do not advance their success timestamp or send alerts based on that failed run. An existing 15-minute recurring job switches to the five-minute check cycle after its next execution. Keep `netbox-rq` running.
 

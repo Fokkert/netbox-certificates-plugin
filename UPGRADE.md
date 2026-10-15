@@ -1,6 +1,6 @@
-# Upgrade to 1.5.0
+# Upgrade to 1.6.0
 
-Upgrade 1.4.0 (or an earlier version) in place; older migrations remain available. Supported NetBox versions remain 4.5.9 and 4.5.10 with Python 3.12+. Run the following on the Linux VM. These commands assume `/opt/netbox`, PostgreSQL database `netbox`, and systemd units `netbox` and `netbox-rq`. Adapt paths/service names if your installation differs. Container deployments should install the pinned package when rebuilding their image.
+Upgrade 1.5.0 (or an earlier version) in place; older migrations remain available. Supported NetBox versions remain 4.5.9 and 4.5.10 with Python 3.12+. Run the following on the Linux VM. These commands assume `/opt/netbox`, PostgreSQL database `netbox`, and systemd units `netbox` and `netbox-rq`. Adapt paths/service names if your installation differs. Container deployments should install the pinned package when rebuilding their image.
 
 ## Preserve existing data
 
@@ -9,24 +9,24 @@ Keep the existing plugin Fernet encryption key unchanged. Back up the database, 
 ```bash
 sudo systemctl stop netbox netbox-rq
 umask 077
-sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.5.0.dump"
-sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.5.0
+sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.6.0.dump"
+sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.6.0
 ```
 
 Use your normal backup command if PostgreSQL is remote. Confirm the backup succeeded before continuing.
 
 ## Install with pip
 
-Wait until GitHub Actions has successfully published 1.5.0 to PyPI. No source copying, cloning, or uninstall is needed:
+Wait until GitHub Actions has successfully published 1.6.0 to PyPI. No source copying, cloning, or uninstall is needed:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.5.0'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.6.0'
 ```
 
 If the tag has been pushed but PyPI publication is pending, pip can instead install the tagged source archive:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.5.0.zip'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.6.0.zip'
 ```
 
 Update the persistent package pin automatically so NetBox's upgrade script keeps this version:
@@ -39,7 +39,7 @@ path = Path('/opt/netbox/local_requirements.txt')
 lines = path.read_text().splitlines() if path.exists() else []
 pattern = re.compile(r'^\s*netbox[-_]certificates[-_]plugin(?:\[.*?\])?(?:\s|[=<>!~@]|$)', re.I)
 lines = [line for line in lines if not pattern.match(line)]
-lines.append('netbox-certificates-plugin==1.5.0')
+lines.append('netbox-certificates-plugin==1.6.0')
 path.write_text('\n'.join(lines) + '\n')
 PY
 ```
@@ -60,9 +60,15 @@ sudo systemctl start netbox netbox-rq
 sudo systemctl status netbox netbox-rq --no-pager
 ```
 
-The installed version must be `1.5.0`. Hard-refresh your browser after static files are collected.
+The installed version must be `1.6.0`. Hard-refresh your browser after static files are collected.
 
-## Changes in 1.5.0
+## Changes in 1.6.0
+
+**Migration 0028_vault_preferences is required.** Run the migrate command above before restarting NetBox. It adds five dashboard settings with defaults that retain visible sections and 50-row limits. Existing preferences, alert configuration, and inventory are preserved. Do not generate or fake migrations on the VM.
+
+Cryptographic Vault now contains inventory, expiration, and health findings. Old health URLs redirect with their filters intact. Adjust the dashboard in Overview → Preferences. Backup and Restore retains the same operations with shorter descriptions.
+
+## Changes retained from 1.5.0
 
 This version adds type icons in Groups and **Backup and Restore** under Operations. It adds no new model fields or migrations; CI compares models against migration state on both supported NetBox versions. Run `migrate` anyway so older outstanding migrations are applied.
 
@@ -80,9 +86,9 @@ Tables expose new optional columns through Configure Table. For mixed imports, s
 
 Migration `0025_alertrule_statuses_default` is required. It aligns the Python default callable for AlertRule.statuses with the model. The old migration and model used different functions that both returned `["active"]`; Django still considered them different. The repair leaves existing alert-rule values unchanged.
 
-The earlier statement that 1.3.3 had no outstanding migration requirements was incorrect. If `showmigrations` shows 0001 through 0024 applied and `migrate` warns about unrecorded model changes, install 1.5.0 and run `migrate` to apply 0025. Do not generate or fake migrations on the VM for this repair. `manage.py` is a Python script: invoke it as `/opt/netbox/venv/bin/python manage.py ...` from `/opt/netbox/netbox`.
+The earlier statement that 1.3.3 had no outstanding migration requirements was incorrect. If `showmigrations` shows 0001 through 0024 applied and `migrate` warns about unrecorded model changes, install 1.6.0 and run `migrate` to apply 0025. Do not generate or fake migrations on the VM for this repair. `manage.py` is a Python script: invoke it as `/opt/netbox/venv/bin/python manage.py ...` from `/opt/netbox/netbox`.
 
-Afterward, `showmigrations netbox_certificates` must show `[X] 0025_alertrule_statuses_default`, `[X] 0026_typed_groups`, and `[X] 0027_readable_generated_names`, and `makemigrations --check --dry-run netbox_certificates` must report no changes. Earlier UI improvements remain available.
+Afterward, `showmigrations netbox_certificates` must show `[X] 0025_alertrule_statuses_default`, `[X] 0026_typed_groups`, and `[X] 0027_readable_generated_names`, `[X] 0028_vault_preferences`, and `makemigrations --check --dry-run netbox_certificates` must report no changes. Earlier UI improvements remain available.
 
 ## Earlier data migrations
 
@@ -119,7 +125,7 @@ Earlier migrations remain unchanged: 0021 fixes the CSRs label; 0020 defaults ce
 - Verify that Preferences and Alerts Configuration are centered, Group Search/Clear buttons align, and inventory export checkboxes toggle visibly with either their labels or the keyboard.
 - Use Select all/Clear selection in Groups and Health. For Health, check that all-pages selection affects only the filtered results.
 - Add/remove Group members with the native selectors and verify the changes persist.
-- Send an email sample: verify HTML formatting and version 1.5.0. Generate a fresh export and check its manifest version.
+- Send an email sample: verify HTML formatting and version 1.6.0. Generate a fresh export and check its manifest version.
 - Choose a webhook method and send a sample to your endpoint. GET/HEAD/OPTIONS use a `payload` query parameter; POST/PUT/PATCH/DELETE send a JSON body.
 
 - Delete disposable Certificates individually and with Delete Selected, including objects with automatic links; confirm dependent links are removed.

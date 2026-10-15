@@ -1,4 +1,4 @@
-# Validation for 1.5.0
+# Validation for 1.6.0
 
 The release gate runs standalone checks, real NetBox 4.5.9/4.5.10 model/migration comparisons, PostgreSQL migration application and upgrade-data preservation, and the plugin integration suite.
 
@@ -11,3 +11,5 @@ The migrations are required. All previous migration files remain unchanged. No t
 Run local checks with `python scripts/release.py`; publish with `python scripts/release.py --publish` after a clean reviewed commit and successful CI. Run real NetBox tests with `python manage.py test netbox_certificates.tests` on a disposable database. The production upgrade requires migrate, never generating local migrations.
 
 Backup coverage includes encrypted and unencrypted archives, re-encryption with a different destination key, remapped relationships, invalid-file/password/confirmation rejection, transaction rollback, missing metadata members, and UI/API access checks. No actual user VM is modified by these checks.
+
+Version 1.6.0 adds required migration 0028. Dashboard tests cover the combined page, legacy redirects retaining filters, cleared filters, hidden sections/evidence, pagination and expiration limits, the warning window, API validation/partial updates, and restricted object visibility.

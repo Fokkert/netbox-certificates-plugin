@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.0
+
+- Combine inventory and health/expiration into Cryptographic Vault, preserving filtered legacy URLs and health operations.
+- Simplify Backup and Restore descriptions while retaining secret-handling and replacement warnings.
+- Add dashboard pagination, expiration list size, and section/evidence visibility preferences through UI and API.
+- Apply the warning-days preference to the vault expiration overview.
+- Add required migration 0028 with preserving defaults and regression coverage for permissions, redirects, filtering, preferences, and pagination.
+
 ## 1.5.0
 
 - Add distinct member icons/type badges to the group tree.
