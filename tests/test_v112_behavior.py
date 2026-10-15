@@ -38,6 +38,7 @@ class GroupFormRegression(unittest.TestCase):
         cls.bases = [ast.Name(id="BaseForm", ctx=ast.Load())]
 
         class BaseForm(forms.Form):
+            group_type = forms.ChoiceField(choices=[("group", "Groups"), ("mixed", "Mixed (legacy)")])
             parent = forms.ChoiceField(required=False)
             members = forms.MultipleChoiceField(required=False)
 
@@ -52,8 +53,9 @@ class GroupFormRegression(unittest.TestCase):
             queryset.order_by.return_value = queryset
             queryset.exclude.return_value = queryset
             queryset.filter.return_value = queryset
+            queryset.restrict.return_value = queryset
             queryset.values_list.return_value = [pk]
-            manager = Mock(all=Mock(return_value=queryset), restrict=Mock(return_value=queryset))
+            manager = Mock(all=Mock(return_value=queryset), filter=Mock(return_value=queryset), restrict=Mock(return_value=queryset))
             return SimpleNamespace(objects=manager), queryset
 
         scope = {"__name__": "isolated.forms", "__package__": "isolated", "BaseForm": BaseForm, "DynamicModelMultipleChoiceField": lambda queryset, **kwargs: forms.MultipleChoiceField(**kwargs)}
@@ -64,7 +66,7 @@ class GroupFormRegression(unittest.TestCase):
         module.Service = service
         exec(compile(ast.fix_missing_locations(ast.Module(body=[cls], type_ignores=[])), "forms.py", "exec"), scope)
         for pk in (None, 2):
-            instance = SimpleNamespace(pk=pk, descendant_ids=lambda: [3], ancestor_ids=lambda: [1])
+            instance = SimpleNamespace(group_type="mixed", pk=pk, descendant_ids=lambda: [3], ancestor_ids=lambda: [1])
             user = object()
             with patch.dict(sys.modules, {"isolated.models_v1": module}):
                 form = scope["ArtifactGroupForm"](instance=instance, user=user)

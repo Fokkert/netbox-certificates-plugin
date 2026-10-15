@@ -48,7 +48,7 @@ class CertificateForm(AcronymFormMixin, PrimaryModelForm):
             self.fields["material"].disabled = True
             self.fields["material"].help_text = "Stored cryptographic material is immutable. Import renewed or replacement material as a new object."
         if user is not None:
-            self.fields["groups"].queryset = ArtifactGroup.objects.restrict(user, "view")
+            self.fields["groups"].queryset = self.fields["groups"].queryset.restrict(user, "view")
     def clean(self):
         super().clean()
         cleaned = self.cleaned_data
@@ -122,7 +122,7 @@ class CSRForm(AcronymFormMixin, PrimaryModelForm):
             self.fields["material"].disabled = True
             self.fields["material"].help_text = "Stored cryptographic material is immutable. Import renewed or replacement material as a new object."
         if user is not None:
-            self.fields["groups"].queryset = ArtifactGroup.objects.restrict(user, "view")
+            self.fields["groups"].queryset = self.fields["groups"].queryset.restrict(user, "view")
     def clean(self):
         super().clean()
         cleaned = self.cleaned_data
@@ -167,7 +167,7 @@ class PrivateKeyForm(AcronymFormMixin, PrimaryModelForm):
             self.fields["input_password"].disabled = True
             self.fields["key_material"].help_text = "Stored cryptographic material is immutable. Import renewed or replacement material as a new object."
         if user is not None:
-            self.fields["groups"].queryset = ArtifactGroup.objects.restrict(user, "view")
+            self.fields["groups"].queryset = self.fields["groups"].queryset.restrict(user, "view")
     def clean(self):
         super().clean()
         cleaned = self.cleaned_data
@@ -202,7 +202,7 @@ class BundleForm(AcronymFormMixin, PrimaryModelForm):
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         if user is not None:
-            self.fields["groups"].queryset = ArtifactGroup.objects.restrict(user, "view")
+            self.fields["groups"].queryset = self.fields["groups"].queryset.restrict(user, "view")
 
 
 class CertificateAuthorityForm(AcronymFormMixin, PrimaryModelForm):
@@ -219,6 +219,7 @@ class CertificateAuthorityForm(AcronymFormMixin, PrimaryModelForm):
 
 
 class ArtifactGroupForm(AcronymFormMixin, PrimaryModelForm):
+    group_type = forms.ChoiceField(choices=ArtifactGroup._meta.get_field("group_type").choices, label="Group type")
     parent = DynamicModelChoiceField(
         queryset=ArtifactGroup.objects.all(),
         required=False,
@@ -230,13 +231,13 @@ class ArtifactGroupForm(AcronymFormMixin, PrimaryModelForm):
         widget=forms.MultipleHiddenInput(),
     )
     fieldsets = (
-        FieldSet("name", "parent", "description", "tags", name="Group"),
+        FieldSet("name", "group_type", "parent", "description", "tags", name="Group"),
         FieldSet("member_group", "member_certificate", "member_privatekey", "member_csr", "member_bundle", "member_service", name="Membership"),
     )
 
     class Meta:
         model = ArtifactGroup
-        fields = ("name", "parent", "owner", "description", "comments", "tags")
+        fields = ("name", "group_type", "parent", "owner", "description", "comments", "tags")
 
     def __init__(self, *args, user=None, **kwargs):
         from .models_v1 import Service
@@ -244,7 +245,10 @@ class ArtifactGroupForm(AcronymFormMixin, PrimaryModelForm):
         self.user = user
         super().__init__(*args, **kwargs)
 
-        parent_qs = ArtifactGroup.objects.all()
+        if not self.instance.pk or self.instance.group_type != "mixed":
+            self.fields["group_type"].choices = [(value, label) for value, label in self.fields["group_type"].choices if value != "mixed"]
+        self.fields["group_type"].help_text = "Only objects of this type can be direct members. Remove incompatible members before changing type."
+        parent_qs = ArtifactGroup.objects.filter(group_type__in=("group", "mixed"))
         child_qs = ArtifactGroup.objects.all()
         certificate_qs = Certificate.objects.all()
         private_key_qs = PrivateKey.objects.all()
@@ -253,7 +257,7 @@ class ArtifactGroupForm(AcronymFormMixin, PrimaryModelForm):
         service_qs = Service.objects.all()
 
         if user is not None:
-            parent_qs = ArtifactGroup.objects.restrict(user, "view")
+            parent_qs = parent_qs.restrict(user, "view")
             child_qs = ArtifactGroup.objects.restrict(user, "change")
             certificate_qs = Certificate.objects.restrict(user, "change")
             private_key_qs = PrivateKey.objects.restrict(user, "change")
@@ -317,6 +321,9 @@ class ArtifactGroupForm(AcronymFormMixin, PrimaryModelForm):
             cleaned["members"] = [f"{kind}:{obj.pk}" for kind in self._member_querysets
                                   for obj in cleaned.get(f"member_{kind}", [])]
         selected = cleaned.get("members") or []
+        kind = cleaned.get("group_type")
+        if kind and kind != "mixed" and any(not value.startswith(kind + ":") for value in selected):
+            self.add_error("members", "Select only members matching this group type.")
         selected_group_ids = set(self._selected_ids(selected, "group"))
         if self.instance.pk:
             ancestor_ids = set(self.instance.ancestor_ids())
@@ -540,6 +547,7 @@ class BundleArtifactFilterForm(CompletePrimaryModelFilterForm):
 
 
 class ArtifactGroupFilterForm(CompletePrimaryModelFilterForm):
+    group_type = forms.ChoiceField(choices=[("", "---------"), *ArtifactGroup._meta.get_field("group_type").choices], required=False)
     model = ArtifactGroup
     name = forms.CharField(required=False, label="Name contains")
     parent = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Parent Group")
@@ -549,7 +557,7 @@ class ArtifactGroupFilterForm(CompletePrimaryModelFilterForm):
     csrs = DynamicModelMultipleChoiceField(queryset=CSR.objects.all(), required=False, label="CSRs")
     bundles = DynamicModelMultipleChoiceField(queryset=Bundle.objects.all(), required=False, label="Bundles")
     fieldsets = (
-        FieldSet("q", "id", "name", "parent", "children", name="Hierarchy"),
+        FieldSet("q", "id", "name", "group_type", "parent", "children", name="Hierarchy"),
         FieldSet("certificates", "private_keys", "csrs", "bundles", name="Members"),
         FieldSet("owner", "tags", "description", "comments", "custom_field_data", name="NetBox Metadata"),
         FieldSet("created", "created_after", "created_before", "last_updated", "last_updated_after", "last_updated_before", name="Timestamps"),
@@ -591,10 +599,11 @@ class BundleBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
 
 
 class ArtifactGroupBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
+    group_type = forms.ChoiceField(choices=[("", "---------"), *[(value, label) for value, label in ArtifactGroup._meta.get_field("group_type").choices if value != "mixed"]], required=False)
     parent = DynamicModelChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Parent Group")
     owner = DynamicModelChoiceField(queryset=Owner.objects.all(), required=False)
     model = ArtifactGroup
-    fieldsets = (FieldSet("parent", "owner", "description", "comments", "tags", name="Bulk-editable fields"),)
+    fieldsets = (FieldSet("group_type", "parent", "owner", "description", "comments", "tags", name="Bulk-editable fields"),)
     nullable_fields = ("parent", "owner", "description", "comments")
 
 
@@ -629,7 +638,7 @@ class UnifiedImportForm(AcronymFormMixin, forms.Form):
         self.fields["preserve_archive"].initial = defaults.preserve_archive_default
         if user:
             self.fields["owner"].queryset = Owner.objects.all() if user.is_superuser else Owner.objects.filter(users=user)
-            self.fields["groups"].queryset = ArtifactGroup.objects.restrict(user, "view")
+            self.fields["groups"].queryset = self.fields["groups"].queryset.restrict(user, "view")
 
 
 class BundleExportForm(AcronymFormMixin, forms.Form):
@@ -703,7 +712,7 @@ class CSRGenerateForm(AcronymFormMixin, forms.Form):
             from .permissions import action_queryset
             self.fields["existing_private_key"].queryset = action_queryset(PrivateKey, user, "use")
             self.fields["owner"].queryset = Owner.objects.all() if user.is_superuser else Owner.objects.filter(users=user)
-            self.fields["groups"].queryset = ArtifactGroup.objects.restrict(user, "view")
+            self.fields["groups"].queryset = self.fields["groups"].queryset.restrict(user, "view")
         for name in ("ku_digital_signature", "ku_content_commitment", "ku_key_encipherment", "ku_data_encipherment", "ku_key_agreement", "ku_key_cert_sign", "ku_crl_sign", "eku_server_auth", "eku_client_auth", "eku_code_signing", "eku_email_protection", "eku_time_stamping", "eku_ocsp_signing", "request_ca"):
             self.fields[name].widget.attrs["class"] = "form-check-input"
     def clean_sans(self):

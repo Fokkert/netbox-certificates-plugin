@@ -61,6 +61,7 @@ jobs:
       - name: Check upgrade from the last published migration
         run: |
           python tests/check_migration_upgrade.py
+          python tests/check_revision_upgrade.py
           python netbox-source/netbox/manage.py migrate --no-input
           python netbox-source/netbox/manage.py makemigrations --check --dry-run netbox_certificates
           python netbox-source/netbox/manage.py migrate --check

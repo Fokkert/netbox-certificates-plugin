@@ -29,6 +29,8 @@ class NetBoxCertificatesConfig(PluginConfig):
         from . import signals_v1  # noqa: F401
         from . import dashboard  # noqa: F401
         from . import jobs_v1  # noqa: F401
+        from .group_types import register_group_validation
+        register_group_validation()
 
 
 config = NetBoxCertificatesConfig

@@ -40,6 +40,7 @@ class LoginRequiredMixin:
 
 
 class Group(models.Model):
+    group_type = models.CharField(max_length=16, choices=[("group", "Groups")], default="group")
     name = models.CharField(max_length=100)
     parent = models.ForeignKey("self", null=True, on_delete=models.SET_NULL)
 
@@ -346,7 +347,7 @@ class PermissionsAndSettings(unittest.TestCase):
                           forms=forms, AlertSettingsForm=self.form_class(), SECRET_FIELDS={"smtp_password", "webhook_url", "webhook_headers"})["AlertSettingsSerializer"]
         serializer = cls(data={"smtp_host": "smtp.example.com"}, context={"config": None})
         self.assertTrue(serializer.is_valid(), serializer.errors)
-        self.assertEqual(serializer.form.cleaned_data["repeat_minutes"], 1440)
+        self.assertEqual(serializer.form.cleaned_data["repeat_minutes"], 10080)
         output = cls().to_representation(None)
         for secret in ("smtp_password", "webhook_url", "webhook_headers"):
             self.assertNotIn(secret, output)

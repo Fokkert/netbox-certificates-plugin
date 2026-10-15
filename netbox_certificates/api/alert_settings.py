@@ -26,6 +26,8 @@ class AlertSettingsSerializer(serializers.Serializer):
                        "write_only": name in SECRET_FIELDS or name == "clear_smtp_password"}
             if isinstance(field, forms.BooleanField):
                 output = serializers.BooleanField(**options)
+            elif isinstance(field, forms.FloatField):
+                output = serializers.FloatField(min_value=field.min_value, max_value=field.max_value, allow_null=not field.required, **options)
             elif isinstance(field, forms.IntegerField):
                 output = serializers.IntegerField(min_value=field.min_value, max_value=field.max_value, allow_null=not field.required, **options)
             elif isinstance(field, forms.MultipleChoiceField):
@@ -63,6 +65,8 @@ class AlertSettingsSerializer(serializers.Serializer):
     def validate(self, attrs):
         config = self.context.get("config")
         data = {**self.values(config), **attrs}
+        if "repeat_minutes" in attrs and "repeat_days" not in attrs:
+            data["repeat_days"] = None
         self.form = AlertSettingsForm(data, config=config, test_method=self.context.get("test_method"))
         if not self.form.is_valid():
             raise serializers.ValidationError(dict(self.form.errors))

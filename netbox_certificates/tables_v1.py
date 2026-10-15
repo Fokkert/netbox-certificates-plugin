@@ -1,3 +1,4 @@
+from .table_fields import complete_columns
 from .labels import AcronymTableMixin
 import django_tables2 as tables
 from netbox.tables import PrimaryModelTable, columns
@@ -58,6 +59,13 @@ class ObjectLinkTable(AcronymTableMixin, PrimaryModelTable):
     source = tables.Column(orderable=False)
     target = tables.Column(orderable=False)
 
+    def render_source(self, value):
+        request = getattr(self, "request", None) or getattr(self, "context", {}).get("request")
+        return finding_object_link(value, request.user) if request else None
+
+    def render_target(self, value):
+        return self.render_source(value)
+
     def render_actions(self, record):
         request = getattr(self, "request", None) or getattr(self, "context", {}).get("request")
         if record.automatic or request is None:
@@ -117,3 +125,7 @@ class AlertEventTable(AcronymTableMixin, PrimaryModelTable):
             "error", "created", "owner", "tags",
         )
         default_columns = ("pk", "status", "rule", "channel", "finding", "delivered_at", "created")
+
+
+for _table in (ServiceTable, HealthFindingTable, ObjectLinkTable, AlertChannelTable, AlertRuleTable, AlertEventTable):
+    complete_columns(_table)

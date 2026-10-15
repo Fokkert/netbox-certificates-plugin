@@ -17,6 +17,10 @@ from netbox_certificates.services.parser import ArtifactParseError, parse_blob
 class VisibleRelationshipsMixin:
     def validate(self, attrs):
         attrs = super().validate(attrs)
+        groups = attrs.get("groups", [])
+        kind = self.Meta.model._meta.model_name
+        if kind in {"certificate", "privatekey", "csr", "bundle", "service"} and any(group.group_type not in (kind, "mixed") for group in groups):
+            raise serializers.ValidationError({"groups": "Select groups matching this object's type."})
         request = self.context.get("request")
         if request:
             for name, value in attrs.items():
@@ -69,14 +73,23 @@ class ArtifactGroupSerializer(VisibleRelationshipsMixin, NetBoxModelSerializer):
     class Meta:
         model = ArtifactGroup
         fields = (
-            "id", "url", "display", "name", "parent", "children", "members", "owner", "description", "comments",
+            "id", "url", "display", "name", "group_type", "parent", "children", "members", "owner", "description", "comments",
             "certificates", "private_keys", "csrs", "bundles", "services", "tags", "custom_fields", "created", "last_updated",
         )
         brief_fields = ("id", "url", "display", "name", "parent")
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
+        kind = attrs.get("group_type", getattr(self.instance, "group_type", "group"))
+        if kind == "mixed" and (self.instance is None or self.instance.group_type != "mixed"):
+            raise serializers.ValidationError({"group_type": "Choose a specific group type."})
+        from ..group_types import MEMBER_RELATIONS
+        for member_kind, relation in MEMBER_RELATIONS.items():
+            if kind != "mixed" and member_kind != kind and attrs.get(relation):
+                raise serializers.ValidationError({relation: "These objects do not match the group type."})
         parent = attrs.get("parent", getattr(self.instance, "parent", None))
+        if parent is not None and parent.group_type not in ("group", "mixed"):
+            raise serializers.ValidationError({"parent": "Only a Groups group can contain subgroups."})
         if self.instance is not None and parent is not None:
             if parent.pk == self.instance.pk or parent.pk in set(self.instance.descendant_ids()):
                 raise serializers.ValidationError({"parent": "A Group cannot be nested below itself or one of its descendants."})

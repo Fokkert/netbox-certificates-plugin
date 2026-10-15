@@ -248,6 +248,8 @@ class ArtifactGroupTreeListView(LoginRequiredMixin, View):
             )
             return {
                 "id": group.pk,
+                "group_type": group.group_type,
+                "group_type_display": group.get_group_type_display(),
                 "name": str(group),
                 "url": group.get_absolute_url(),
                 "parent_id": group.parent_id,
@@ -258,6 +260,7 @@ class ArtifactGroupTreeListView(LoginRequiredMixin, View):
             }
 
         roots = [group for group in groups if not group.parent_id or group.parent_id not in by_id]
+        context["group_types"] = ArtifactGroup._meta.get_field("group_type").choices
         context["filter_errors"] = tree_filter.errors
         context["group_tree"] = [node(group) for group in sorted(roots, key=lambda item: str(item).lower())]
         return context

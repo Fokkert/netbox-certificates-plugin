@@ -81,7 +81,7 @@ def _assign_groups(objects, groups):
         return
     for obj in objects:
         if hasattr(obj, "groups"):
-            obj.groups.add(*groups)
+            obj.groups.add(*(group for group in groups if group.group_type in (obj._meta.model_name, "mixed")))
 
 
 def _check_reused_group_permissions(reused, groups, user):

@@ -38,9 +38,13 @@ def create_link(source, target, relation, origin=LinkOriginChoices.AUTOMATIC, no
 
 
 def link_matching_artifacts(obj, origin=LinkOriginChoices.AUTOMATIC):
+    from .naming import refresh_key_names
     fp = getattr(obj, "public_key_fingerprint", None)
     if not fp:
         return
+    refresh_key_names(fp)
+    if isinstance(obj, PrivateKey):
+        obj.refresh_from_db(fields=["name"])
     if isinstance(obj, Certificate):
         for key in PrivateKey.objects.filter(public_key_fingerprint=fp):
             create_link(obj, key, LinkRelationChoices.KEY_MATCH, origin=origin, update_origin=True)
@@ -222,7 +226,8 @@ def ensure_automatic_bundle(obj, origin=LinkOriginChoices.AUTOMATIC):
     for member in members:
         inherited_group_ids.update(member.groups.values_list("pk", flat=True))
     if inherited_group_ids:
-        bundle.groups.add(*inherited_group_ids)
+        from ..models import ArtifactGroup
+        bundle.groups.add(*ArtifactGroup.objects.filter(pk__in=inherited_group_ids, group_type__in=("bundle", "mixed")))
     sync_bundle_links(bundle, origin=origin)
     return bundle
 

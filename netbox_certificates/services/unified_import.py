@@ -98,6 +98,11 @@ def import_objects(*, uploads, allowed_kinds, user=None, owner=None, groups=None
     records, ignored = parse_uploads(uploads, password=password, archive_password=archive_password, import_chain=import_chain or ca_only)
     validate_import_records(records, allowed_kinds, ca_only=ca_only)
     models = {"certificate": Certificate, "private_key": PrivateKey, "csr": CSR}
+    import_types = {models[parsed.kind]._meta.model_name for _, parsed in records}
+    if not ca_only:
+        import_types.add("bundle")
+    if any(group.group_type not in import_types | {"mixed"} for group in (groups or [])):
+        raise UnifiedImportError("Selected groups must match an object type in this import.")
     created, reused, bundles, seen, anchors = [], [], [], set(), {}
     sources, source_fingerprints = {}, {}
     for _, parsed in records:

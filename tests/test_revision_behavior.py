@@ -52,6 +52,10 @@ def definitions(path, names, **scope):
     exec((ROOT / "netbox_certificates/constants.py").read_text(), constants_scope)
     scope.setdefault("WEBHOOK_METHODS", constants_scope["WEBHOOK_METHODS"])
     scope.setdefault("WEBHOOK_METHOD_CHOICES", constants_scope["WEBHOOK_METHOD_CHOICES"])
+    spec = importlib.util.spec_from_file_location("isolated_naming", ROOT / "netbox_certificates/services/naming.py")
+    naming = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(naming)
+    scope.setdefault("identity_name", naming.identity_name)
     tree = ast.parse((ROOT / path).read_text(encoding="utf-8"))
     nodes = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef)) and n.name in names]
     assert {node.name for node in nodes} == set(names), "Missing tested definition"

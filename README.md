@@ -17,8 +17,8 @@ OpenAI does not maintain, sponsor, or endorse this project. This disclosure does
 | NetBox | 4.5.9, 4.5.10 |
 | Python | 3.12+ |
 | `cryptography` | 42+ |
-| Release | 1.3.5 |
-| Upgrade source | 1.3.4 (older migrations retained) |
+| Release | 1.4.0 |
+| Upgrade source | 1.3.5 (older migrations retained) |
 
 ## Features
 
@@ -185,7 +185,7 @@ See [docs/API.md](docs/API.md).
 Add the package to `/opt/netbox/local_requirements.txt`:
 
 ```text
-netbox-certificates-plugin==1.3.5
+netbox-certificates-plugin==1.4.0
 ```
 
 Enable the plugin:
@@ -262,6 +262,13 @@ See [SECURITY.md](SECURITY.md).
 
 Apache-2.0. See `LICENSE` and `NOTICE`.
 
-## Release 1.3.5
+## Release 1.4.0
 
-Fix Service, Object Link, and Alert Channel submissions when NetBox's parent form validation returns None. Preserve custom-field and stale-edit validation. Restore the AI disclosure and add real NetBox form/view integration tests to CI and the publication gate. There are no new model changes beyond migration 0025, retained from 1.3.4; always run migrate during upgrades. See [Upgrade](UPGRADE.md) and [Validation](VALIDATION.md).
+- Tables offer safe model fields and relationships as optional columns, including Services' certificates, keys, CSRs, and bundles, and artifacts' Services. Use Configure Table to choose columns. Related objects obey view permissions. Public certificate/CSR PEM can be expanded; private-key material, archive bytes, and credentials are never table columns.
+- Alerts Configuration uses plain-language problem categories and **Repeat unresolved alerts every (days)**. Set 7 for weekly reminders or 0 for one notification per occurrence. Existing intervals are preserved; new configurations default to 7 days. Fractional days are supported. Scanning frequency remains independent in Preferences. Timing is per finding, delivery channel, and rule; new problems can still alert immediately.
+- Certificate and CSR names use a suitable CN or DNS/IP SAN, including wildcard names. A matching private key is named `<identity> Private key` using its public-key fingerprint. A standalone key cannot identify a domain until a matching certificate or CSR exists. User-assigned names are preserved.
+- New groups have one type: Certificates, Private Keys, CSRs, Bundles, Services, or Groups. Only Groups groups can contain subgroups. The UI, API, bulk operations, and imports enforce membership types. Bundle reconciliation does not copy certificate/key groups into bundles.
+- Migrations **0026** and **0027** are required. Existing single-type groups are classified automatically; mixed groups retain all contents as **Mixed (legacy)**. Remove incompatible members before changing a group's type. Recognizable generated certificate/CSR/key names are repaired without modifying cryptographic material or custom names.
+- REST group representations include `group_type`, and the group list supports `?group_type=certificate` (or `privatekey`, `csr`, `bundle`, `service`, `group`, `mixed`). Alert settings accept `repeat_days`; existing `repeat_minutes` API clients remain supported. Supplying days takes precedence when both are supplied.
+
+See [Upgrade](UPGRADE.md) for pip-only installation and [Validation](VALIDATION.md) for the checks.

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0
+
+- Expose optional model fields and permission-filtered relationship columns throughout inventory tables, while excluding secret storage.
+- Use understandable alert categories and a repeat interval in days, with send-once and legacy minutes API support.
+- Name SAN-only certificates and matching private keys by their identity; preserve manual names and unmatched-key import order independence.
+- Add typed Groups with consistent UI/API/ORM/import validation, type filtering, and no cross-type automatic Bundle group inheritance.
+- Add migration 0026 to classify existing groups without losing members and 0027 to repair recognizable generated names without changing material.
+- Add NetBox integration tests for these workflows and CI upgrade-data checks from 0025 through 0027.
+
 ## 1.3.5
 
 - Fix Service, Object Link, and Alert Channel forms using NetBox's in-place cleaned_data after parent validation, avoiding NoneType.get failures on add/edit.

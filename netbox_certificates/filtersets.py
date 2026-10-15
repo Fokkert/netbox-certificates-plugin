@@ -271,6 +271,7 @@ class BundleFilterSet(GroupedPrimaryModelFilterSet):
 
 
 class ArtifactGroupFilterSet(PrimaryModelFieldFilterSet):
+    group_type = django_filters.ChoiceFilter(choices=ArtifactGroup._meta.get_field("group_type").choices)
     q = django_filters.CharFilter(method="search")
     name = django_filters.CharFilter(lookup_expr="icontains")
     parent = django_filters.ModelMultipleChoiceFilter(queryset=ArtifactGroup.objects.all(), distinct=True)

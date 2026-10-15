@@ -42,8 +42,9 @@ def source_module(name, path, replacements=(), **scope):
 
 
 VALIDATORS = source_module("validation_120", "netbox_certificates/validation.py")
+NAMING = source_module("naming_140", "netbox_certificates/services/naming.py")
 PARSER = source_module("parser_120", "netbox_certificates/services/parser.py",
-                       [("from .status import calculate_certificate_status", "")], calculate_certificate_status=lambda *args, **kwargs: "active")
+                       [("from .status import calculate_certificate_status", ""), ("from .naming import identity_name", "")], identity_name=NAMING.identity_name, calculate_certificate_status=lambda *args, **kwargs: "active")
 CSR_SERVICE = source_module("csr_120", "netbox_certificates/services/csr.py",
                            [("from ..validation import validate_hostname", "")], validate_hostname=VALIDATORS.validate_hostname)
 

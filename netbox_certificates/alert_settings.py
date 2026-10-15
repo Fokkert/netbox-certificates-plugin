@@ -25,18 +25,21 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
     require_san = forms.BooleanField(required=False, initial=True, label="Require SANs on end-entity certificates and CSRs")
     allow_wildcards = forms.BooleanField(required=False, initial=True, label="Allow wildcard names")
     forbid_key_reuse = forms.BooleanField(required=False, label="Treat key reuse as a settings violation",
-                                         help_text="General key-reuse findings remain available in the key-reuse alert category.")
+                                         help_text="Reused keys are also reported under Weak or reused keys and outdated signatures.")
     enabled = forms.BooleanField(required=False, label="Enable certificate alerts")
     categories = forms.MultipleChoiceField(required=True, choices=[
-        ("validity", "Expiration and validity"), ("chain", "Certificate chain"),
-        ("security", "Cryptographic weaknesses"), ("relationship", "Artifact relationships"),
-        ("duplicate", "Duplicate material"), ("service", "Service configuration"),
-        ("configuration", "Certificate settings violations"),
-    ], initial=["validity", "chain", "security", "relationship", "duplicate", "service", "configuration"])
+        ("validity", "Expired, expiring, or not-yet-valid certificates"), ("chain", "Missing or invalid issuing certificates"),
+        ("security", "Weak or reused keys and outdated signatures"), ("relationship", "Missing or mismatched certificates, keys, and CSRs"),
+        ("duplicate", "Duplicate certificates, keys, or CSRs"), ("service", "Missing or mismatched certificates on services"),
+        ("configuration", "Certificates that do not meet your requirements"),
+    ], label="Notify me about", help_text="Missing or mismatched items include a key without a matching certificate, or a bundle whose certificate and key do not match.", initial=["validity", "chain", "security", "relationship", "duplicate", "service", "configuration"])
+    repeat_days = forms.FloatField(min_value=0, max_value=3650, initial=7, required=False,
+        label="Repeat unresolved alerts every (days)",
+        help_text="For example, 7 sends a reminder once a week for each unresolved problem. 0 sends only once. Fractions of a day are supported.")
     severities = forms.MultipleChoiceField(required=False, choices=FindingSeverityChoices,
                                          help_text="Leave empty to include every severity.")
     cooldown_minutes = forms.IntegerField(min_value=15, max_value=5256000, initial=60, label="Minimum minutes between alerts")
-    repeat_minutes = forms.IntegerField(min_value=0, max_value=5256000, initial=1440, label="Repeat unresolved alerts after minutes",
+    repeat_minutes = forms.IntegerField(min_value=0, max_value=5256000, initial=10080, required=False, widget=forms.HiddenInput(), label="Legacy repeat interval (minutes)",
                                        help_text="0 sends once per occurrence. Evaluation frequency is configured in Preferences.")
     notify_on_recovery = forms.BooleanField(required=False, label="Notify when a problem is resolved")
     email_enabled = forms.BooleanField(required=False, label="Enable email alerts")
@@ -74,6 +77,7 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
             if rule:
                 for field in ("enabled", "categories", "severities", "cooldown_minutes", "repeat_minutes", "notify_on_recovery"):
                     initial[field] = getattr(rule, field)
+                initial["repeat_days"] = rule.repeat_minutes / 1440
             if email:
                 for field in ("recipients", "smtp_host", "smtp_port", "smtp_username", "smtp_verify_tls", "from_email", "subject_prefix"):
                     initial[field] = getattr(email, field)
@@ -88,6 +92,14 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
 
     def clean(self):
         data = super().clean()
+        days = data.get("repeat_days")
+        if days is not None:
+            minutes = round(days * 1440)
+            if days > 0 and minutes < 1:
+                self.add_error("repeat_days", "Use at least one minute (1/1440 day), or 0 to send once.")
+            data["repeat_minutes"] = minutes
+        elif data.get("repeat_minutes") is None:
+            data["repeat_minutes"] = self.config.rule.repeat_minutes if self.config and self.config.rule else 10080
         if "webhook_method" not in self.errors:
             data["webhook_method"] = data.get("webhook_method") or self.initial.get("webhook_method", "POST")
         for address in data.get("recipients", []):
@@ -175,7 +187,7 @@ class AlertSettingsView(LoginRequiredMixin, View):
     def page(self, request, form):
         sections = [
             ("Certificate checks", ("minimum_rsa_bits", "max_validity_days", "require_san", "allow_wildcards", "forbid_key_reuse")),
-            ("When and what to send", ("enabled", "categories", "severities", "cooldown_minutes", "repeat_minutes", "notify_on_recovery")),
+            ("When and what to send", ("enabled", "categories", "severities", "cooldown_minutes", "repeat_days", "notify_on_recovery")),
             ("Email alerts", ("email_enabled", "recipients", "smtp_host", "smtp_port", "smtp_username", "smtp_password", "clear_smtp_password", "smtp_security", "smtp_verify_tls", "from_email", "subject_prefix")),
             ("Webhook alerts", ("webhook_enabled", "webhook_method", "webhook_url", "webhook_headers", "webhook_verify_tls")),
         ]

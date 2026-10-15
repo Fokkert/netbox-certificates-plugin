@@ -11,6 +11,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.serialization import pkcs12, pkcs7
 
 from .status import calculate_certificate_status
+from .naming import identity_name
 
 ArtifactKind = Literal["certificate", "private_key", "csr"]
 PEM_BLOCK_RE = re.compile(rb"-----BEGIN ([A-Z0-9 ][A-Z0-9 -]*)-----.*?-----END \1-----", re.DOTALL)
@@ -104,7 +105,7 @@ def _certificate_parsed(cert: x509.Certificate, source_format: str) -> ParsedArt
         "status": calculate_certificate_status(nvb, nva),
         **_key_metadata(pub),
     }
-    return ParsedArtifact("certificate", pem, source_format, _name_from_x509_name(cert.subject), meta)
+    return ParsedArtifact("certificate", pem, source_format, identity_name(cert.subject, meta["subject_alternative_names"], f"Certificate {meta['fingerprint_sha256'][:12]}"), meta)
 
 
 def _csr_parsed(csr: x509.CertificateSigningRequest, source_format: str) -> ParsedArtifact:
@@ -123,7 +124,7 @@ def _csr_parsed(csr: x509.CertificateSigningRequest, source_format: str) -> Pars
         "signature_algorithm": sig_alg,
         **_key_metadata(pub),
     }
-    return ParsedArtifact("csr", pem, source_format, _name_from_x509_name(csr.subject), meta)
+    return ParsedArtifact("csr", pem, source_format, identity_name(csr.subject, meta["subject_alternative_names"], f"CSR {meta['fingerprint_sha256'][:12]}"), meta)
 
 
 def _private_key_parsed(key, source_format: str, encrypted_on_import: bool) -> ParsedArtifact:
@@ -140,7 +141,7 @@ def _private_key_parsed(key, source_format: str, encrypted_on_import: bool) -> P
         **_key_metadata(pub),
     }
     label = meta["public_key_fingerprint"][:12]
-    return ParsedArtifact("private_key", normalized, source_format, f"Private Key {label}", meta)
+    return ParsedArtifact("private_key", normalized, source_format, f"Unmatched private key ({label})", meta)
 
 
 def parse_blob(data: bytes, password: str | bytes | None = None, filename: str = "") -> list[ParsedArtifact]:

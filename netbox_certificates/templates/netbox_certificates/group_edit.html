@@ -5,15 +5,15 @@
 <div class="nbcert-settings">
 {{ form.non_field_errors }}{% for field in form.hidden_fields %}{% if field.name != "members" %}{{ field }}{% endif %}{% endfor %}
 <section class="card mb-4"><h2 class="card-header">Group details</h2><div class="card-body">
-{% render_field form.name %}{% render_field form.parent %}{% render_field form.description %}
+{% render_field form.name %}{% render_field form.group_type %}{% render_field form.parent %}{% render_field form.description %}
 {% if form.owner_group %}{% render_field form.owner_group %}{% endif %}{% render_field form.owner %}
 </div></section>
 <section class="card mb-4"><h2 class="card-header">Group membership</h2><div class="card-body">
-<p class="text-muted">Choose members by object type. Only objects you can change are available; other memberships are preserved.</p>
+<p class="text-muted">Choose members matching the group type. Only objects you can change are available; other memberships are preserved.</p>
 {{ form.members.errors }}
-{% render_field form.member_group %}{% render_field form.member_certificate %}
-{% render_field form.member_privatekey %}{% render_field form.member_csr %}
-{% render_field form.member_bundle %}{% render_field form.member_service %}
+<div data-member-kind="group">{% render_field form.member_group %}</div><div data-member-kind="certificate">{% render_field form.member_certificate %}</div>
+<div data-member-kind="privatekey">{% render_field form.member_privatekey %}</div><div data-member-kind="csr">{% render_field form.member_csr %}</div>
+<div data-member-kind="bundle">{% render_field form.member_bundle %}</div><div data-member-kind="service">{% render_field form.member_service %}</div>
 </div></section>
 <section class="card mb-4"><h2 class="card-header">Metadata</h2><div class="card-body">
 {% render_field form.comments %}{% render_field form.tags %}
@@ -21,4 +21,18 @@
 {% if form.changelog_message %}{% render_field form.changelog_message %}{% endif %}
 </div></section>
 </div>
+{% endblock %}
+
+{% block javascript %}{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const select = document.getElementById('id_group_type');
+  if (!select) return;
+  const update = () => document.querySelectorAll('[data-member-kind]').forEach(section => {
+    section.hidden = select.value !== 'mixed' && section.dataset.memberKind !== select.value;
+  });
+  select.addEventListener('change', update);
+  update();
+});
+</script>
 {% endblock %}

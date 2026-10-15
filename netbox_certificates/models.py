@@ -8,6 +8,8 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from netbox.models import NetBoxModel, PrimaryModel
 
+from .group_types import GROUP_TYPES, validate_group
+
 from .choices import (
     AlertMethodChoices,
     AlertRepeatModeChoices,
@@ -25,6 +27,7 @@ class ArtifactGroup(PrimaryModel):
     """Hierarchical user-managed group for certificate objects and Bundles."""
 
     name = models.CharField(max_length=200, unique=True)
+    group_type = models.CharField(max_length=16, choices=GROUP_TYPES, default="group")
     parent = models.ForeignKey(
         "self",
         on_delete=models.SET_NULL,
@@ -79,6 +82,7 @@ class ArtifactGroup(PrimaryModel):
 
     def clean(self):
         super().clean()
+        validate_group(self)
         if self.parent_id is None:
             return
         if self.pk and self.parent_id == self.pk:

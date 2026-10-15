@@ -12,6 +12,7 @@
 <form method="get" class="nbcert-search mb-3">
 <label for="group-search" class="visually-hidden">Search groups</label>
 <input id="group-search" class="form-control" name="q" value="{{ request.GET.q }}" placeholder="Find a group">
+<label for="group-type" class="visually-hidden">Group type</label><select name="group_type" id="group-type" class="form-select"><option value="">All group types</option>{% for value,label in group_types %}<option value="{{ value }}"{% if request.GET.group_type == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
 <div class="nbcert-actions"><button type="submit" class="btn btn-outline-primary">Search</button><a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_list' %}">Clear</a></div>
 </form>
 {% if filter_errors %}<div class="alert alert-danger">{{ filter_errors }}</div>{% endif %}

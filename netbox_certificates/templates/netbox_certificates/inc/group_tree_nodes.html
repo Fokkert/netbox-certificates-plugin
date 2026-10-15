@@ -5,9 +5,10 @@
     {% if perms.netbox_certificates.change_artifactgroup or perms.netbox_certificates.delete_artifactgroup %}<input class="form-check-input" type="checkbox" name="pk" value="{{ node.id }}" aria-label="Select group {{ node.name }}">{% endif %}
     <i class="mdi mdi-layers-triple-outline group-icon" aria-hidden="true"></i>
     <a class="group-name" href="{{ node.url }}">{{ node.name }}</a>
+    <span class="badge text-bg-secondary">{{ node.group_type_display }}</span>
     <span class="text-muted small">{{ node.service_count }} service{{ node.service_count|pluralize }} · {{ node.artifact_count }} artifact{{ node.artifact_count|pluralize }}</span>
     <span class="group-actions">
-      {% if perms.netbox_certificates.add_artifactgroup %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_add' %}?parent={{ node.id }}">Add subgroup</a>{% endif %}
+      {% if perms.netbox_certificates.add_artifactgroup and node.group_type == "group" or perms.netbox_certificates.add_artifactgroup and node.group_type == "mixed" %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_add' %}?parent={{ node.id }}">Add subgroup</a>{% endif %}
       {% if perms.netbox_certificates.change_artifactgroup %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_edit' pk=node.id %}">Edit</a>{% endif %}
       {% if perms.netbox_certificates.delete_artifactgroup %}<a class="btn btn-sm btn-outline-danger" href="{% url 'plugins:netbox_certificates:artifactgroup_delete' pk=node.id %}">Delete</a>{% endif %}
     </span>

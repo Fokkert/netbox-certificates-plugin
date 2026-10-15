@@ -1,3 +1,4 @@
+from .table_fields import complete_columns
 from .labels import AcronymTableMixin
 import django_tables2 as tables
 from django.contrib.contenttypes.models import ContentType
@@ -221,6 +222,7 @@ class ArtifactGroupTable(ArtifactRelationshipTable):
         members.extend(("Certificate", obj) for obj in record.certificates.all().order_by("name"))
         members.extend(("Private Key", obj) for obj in record.private_keys.all().order_by("name"))
         members.extend(("CSR", obj) for obj in record.csrs.all().order_by("name"))
+        members.extend(("Service", obj) for obj in record.services.all().order_by("name"))
         members = [(kind, obj) for kind, obj in members if self._can_view(obj)]
         if not members:
             return "—"
@@ -234,3 +236,7 @@ class ArtifactGroupTable(ArtifactRelationshipTable):
         model = ArtifactGroup
         fields = ("pk", "name", "parent", "members", "owner", "description", "actions")
         default_columns = ("pk", "name", "parent", "members")
+
+
+for _table in (CertificateTable, CertificateAuthorityTable, PrivateKeyTable, CSRTable, BundleTable, ArtifactGroupTable):
+    complete_columns(_table)
