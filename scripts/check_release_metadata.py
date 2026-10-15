@@ -15,6 +15,8 @@ pyproject = read("pyproject.toml")
 plugin_yaml = read("netbox-plugin.yaml")
 config = read("netbox_certificates/__init__.py")
 
+if "| Release | 1.8.0 |" not in read("README.md"):
+    errors.append("README release table does not declare version 1.8.0")
 if 'version = "1.8.0"' not in pyproject:
     errors.append("pyproject.toml does not declare version 1.8.0")
 if "version: 1.8.0" not in plugin_yaml:
