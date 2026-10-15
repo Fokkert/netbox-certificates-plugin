@@ -2,7 +2,7 @@ from drf_spectacular.utils import extend_schema
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -26,7 +26,7 @@ class MetadataImportSerializer(serializers.Serializer):
 
 
 class BackupExportAPIView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(request=BackupExportSerializer, responses=OpenApiTypes.BINARY)
     def post(self, request):
@@ -41,7 +41,7 @@ class BackupExportAPIView(APIView):
 
 
 class BackupRestoreAPIView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(request=BackupRestoreSerializer, responses=OpenApiTypes.OBJECT)
     def post(self, request):
@@ -56,7 +56,7 @@ class BackupRestoreAPIView(APIView):
 
 
 class MetadataImportAPIView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(request=MetadataImportSerializer, responses=OpenApiTypes.OBJECT)
     def post(self, request):

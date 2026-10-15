@@ -9,7 +9,7 @@ from django.db import DatabaseError, transaction
 from ..constants import MAX_UPLOAD_BYTES, MAX_ARCHIVE_FILES, MAX_ARCHIVE_UNCOMPRESSED_BYTES
 from ..models import ArtifactGroup
 from ..models_v1 import Service
-from .backup import BackupError, plugin_models, require_backup_user, resolve
+from .backup import BackupError, plugin_models, require_backup_user, resolve, validate_reference
 
 
 def read_metadata(data):
@@ -28,8 +28,14 @@ def read_metadata(data):
                 if isinstance(row, dict) and row.get("type") in {"netbox_certificates.artifactgroup", "netbox_certificates.service"}]
         if not rows:
             raise BackupError("No exported Groups or Services were found. Use Restore for full backups.")
+        for row in rows:
+            if not isinstance(row.get("attributes"), dict) or not isinstance(row.get("relationships", {}), dict) or type(row.get("id")) is not int:
+                raise BackupError("Invalid metadata object record.")
+            for refs in row.get("relationships", {}).values():
+                for ref in refs if isinstance(refs, list) else [refs]:
+                    validate_reference(ref)
         return rows
-    except (ValueError, UnicodeError, zipfile.BadZipFile, RuntimeError) as exc:
+    except (ValueError, UnicodeError, zipfile.BadZipFile, RuntimeError, NotImplementedError, RecursionError) as exc:
         if isinstance(exc, BackupError):
             raise
         raise BackupError("Invalid metadata export.") from exc
@@ -80,6 +86,7 @@ def _merge(rows):
         if ref["model"] in registry:
             match = ref.get("match", {})
             allowed = {"name", "fingerprint_sha256", "public_key_fingerprint", "identity_fingerprint"}
+            allowed &= {field.name for field in registry[ref["model"]]._meta.concrete_fields}
             if match and set(match) <= allowed:
                 matches = list(registry[ref["model"]].objects.filter(**match)[:2])
                 if len(matches) == 1:

@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from django.apps import apps
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import FieldError, PermissionDenied, ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import DatabaseError, connection, models, transaction
 
@@ -90,7 +90,7 @@ def unpack(data, password=""):
         if document.get("plugin_version") != __version__:
             raise BackupError("Install the backup's plugin version before restoring, then upgrade normally.")
         return document
-    except (InvalidTag, ValueError, TypeError, KeyError, UnicodeError, zipfile.BadZipFile, RuntimeError, EOFError) as exc:
+    except (InvalidTag, ValueError, TypeError, KeyError, UnicodeError, zipfile.BadZipFile, RuntimeError, EOFError, NotImplementedError, RecursionError) as exc:
         if isinstance(exc, BackupError):
             raise
         raise BackupError("Invalid backup or incorrect password. Existing data was not changed.") from exc
@@ -116,6 +116,7 @@ def reference(obj):
 def resolve(ref, mapping, warnings):
     if not ref:
         return None
+    validate_reference(ref)
     label = ref["model"]
     if label.startswith("netbox_certificates."):
         obj = mapping.get((label, ref.get("id")))
@@ -129,11 +130,41 @@ def resolve(ref, mapping, warnings):
             else:
                 matches = list(model._default_manager.filter(**match)[:2])
                 obj = matches[0] if len(matches) == 1 else None
-        except LookupError:
+        except (LookupError, FieldError):
             obj = None
     if obj is None:
         warnings.add(f"Missing or ambiguous {label} reference was skipped.")
     return obj
+
+
+def validate_reference(ref):
+    if ref is None:
+        return
+    if not isinstance(ref, dict) or not isinstance(ref.get("model"), str) or ref["model"].count(".") != 1:
+        raise BackupError("Invalid object reference.")
+    if "id" in ref and (type(ref["id"]) is not int or ref["id"] < 1):
+        raise BackupError("Invalid referenced object identifier.")
+    match = ref.get("match", {})
+    if not isinstance(match, dict) or any(not isinstance(key, str) or not isinstance(value, (str, int)) for key, value in match.items()):
+        raise BackupError("Invalid portable object identity.")
+
+
+def _validate_row(row, model):
+    for name in ("fields", "relations", "generic", "many"):
+        if not isinstance(row.get(name), dict):
+            raise BackupError("Invalid object record in backup.")
+    generic = {field.name for field in model._meta.private_fields if isinstance(field, GenericForeignKey)}
+    relations = {field.name for field in model._meta.concrete_fields if field.is_relation}
+    many = {field.name for field in model._meta.many_to_many}
+    if not set(row["generic"]) <= generic or not set(row["relations"]) <= relations or not set(row["many"]) <= many:
+        raise BackupError("Unknown relationship field in backup.")
+    for ref in [*row["relations"].values(), *row["generic"].values()]:
+        validate_reference(ref)
+    for refs in row["many"].values():
+        if not isinstance(refs, list):
+            raise BackupError("Invalid membership list in backup.")
+        for ref in refs:
+            validate_reference(ref)
 
 
 def _record(obj):
@@ -212,6 +243,7 @@ def restore_backup(data, user, confirmation, password=""):
     try:
         for row in document["objects"]:
             model = registry[row["model"]]
+            _validate_row(row, model)
             key = (row["model"], row["id"])
             if not isinstance(row["id"], int) or row["id"] < 1 or key in seen:
                 raise BackupError("Duplicate or invalid object identifier in backup.")
@@ -232,6 +264,7 @@ def _replace(prepared, registry):
     from ..models_v1 import AlertSettings, HealthFinding
     from .health_v1 import _stable_fingerprint
     warnings, mapping = set(), {}
+    source_keys = {(row["model"], row["id"]) for row, obj in prepared}
     if connection.vendor == "postgresql":
         # Block plugin writers for the complete replacement transaction.
         tables = sorted({model._meta.db_table for model in apps.get_app_config("netbox_certificates").get_models(include_auto_created=True)})
@@ -250,7 +283,7 @@ def _replace(prepared, registry):
             for name, ref in {**refs, **row["generic"]}.items():
                 if ref and ref["model"] in registry and (ref["model"], ref["id"]) not in mapping:
                     field = generic.get(name) or obj._meta.get_field(name)
-                    if isinstance(field, GenericForeignKey) or not field.null:
+                    if not isinstance(field, GenericForeignKey) and not field.null:
                         unresolved = True
             if unresolved:
                 continue
@@ -263,8 +296,14 @@ def _replace(prepared, registry):
                     missing = True
                 setattr(obj, field.name, value)
             for name, ref in row["generic"].items():
-                value = resolve(ref, mapping, warnings)
                 field = generic[name]
+                if ref and (ref["model"], ref.get("id")) in source_keys and (ref["model"], ref.get("id")) not in mapping:
+                    # Generic IDs are not database FKs. Defer resolution until
+                    # all rows exist, including mutually linked ObjectLinks.
+                    setattr(obj, field.ct_field, ContentType.objects.get_for_model(registry[ref["model"]]))
+                    setattr(obj, field.fk_field, ref["id"])
+                    continue
+                value = resolve(ref, mapping, warnings)
                 if value is None and not obj._meta.get_field(field.ct_field).null:
                     missing = True
                 setattr(obj, name, value)
@@ -275,8 +314,6 @@ def _replace(prepared, registry):
                 continue
             if isinstance(obj, AlertSettings):
                 obj.pk = 1
-            if isinstance(obj, HealthFinding):
-                obj.fingerprint = _stable_fingerprint(obj.code, obj.affected_object, obj.related_object)
             # Raw saves preserve audit dates and do not run ingest/notification signals.
             obj.save_base(raw=True, force_insert=True)
             mapping[(row["model"], row["id"])] = obj
@@ -288,6 +325,10 @@ def _replace(prepared, registry):
             continue
         for name, ref in row["relations"].items():
             setattr(obj, name, resolve(ref, mapping, warnings))
+        for name, ref in row["generic"].items():
+            setattr(obj, name, resolve(ref, mapping, warnings))
+        if isinstance(obj, HealthFinding):
+            obj.fingerprint = _stable_fingerprint(obj.code, obj.affected_object, obj.related_object)
         obj.save_base(raw=True, force_update=True)
     for row, original in prepared:
         obj = mapping.get((row["model"], row["id"]))
@@ -301,4 +342,5 @@ def _replace(prepared, registry):
             getattr(obj, name).set(values)
         # Check field constraints, service ports, group types/cycles, and links.
         obj.full_clean()
+        obj.save_base(raw=True, force_update=True)
     return {"restored": len(mapping), "warnings": sorted(warnings)}

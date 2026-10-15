@@ -1,5 +1,9 @@
 # Exports
 
+## Portable backups and Groups/Services imports
+
+Version 1.5.0 adds **Backup and Restore** under Operations. Groups/Services JSON exports can be merged back, resolving available members by portable identity and skipping missing references. Full plugin snapshots include all plugin objects, material, relationships, settings, credentials, and history, with optional password protection. Full restore replaces existing plugin data and requires explicit confirmation. Both operations have superuser-only API endpoints. See [Backup and Restore](BACKUPS.md) for limits and examples.
+
 ## Native metadata export
 
 List pages use NetBox's native export mechanism for table and metadata exports.

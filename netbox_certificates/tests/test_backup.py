@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import serialization
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -14,19 +15,20 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 from netbox_certificates.api.backup import BackupRestoreAPIView
 from netbox_certificates.export_v1 import serialize_object
 from netbox_certificates.models import ArtifactGroup, Certificate, PrivateKey, Bundle
-from netbox_certificates.models_v1 import Service, AlertChannel, AlertRule, AlertSettings
+from netbox_certificates.models_v1 import Service, AlertChannel, AlertRule, AlertSettings, AlertEvent, HealthFinding, ObjectLink
+from netbox_certificates.services.health_v1 import _finding, _stable_fingerprint
 from netbox_certificates.services.backup import BackupError, CONFIRMATION, create_backup, restore_backup, pack, unpack
 from netbox_certificates.services.encryption import decrypt_private_key
 from netbox_certificates.services.metadata_import import import_metadata
 from netbox_certificates.services.secret_v1 import encrypt_text, decrypt_text
 from netbox_certificates.services.unified_import import import_objects, UploadItem
-from .test_revision_140 import Revision140Tests
+from . import test_revision_140
 
 
 class BackupTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        Revision140Tests.setUpTestData.__func__(cls)
+        test_revision_140.Revision140Tests.setUpTestData.__func__(cls)
 
     def populate(self):
         pem = self.cert.public_bytes(serialization.Encoding.PEM)
@@ -73,6 +75,38 @@ class BackupTests(TestCase):
                 restore_backup(payload, self.user, confirmation, password)
             self.assertEqual(Certificate.objects.count(), 1)
 
+    def test_health_history_and_missing_external_tag(self):
+        from extras.models import Tag
+        cert = self.populate()
+        tag = Tag.objects.create(name="Source-only tag", slug="source-only-tag")
+        cert.tags.add(tag)
+        finding = _finding("BACKUP_TEST", "service", "warning", Service.objects.get(), "Test finding", related=cert)
+        AlertEvent.objects.create(finding=finding, rule=AlertRule.objects.get(), channel=AlertChannel.objects.get(), status="delivered")
+        data = create_backup(self.user)
+        tag.delete()
+        result = restore_backup(data, self.user, CONFIRMATION)
+        self.assertTrue(result["warnings"])
+        finding = HealthFinding.objects.get()
+        self.assertEqual(finding.affected_object, Service.objects.get())
+        self.assertEqual(finding.related_object, Certificate.objects.get())
+        self.assertEqual(finding.fingerprint, _stable_fingerprint("BACKUP_TEST", Service.objects.get(), Certificate.objects.get()))
+        self.assertEqual(AlertEvent.objects.get().finding, finding)
+        self.assertFalse(Certificate.objects.get().tags.exists())
+
+    def test_mutually_linked_generic_objects(self):
+        self.populate()
+        service = Service.objects.get()
+        cert = Certificate.objects.get()
+        a = ObjectLink.objects.create(source=service, target=cert, relationship="related")
+        b = ObjectLink.objects.create(source=cert, target=a, relationship="related")
+        a.target = b
+        a.save()
+        restore_backup(create_backup(self.user), self.user, CONFIRMATION)
+        ct = ContentType.objects.get_for_model(ObjectLink)
+        links = list(ObjectLink.objects.filter(target_type=ct))
+        self.assertEqual(len(links), 2)
+        self.assertEqual({link.target_object_id for link in links}, {link.pk for link in links})
+
     def test_invalid_object_rolls_back_deletions(self):
         self.populate()
         document = unpack(create_backup(self.user))
@@ -112,3 +146,9 @@ class BackupTests(TestCase):
         force_authenticate(request, user=self.user, token=SimpleNamespace(write_enabled=True))
         response = BackupRestoreAPIView.as_view()(request)
         self.assertEqual(response.status_code, 400)
+        request = APIRequestFactory().post("/backup/restore/", {"upload": SimpleUploadedFile("backup.zip", create_backup(self.user)), "confirmation": CONFIRMATION}, format="multipart")
+        force_authenticate(request, user=self.user, token=SimpleNamespace(write_enabled=True))
+        self.assertEqual(BackupRestoreAPIView.as_view()(request).status_code, 200)
+        request = APIRequestFactory().post("/backup/restore/", {}, format="json")
+        force_authenticate(request, user=self.user, token=SimpleNamespace(write_enabled=False))
+        self.assertEqual(BackupRestoreAPIView.as_view()(request).status_code, 403)

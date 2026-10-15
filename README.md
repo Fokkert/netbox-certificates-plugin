@@ -17,7 +17,7 @@ OpenAI does not maintain, sponsor, or endorse this project. This disclosure does
 | NetBox | 4.5.9, 4.5.10 |
 | Python | 3.12+ |
 | `cryptography` | 42+ |
-| Release | 1.4.0 |
+| Release | 1.5.0 |
 | Upgrade source | 1.3.5 (older migrations retained) |
 
 ## Features
@@ -185,7 +185,7 @@ See [docs/API.md](docs/API.md).
 Add the package to `/opt/netbox/local_requirements.txt`:
 
 ```text
-netbox-certificates-plugin==1.4.0
+netbox-certificates-plugin==1.5.0
 ```
 
 Enable the plugin:
@@ -261,6 +261,15 @@ See [SECURITY.md](SECURITY.md).
 ## License
 
 Apache-2.0. See `LICENSE` and `NOTICE`.
+
+## Release 1.5.0
+
+- Group tree members have distinct icons and type badges for easier scanning.
+- Groups and Services exports can be merged back through **Backup and Restore**. Matching names update existing objects; missing relationships are skipped with warnings. New exports identify related objects by name or cryptographic fingerprint instead of assuming database IDs match.
+- Full backups include all plugin model rows, material, relationships, preferences, alert credentials, and history. Optional password protection uses scrypt and AES-GCM. On restore, secrets are encrypted with the destination plugin key. Restore requires a superuser, an explicit replacement confirmation, and the same plugin version on a compatible NetBox.
+- Full restore erases existing plugin inventory. Validation failures roll back the replacement. Other NetBox inventory, users, permission definitions, tags, and custom-field definitions are not restored or erased; missing external references are skipped. Backups are limited to 64 MiB compressed and 128 MiB expanded.
+- UI and REST support full backup export/restore and Groups/Services merge import. See [Backup and Restore](docs/BACKUPS.md) for formats, limits, and API examples.
+- No new database schema migration is introduced in 1.5.0. Always run `migrate` during upgrades to apply any earlier outstanding migrations.
 
 ## Release 1.4.0
 

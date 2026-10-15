@@ -41,7 +41,10 @@ def read_upload(upload):
 
 
 def backup_response(data, password):
-    return _secure_file_response(io.BytesIO(data), "netbox-certificates-backup." + ("nbcbak" if password else "zip"))
+    response = _secure_file_response(io.BytesIO(data), "netbox-certificates-backup." + ("nbcbak" if password else "zip"))
+    if password:
+        response["Content-Type"] = "application/octet-stream"
+    return response
 
 
 class BackupView(LoginRequiredMixin, View):
@@ -54,7 +57,7 @@ class BackupView(LoginRequiredMixin, View):
         return self.render(request)
 
     def render(self, request, action=None, form=None):
-        forms_by_action = {"export": BackupExportForm(), "restore": BackupRestoreForm(), "metadata": MetadataImportForm()}
+        forms_by_action = {"export": BackupExportForm(prefix="export"), "restore": BackupRestoreForm(prefix="restore"), "metadata": MetadataImportForm(prefix="metadata")}
         if action in forms_by_action:
             forms_by_action[action] = form
         return render(request, "netbox_certificates/backup.html", {"forms": forms_by_action})
@@ -64,7 +67,7 @@ class BackupView(LoginRequiredMixin, View):
         cls = {"export": BackupExportForm, "restore": BackupRestoreForm, "metadata": MetadataImportForm}.get(action)
         if cls is None:
             return self.render(request)
-        form = cls(request.POST, request.FILES)
+        form = cls(request.POST, request.FILES, prefix=action)
         if form.is_valid():
             values = form.cleaned_data
             try:
@@ -77,7 +80,9 @@ class BackupView(LoginRequiredMixin, View):
                 for warning in result["warnings"]:
                     messages.warning(request, warning)
                 return redirect("plugins:netbox_certificates:backup")
-            except (BackupError, ValueError):
+            except BackupError as exc:
+                form.add_error(None, str(exc))
+            except ValueError:
                 # Do not expose secret values from parsing/database exceptions.
                 form.add_error(None, "Operation failed: invalid file, password, configuration, or object values. No partial changes were saved. Check that source and destination use the same plugin version.")
         return self.render(request, action, form)

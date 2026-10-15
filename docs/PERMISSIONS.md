@@ -1,5 +1,9 @@
 # Permissions
 
+## Backup and Restore (1.5.0)
+
+Full backup, replacement restore, and Groups/Services metadata merge require an active superuser. API calls also require a write-enabled NetBox API token. There is no assignable permission that grants partial access to a complete secret-bearing backup. Existing per-object import/export APIs retain their existing scoped permissions. Restore additionally requires the exact confirmation `REPLACE ALL PLUGIN DATA`. No new permission model or migration is introduced. See [Backup and Restore](BACKUPS.md).
+
 The plugin uses NetBox ObjectPermissions and standard model permissions.
 
 ## Standard actions

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.0
+
+- Add distinct member icons/type badges to the group tree.
+- Add Groups/Services metadata merge import with portable references and missing-member warnings.
+- Add full plugin backup and atomic replacement restore, including optional password encryption and destination-key re-encryption.
+- Expose backup export, restore, and metadata import through superuser-only UI/API operations with explicit destructive confirmation.
+- Add backup round-trip, tamper/password failure, rollback, metadata merge, and permission regression coverage.
+- No new schema migration; retain every prior migration.
+
 ## 1.4.0
 
 - Expose optional model fields and permission-filtered relationship columns throughout inventory tables, while excluding secret storage.
