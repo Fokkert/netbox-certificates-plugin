@@ -62,7 +62,7 @@ def _safe_value(obj, field, user=None):
 
 
 def serialize_object(obj, user=None):
-    from .services.backup import reference
+    from .services.backup import reference, custom_references
     values = {}
     sensitive_names = {"smtp_password_encrypted", "webhook_url_encrypted", "webhook_headers_encrypted", "encrypted_material", "material", "policy"}
     for field in obj._meta.get_fields():
@@ -105,6 +105,7 @@ def serialize_object(obj, user=None):
         "display": str(obj),
         "attributes": values,
         "relationships": relationships,
+        "custom_references": custom_references(obj, user),
     }
 
 

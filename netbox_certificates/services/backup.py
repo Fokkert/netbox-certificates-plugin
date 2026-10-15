@@ -188,7 +188,42 @@ def _record(obj):
         row["generic"][field.name] = reference(getattr(obj, field.name))
     for field in obj._meta.many_to_many:
         row["many"][field.name] = [reference(value) for value in getattr(obj, field.name).all()]
+    row["custom_references"] = custom_references(obj)
     return row
+
+
+def custom_references(obj, user=None):
+    from ..permissions import object_allowed
+    result = {}
+    for field in getattr(obj, "custom_fields", []):
+        if field.type not in ("object", "multiobject"):
+            continue
+        value = field.deserialize(obj.custom_field_data.get(field.name))
+        if field.type == "multiobject":
+            result[field.name] = [reference(item) for item in value or [] if user is None or object_allowed(user, item)]
+        else:
+            result[field.name] = reference(value) if value is not None and (user is None or object_allowed(user, value)) else None
+    return result
+
+
+def restore_custom_references(obj, refs, resolver, warnings):
+    if not isinstance(refs, dict):
+        raise BackupError("Invalid custom-field references.")
+    fields = {field.name: field for field in getattr(obj, "custom_fields", [])}
+    for name in set(getattr(obj, "custom_field_data", {})) - set(fields):
+        warnings.add(f"Custom field {name} is not defined on the destination; its value was omitted.")
+    for name, field in fields.items():
+        if field.type not in ("object", "multiobject"):
+            continue
+        value = refs.get(name)
+        references = value if isinstance(value, list) else [value]
+        objects = []
+        for ref in references:
+            validate_reference(ref)
+            target = resolver(ref)
+            if target is not None and isinstance(target, field.related_object_type.model_class()):
+                objects.append(target)
+        obj.custom_field_data[name] = field.serialize(objects if field.type == "multiobject" else (objects[0] if objects else None))
 
 
 @transaction.atomic
@@ -230,7 +265,7 @@ def _validate_crypto(obj):
             raise BackupError("Invalid cryptographic material in backup.")
         # Derive cryptographic metadata from the material, never trust JSON values.
         for name, value in parsed[0].metadata.items():
-            if hasattr(obj, name):
+            if name != "encrypted_on_import" and hasattr(obj, name):
                 setattr(obj, name, value)
 
 
@@ -260,16 +295,16 @@ def restore_backup(data, user, confirmation, password=""):
 
 @transaction.atomic
 def _replace(prepared, registry):
-    from ..models import ArtifactGroup
     from ..models_v1 import AlertSettings, HealthFinding
     from .health_v1 import _stable_fingerprint
     warnings, mapping = set(), {}
-    source_keys = {(row["model"], row["id"]) for row, obj in prepared}
     if connection.vendor == "postgresql":
         # Block plugin writers for the complete replacement transaction.
         tables = sorted({model._meta.db_table for model in apps.get_app_config("netbox_certificates").get_models(include_auto_created=True)})
         with connection.cursor() as cursor:
             cursor.execute("LOCK TABLE " + ", ".join(connection.ops.quote_name(table) for table in tables) + " IN ACCESS EXCLUSIVE MODE")
+    prepared = _restorable_rows(prepared, registry, warnings)
+    source_keys = {(row["model"], row["id"]) for row, obj in prepared}
     for model in reversed(list(registry.values())):
         model.objects.all().delete()
     pending = list(prepared)
@@ -341,6 +376,40 @@ def _replace(prepared, registry):
             values = [value for ref in refs if (value := resolve(ref, mapping, warnings)) is not None]
             getattr(obj, name).set(values)
         # Check field constraints, service ports, group types/cycles, and links.
+        restore_custom_references(obj, row.get("custom_references", {}), lambda ref: resolve(ref, mapping, warnings), warnings)
         obj.full_clean()
         obj.save_base(raw=True, force_update=True)
     return {"restored": len(mapping), "warnings": sorted(warnings)}
+
+
+def _restorable_rows(prepared, registry, warnings):
+    """Omit rows requiring absent objects, including dependencies of omitted rows."""
+    remaining = list(prepared)
+    external = {}
+    while True:
+        available = {(row["model"], row["id"]) for row, obj in remaining}
+        kept = []
+        for row, obj in remaining:
+            generic = [field for field in obj._meta.private_fields if isinstance(field, GenericForeignKey)]
+            ct_names = {field.ct_field for field in generic}
+            required = [row["relations"].get(field.name) for field in obj._meta.concrete_fields
+                        if field.is_relation and not field.null and field.name not in ct_names]
+            required += [row["generic"].get(field.name) for field in generic if not obj._meta.get_field(field.ct_field).null]
+            missing = False
+            for ref in required:
+                if ref is None:
+                    missing = True
+                elif ref["model"] in registry:
+                    missing |= (ref["model"], ref.get("id")) not in available
+                else:
+                    key = json.dumps(ref, sort_keys=True)
+                    if key not in external:
+                        external[key] = resolve(ref, {}, warnings)
+                    missing |= external[key] is None
+            if missing:
+                warnings.add(f"Skipped {row['model']} with a missing required reference.")
+            else:
+                kept.append((row, obj))
+        if len(kept) == len(remaining):
+            return kept
+        remaining = kept

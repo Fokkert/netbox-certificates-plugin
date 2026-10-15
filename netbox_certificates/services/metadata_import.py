@@ -9,7 +9,7 @@ from django.db import DatabaseError, transaction
 from ..constants import MAX_UPLOAD_BYTES, MAX_ARCHIVE_FILES, MAX_ARCHIVE_UNCOMPRESSED_BYTES
 from ..models import ArtifactGroup
 from ..models_v1 import Service
-from .backup import BackupError, plugin_models, require_backup_user, resolve, validate_reference
+from .backup import BackupError, plugin_models, require_backup_user, resolve, validate_reference, restore_custom_references
 
 
 def read_metadata(data):
@@ -69,7 +69,6 @@ def _merge(rows):
             # Existing exports can legitimately contain legacy mixed groups.
             obj.save_base(raw=True, force_insert=True)
         else:
-            obj.full_clean()
             obj.save()
         key = (row["type"], row["id"])
         if key in mapping:
@@ -108,6 +107,7 @@ def _merge(rows):
                 getattr(obj, name).set(values)
             else:
                 setattr(obj, name, target(refs))
+        restore_custom_references(obj, row.get("custom_references", {}), target, warnings)
         obj.full_clean()
         obj.save()
     return {"imported": len(entries), "warnings": sorted(warnings)}

@@ -6,7 +6,7 @@ After reviewing the changes, commit them on `main` and run the existing publishi
 
 ```bash
 git add .github netbox_certificates tests scripts docs README.md UPGRADE.md VALIDATION.md CHANGELOG.md pyproject.toml netbox-plugin.yaml
-git commit -m "Release 1.5.0: typed groups, inventory columns, readable names, and alert repeat days"
+git commit -m "Release 1.5.0: portable backups, metadata imports, and group type icons"
 python scripts/release.py --publish
 ```
 

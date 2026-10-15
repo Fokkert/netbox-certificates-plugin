@@ -51,6 +51,7 @@ class BackupTests(TestCase):
 
     def test_full_round_trip_with_new_encryption_key_and_ids(self):
         old_cert = self.populate()
+        PrivateKey.objects.update(encrypted_on_import=True)
         data = create_backup(self.user, "backup-password")
         self.assertNotIn(b"smtp-secret", data)
         with override_settings(PLUGINS_CONFIG={"netbox_certificates": {"encryption_key": Fernet.generate_key().decode()}}):
@@ -65,6 +66,7 @@ class BackupTests(TestCase):
             self.assertEqual(Service.objects.get().bundles.get(), Bundle.objects.get())
             self.assertEqual(decrypt_text(AlertChannel.objects.get().smtp_password_encrypted), "smtp-secret")
             self.assertIn(b"PRIVATE KEY", decrypt_private_key(PrivateKey.objects.get().encrypted_material))
+            self.assertTrue(PrivateKey.objects.get().encrypted_on_import)
             self.assertEqual(AlertSettings.objects.get().rule.repeat_minutes, 10080)
 
     def test_wrong_password_confirmation_and_corruption_preserve_data(self):
@@ -76,8 +78,12 @@ class BackupTests(TestCase):
             self.assertEqual(Certificate.objects.count(), 1)
 
     def test_health_history_and_missing_external_tag(self):
-        from extras.models import Tag
+        from extras.models import Tag, CustomField
         cert = self.populate()
+        field = CustomField.objects.create(name="endpoint", type="object", related_object_type=ContentType.objects.get_for_model(Service))
+        field.object_types.add(ContentType.objects.get_for_model(Certificate))
+        cert.custom_field_data["endpoint"] = Service.objects.get().pk
+        cert.save()
         tag = Tag.objects.create(name="Source-only tag", slug="source-only-tag")
         cert.tags.add(tag)
         finding = _finding("BACKUP_TEST", "service", "warning", Service.objects.get(), "Test finding", related=cert)
@@ -92,6 +98,7 @@ class BackupTests(TestCase):
         self.assertEqual(finding.fingerprint, _stable_fingerprint("BACKUP_TEST", Service.objects.get(), Certificate.objects.get()))
         self.assertEqual(AlertEvent.objects.get().finding, finding)
         self.assertFalse(Certificate.objects.get().tags.exists())
+        self.assertEqual(Certificate.objects.get().custom_field_data["endpoint"], Service.objects.get().pk)
 
     def test_mutually_linked_generic_objects(self):
         self.populate()
