@@ -26,7 +26,7 @@ class DashboardRevisionTests(TestCase):
         AlertSettings.objects.update_or_create(pk=1, defaults={"service_checks_enabled": True})
         self.assertNotContains(self.client.get(reverse("plugins:netbox_certificates:preferences")), 'name="service_checks_enabled"')
         response = self.client.get(reverse("plugins:netbox_certificates:alert_settings"))
-        self.assertContains(response, 'name="service_checks_enabled"', count=1)
+        self.assertContains(response, 'type="checkbox" name="service_checks_enabled"', count=1)
         self.assertNotContains(response, "Weak or reused keys")
         self.assertEqual(self.patch(PreferencesAPIView, {"vault_show_evidence": False}).status_code, 200)
         self.assertTrue(AlertSettings.objects.get().service_checks_enabled)
