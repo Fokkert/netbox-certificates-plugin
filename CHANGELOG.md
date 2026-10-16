@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.2
+
+- Remove Owner, Groups, Description, and Comments from the Import Objects form. Import API options and object editors remain unchanged.
+- No new database migration.
+
 ## 1.9.1
 
 - Align custom form headings with NetBox's native field groups, using its heading size, input-column offset, and spacing throughout settings, CSR generation, Services, Groups, and exports.

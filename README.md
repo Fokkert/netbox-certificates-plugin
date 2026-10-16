@@ -4,12 +4,12 @@ Store certificates, encrypted private keys, CSRs, and bundles in NetBox. Organiz
 
 | Component | Supported |
 | --- | --- |
-| Release | 1.9.1 |
+| Release | 1.9.2 |
 | NetBox | 4.5.9 and 4.5.10 |
 | Python | 3.12+ |
 | cryptography | 42+ |
 
-The GitHub Releases page retains only the current release, **v1.9.1**. Older Git tags and the changelog remain as development history; previously published PyPI versions are unaffected. Install the version pinned below.
+The current release is **v1.9.2**. Older Git tags and the changelog remain as development history; previously published PyPI versions are unaffected. Install the version pinned below.
 
 ## Features
 
@@ -113,7 +113,7 @@ Global settings use `alert-settings/` and `preferences/`. **`service_checks_enab
 
 ## Installation
 
-For a new installation, add `netbox-certificates-plugin==1.9.1` to `/opt/netbox/local_requirements.txt`, enable the plugin in NetBox configuration, and provide a persistent Fernet key:
+For a new installation, add `netbox-certificates-plugin==1.9.2` to `/opt/netbox/local_requirements.txt`, enable the plugin in NetBox configuration, and provide a persistent Fernet key:
 
 ```python
 PLUGINS = ["netbox_certificates"]  # Include your other plugins too.
@@ -131,7 +131,7 @@ Generate a key only for a new installation:
 Install using pip, then migrate and collect assets:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install 'netbox-certificates-plugin==1.9.1'
+sudo /opt/netbox/venv/bin/python -m pip install 'netbox-certificates-plugin==1.9.2'
 cd /opt/netbox/netbox
 sudo /opt/netbox/venv/bin/python manage.py migrate
 sudo /opt/netbox/venv/bin/python manage.py collectstatic --no-input

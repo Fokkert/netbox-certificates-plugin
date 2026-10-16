@@ -8,6 +8,8 @@ Supported content: PEM, DER, PKCS#7/CMS, PKCS#12/PFX, ZIP, TAR and compressed TA
 
 The complete batch is parsed and checked before writes. Invalid members, tampered CSR signatures, invalid model data, and unauthorized changes reject the batch without partial imports. CA-only import additionally requires every parsed object to be a certificate with Basic Constraints `CA=true`.
 
+The Import Objects form omits Owner, Groups, Description, and Comments as of 1.9.2. Set these through the object editors after import; API import metadata options remain available.
+
 ## Identity and relationships
 
 Certificates and CSRs are deduplicated by fingerprint; private keys by public-key fingerprint. Existing visible objects are reused without replacing their names or metadata. Requested Group additions to an existing object require change permission. Matching objects hidden by permissions cause rejection rather than exposing them.

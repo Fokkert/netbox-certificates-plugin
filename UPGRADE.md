@@ -1,4 +1,4 @@
-# Upgrade to 1.9.1
+# Upgrade to 1.9.2
 
 Upgrade an earlier plugin version in place; all earlier migrations remain available. Supported NetBox versions remain 4.5.9 and 4.5.10 with Python 3.12+. Run the following on the Linux VM. These commands assume `/opt/netbox`, PostgreSQL database `netbox`, and systemd units `netbox` and `netbox-rq`. Adapt paths/service names if your installation differs. Container deployments should install the pinned package when rebuilding their image.
 
@@ -9,24 +9,24 @@ Keep the existing plugin Fernet encryption key unchanged. Back up the database, 
 ```bash
 sudo systemctl stop netbox netbox-rq
 umask 077
-sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.9.1.dump"
-sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.9.1
+sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.9.2.dump"
+sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.9.2
 ```
 
 Use your normal backup command if PostgreSQL is remote. Confirm the backup succeeded before continuing.
 
 ## Install with pip
 
-Version 1.9.1 is published on PyPI. No source copying, cloning, or uninstall is needed:
+After version 1.9.2 is published on PyPI, install it below. No source copying, cloning, or uninstall is needed:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.9.1'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.9.2'
 ```
 
 If the tag has been pushed but PyPI publication is pending, pip can instead install the tagged source archive:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.9.1.zip'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.9.2.zip'
 ```
 
 Update the persistent package pin automatically so NetBox's upgrade script keeps this version:
@@ -39,7 +39,7 @@ path = Path('/opt/netbox/local_requirements.txt')
 lines = path.read_text().splitlines() if path.exists() else []
 pattern = re.compile(r'^\s*netbox[-_]certificates[-_]plugin(?:\[.*?\])?(?:\s|[=<>!~@]|$)', re.I)
 lines = [line for line in lines if not pattern.match(line)]
-lines.append('netbox-certificates-plugin==1.9.1')
+lines.append('netbox-certificates-plugin==1.9.2')
 path.write_text('\n'.join(lines) + '\n')
 PY
 ```
@@ -60,7 +60,11 @@ sudo systemctl start netbox netbox-rq
 sudo systemctl status netbox netbox-rq --no-pager
 ```
 
-The installed version must be `1.9.1`. Hard-refresh your browser after static files are collected.
+The installed version must be `1.9.2`. Hard-refresh your browser after static files are collected.
+
+## Changes in 1.9.2
+
+Import Objects no longer shows Owner, Groups, Description, or Comments. Set organizational metadata on objects after import. This revision adds no database migrations; apply any outstanding migrations from earlier versions as usual.
 
 ## Changes in 1.9.1
 

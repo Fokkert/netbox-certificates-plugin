@@ -626,19 +626,12 @@ class UnifiedImportForm(AcronymFormMixin, forms.Form):
     archive_password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False), label="Archive Password")
     import_chain = forms.BooleanField(required=False, initial=True, label="Import certificate chain")
     preserve_archive = forms.BooleanField(required=False, initial=True, label="Preserve original Bundle archive", help_text="Retains single-bundle source archives, encrypted at rest. Mixed inventory archives are imported as individual objects and relationships.")
-    owner = forms.ModelChoiceField(queryset=Owner.objects.none(), required=False)
-    groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False, label="Groups")
-    description = forms.CharField(required=False, max_length=200)
-    comments = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 3}))
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         from .preferences import get_preferences
         defaults = get_preferences()
         self.fields["import_chain"].initial = defaults.import_chain_default
         self.fields["preserve_archive"].initial = defaults.preserve_archive_default
-        if user:
-            self.fields["owner"].queryset = Owner.objects.all() if user.is_superuser else Owner.objects.filter(users=user)
-            self.fields["groups"].queryset = self.fields["groups"].queryset.restrict(user, "view")
 
 
 class BundleExportForm(AcronymFormMixin, forms.Form):

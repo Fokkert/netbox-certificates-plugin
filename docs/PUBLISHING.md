@@ -1,6 +1,6 @@
 # Publishing releases
 
-Version **1.9.1** is already published on GitHub and PyPI. Do not retag it or try to upload that package version again. For deployment, follow [Upgrade](../UPGRADE.md).
+The current release version is **1.9.2**. Verify its GitHub Actions publication before installing; never retag or re-upload a published version. For deployment, follow [Upgrade](../UPGRADE.md).
 
 For a future release:
 
@@ -15,9 +15,9 @@ On Windows with this repository's virtual environment, use `.venv/Scripts/python
 ```bash
 gh run list --workflow release.yml
 gh run watch RUN_ID --exit-status
-gh release view v1.9.1
+gh release view v1.9.2
 ```
 
 Replace `RUN_ID` and, for a future release, the tag with the actual values. See [Releasing](RELEASING.md) for prerequisites and helper behavior.
 
-The GitHub Releases page currently retains only v1.9.1. Older release records/assets were removed at the maintainer's request; Git tags, commit history, migrations, and historical PyPI packages remain. The publishing workflow does not automatically delete previous releases.
+Older GitHub releases preceding v1.9.1 were removed. Older release records/assets were removed at the maintainer's request; Git tags, commit history, migrations, and historical PyPI packages remain. The publishing workflow does not automatically delete previous releases.
