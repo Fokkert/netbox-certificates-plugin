@@ -6,7 +6,7 @@
 <div class="nbcert-dashboard">
 {% include "netbox_certificates/inc/vault_inventory.html" %}
 {% if vault_preferences.vault_show_expiration %}
-<details class="card dashboard-expiration mb-4">
+<details class="card dashboard-expiration mb-4" open>
 <summary class="card-header"><span class="fw-semibold">Certificate expiration</span><span class="d-inline-flex flex-wrap gap-3 ms-3 small">{% for label,value in counts.items %}<span class="dashboard-stat dashboard-stat-{{ label }}">{{ label|title }} <strong>{{ value }}</strong></span>{% endfor %}</span></summary>
 <div><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Certificate</th><th>Expires</th><th>Days remaining</th><th>State</th></tr></thead><tbody>{% for cert,state in upcoming %}<tr><td><a href="{{ cert.get_absolute_url }}">{{ cert }}</a></td><td>{{ cert.valid_to }}</td><td>{{ state.days }}</td><td>{{ state.label }}</td></tr>{% empty %}<tr><td colspan="4">No expired or upcoming certificates.</td></tr>{% endfor %}</tbody></table></div><div class="card-footer">Showing up to {{ vault_preferences.vault_expiration_limit }} certificates, earliest expiration first. <a href="{% url 'plugins:netbox_certificates:certificate_list' %}">All certificates</a></div></div></details>
 {% endif %}
@@ -18,7 +18,7 @@
 </div>
 <div class="d-flex flex-wrap gap-2 mb-3">{% for severity,count in health_counts.items %}<span class="badge {% if severity == 'critical' or severity == 'high' %}text-bg-danger{% elif severity == 'warning' or severity == 'medium' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">{{ severity|title }}: {{ count }}</span>{% endfor %}</div>
 
-<details class="card mb-3"{% if request.GET or filter_errors %} open{% endif %}>
+<details class="card mb-3" open>
   <summary class="card-header">Filter findings</summary>
   <form method="get" class="card-body" action="{% url 'plugins:netbox_certificates:dashboard' %}" novalidate>
     {% if filter_errors %}<div class="alert alert-danger" role="alert">Correct the filters below or use Clear filters.

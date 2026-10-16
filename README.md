@@ -4,7 +4,7 @@ Store certificates, encrypted private keys, CSRs, and bundles in NetBox. Organiz
 
 | Component | Supported |
 | --- | --- |
-| Release | 1.8.0 |
+| Release | 1.8.1 |
 | NetBox | 4.5.9 and 4.5.10 |
 | Python | 3.12+ |
 | cryptography | 42+ |
@@ -24,8 +24,8 @@ Store certificates, encrypted private keys, CSRs, and bundles in NetBox. Organiz
 
 ```text
 OVERVIEW
-├── Preferences
-└── Dashboard
+├── Dashboard
+└── Preferences
 
 INVENTORY
 ├── Groups
@@ -36,8 +36,8 @@ INVENTORY
 └── CSRs
 
 OPERATIONS
-├── Import Objects
 ├── Generate CSR
+├── Import Objects
 └── Alerts Configuration
 ```
 
@@ -45,7 +45,7 @@ The standalone Backup and Restore page has been removed. Use the controls on the
 
 ## Dashboard
 
-Inventory tiles link to each object list. Certificate Authorities opens Certificates filtered to `IS CA = true`. Expand expiration to view certificates nearing expiry, or filter the health findings below it. Run health scans, export findings, and use permission-controlled bulk actions from the same page.
+Inventory tiles link to each object list. Certificate Authorities opens Certificates filtered to `IS CA = true`. Expiration, assignment details, and finding filters are expanded by default and can be collapsed when needed. Run health scans, export findings, and use permission-controlled bulk actions from the same page.
 
 Dashboard is at `/plugins/ssl-certificates/dashboard/`. Old Vault, Health, and Expiration Dashboard URLs redirect here with filters preserved. Preferences controls list limits and optional sections. The layout follows NetBox's light or dark theme.
 
@@ -60,7 +60,7 @@ To check the certificate actually presented by a Service:
 3. In **Preferences**, enable scheduled health scans and choose their frequency. Keep `netbox-rq` running. Use **Dashboard → Run health scan** for a manual check.
 4. For notifications, enable alerts, configure email or webhook delivery, and select **Missing or mismatched certificates on services**.
 
-Both check switches default off. With the global switch off, no endpoint connections occur, including during manual scans. Moving the switch from Preferences in 1.8.0 preserves its saved value.
+Both check switches default off. With the global switch off, no endpoint connections occur, including during manual scans. The move from Preferences in 1.8.0 preserves its saved value.
 
 The checker uses the primary URL host and explicit URL port, otherwise the Service hostname/port, with the configured protocol and SNI. It compares the presented leaf certificate's SHA-256 fingerprint against any linked certificate or bundle certificate. It supports HTTPS/TLS, LDAPS, SMTPS, IMAPS, POP3S, MQTTS, and PostgreSQL/MySQL TLS negotiation. No HTTP content, redirects, credentials, or additional URLs are requested. Private CA and expired certificates can be compared without CA trust validation. Connection failures are reported separately; an outage does not falsely resolve a previous mismatch.
 
@@ -106,7 +106,7 @@ Global settings use `alert-settings/` and `preferences/`. **`service_checks_enab
 
 ## Installation
 
-For a new installation, add `netbox-certificates-plugin==1.8.0` to `/opt/netbox/local_requirements.txt`, enable the plugin in NetBox configuration, and provide a persistent Fernet key:
+For a new installation, add `netbox-certificates-plugin==1.8.1` to `/opt/netbox/local_requirements.txt`, enable the plugin in NetBox configuration, and provide a persistent Fernet key:
 
 ```python
 PLUGINS = ["netbox_certificates"]  # Include your other plugins too.
@@ -124,7 +124,7 @@ Generate a key only for a new installation:
 Install using pip, then migrate and collect assets:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install 'netbox-certificates-plugin==1.8.0'
+sudo /opt/netbox/venv/bin/python -m pip install 'netbox-certificates-plugin==1.8.1'
 cd /opt/netbox/netbox
 sudo /opt/netbox/venv/bin/python manage.py migrate
 sudo /opt/netbox/venv/bin/python manage.py collectstatic --no-input
@@ -132,7 +132,7 @@ sudo /opt/netbox/venv/bin/python manage.py check
 sudo systemctl restart netbox netbox-rq
 ```
 
-For an existing installation, back up the database and configuration, keep the existing encryption key, and follow [UPGRADE.md](UPGRADE.md). **Migration 0030 is required in 1.8.0.** Do not generate or fake migrations on the VM.
+For an existing installation, back up the database and configuration, keep the existing encryption key, and follow [UPGRADE.md](UPGRADE.md). **Migration 0030 was introduced in 1.8.0 and remains required.** Do not generate or fake migrations on the VM.
 
 ## Security
 

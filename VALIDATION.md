@@ -1,4 +1,4 @@
-# Validation for 1.8.0
+# Validation for 1.8.1
 
 The release gate runs standalone checks, real NetBox 4.5.9/4.5.10 model/migration comparisons, PostgreSQL migration application and upgrade-data preservation, and the plugin integration suite.
 
@@ -21,3 +21,7 @@ Protocol tests use fake sockets for direct TLS, SNI, PostgreSQL and MySQL negoti
 ## 1.8.0 validation
 
 Integration coverage checks canonical Dashboard/legacy redirects, removal of the backup page, the moved setting's UI/API representation and persistence, rejection of its old Preferences API location, and migration 0030's behavior for mixed and security-only category selections. Existing import/export, permissions, protocol, and cryptographic tests remain in the release gate.
+
+## 1.8.1 regression coverage
+
+GET Import Objects, CA import, and Export Inventory through real NetBox views. Check that all Dashboard details render open by default, and reject template references to the retired backup route. Model/migration comparisons remain part of the release gate.

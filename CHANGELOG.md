@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.1
+
+- Remove stale links to the deleted Backup page from Import Objects and Export Inventory, fixing NoReverseMatch on GET.
+- Expand Dashboard expiration, assignment details, and filters by default.
+- Place Dashboard before Preferences, and Generate CSR before Import Objects.
+- Add real NetBox rendering regressions for both affected pages and a template check for retired route references. No new migration.
+
+
 ## 1.8.0
 
 - Rename Cryptographic Vault to Dashboard, add `/dashboard/` with old URL redirects, and refresh the theme-aware layout.

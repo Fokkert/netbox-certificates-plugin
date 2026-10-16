@@ -1,4 +1,5 @@
 import importlib
+from html.parser import HTMLParser
 from types import SimpleNamespace
 
 from django.apps import apps
@@ -21,6 +22,33 @@ class DashboardRevisionTests(TestCase):
         request = APIRequestFactory().patch("/settings/", data, format="json")
         force_authenticate(request, user=self.user, token=SimpleNamespace(write_enabled=True))
         return view.as_view()(request)
+
+    def test_import_and_export_pages_render_after_backup_page_removal(self):
+        for name in ("import_objects", "certificateauthority_import", "inventory_export"):
+            with self.subTest(page=name):
+                response = self.client.get(reverse(f"plugins:netbox_certificates:{name}"))
+                self.assertEqual(response.status_code, 200)
+                self.assertNotContains(response, 'href="/plugins/ssl-certificates/backup/"')
+
+    def test_dashboard_sections_start_expanded(self):
+        AlertSettings.objects.update_or_create(pk=1, defaults={
+            "vault_show_expiration": True, "vault_show_assignments": True,
+        })
+        response = self.client.get(reverse("plugins:netbox_certificates:dashboard"))
+
+        class DetailsParser(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.sections = []
+
+            def handle_starttag(self, tag, attrs):
+                if tag == "details":
+                    self.sections.append(dict(attrs))
+
+        parser = DetailsParser()
+        parser.feed(response.content.decode())
+        self.assertGreaterEqual(len(parser.sections), 3)
+        self.assertTrue(all("open" in attrs for attrs in parser.sections))
 
     def test_switch_moved_without_resetting_value(self):
         AlertSettings.objects.update_or_create(pk=1, defaults={"service_checks_enabled": True})

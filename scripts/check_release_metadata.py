@@ -11,18 +11,22 @@ def read(path):
 
 errors = []
 
+for template in (ROOT / "netbox_certificates/templates").rglob("*.html"):
+    if re.search(r"plugins:netbox_certificates:backup['\"]", template.read_text(encoding="utf-8")):
+        errors.append(f"{template.relative_to(ROOT)} references the removed backup page")
+
 pyproject = read("pyproject.toml")
 plugin_yaml = read("netbox-plugin.yaml")
 config = read("netbox_certificates/__init__.py")
 
-if "| Release | 1.8.0 |" not in read("README.md"):
-    errors.append("README release table does not declare version 1.8.0")
-if 'version = "1.8.0"' not in pyproject:
-    errors.append("pyproject.toml does not declare version 1.8.0")
-if "version: 1.8.0" not in plugin_yaml:
-    errors.append("netbox-plugin.yaml does not declare version 1.8.0")
-if 'version = __version__' not in config or '__version__ = "1.8.0"' not in read('netbox_certificates/version.py'):
-    errors.append("PluginConfig does not declare version 1.8.0")
+if "| Release | 1.8.1 |" not in read("README.md"):
+    errors.append("README release table does not declare version 1.8.1")
+if 'version = "1.8.1"' not in pyproject:
+    errors.append("pyproject.toml does not declare version 1.8.1")
+if "version: 1.8.1" not in plugin_yaml:
+    errors.append("netbox-plugin.yaml does not declare version 1.8.1")
+if 'version = __version__' not in config or '__version__ = "1.8.1"' not in read('netbox_certificates/version.py'):
+    errors.append("PluginConfig does not declare version 1.8.1")
 if 'min_version = "4.5.9"' not in config or 'max_version = "4.5.10"' not in config:
     errors.append("NetBox compatibility gate must remain 4.5.9 through 4.5.10")
 

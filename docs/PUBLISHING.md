@@ -1,4 +1,4 @@
-# Publishing 1.8.0
+# Publishing 1.8.1
 
 The existing tag-triggered GitHub Action builds the distribution, creates the GitHub Release, and publishes the package through PyPI trusted publishing. No new credentials are needed for this revision.
 
@@ -6,16 +6,16 @@ After reviewing the changes, commit them on `main` and run the existing publishi
 
 ```bash
 git add .github netbox_certificates tests scripts docs README.md UPGRADE.md VALIDATION.md CHANGELOG.md pyproject.toml netbox-plugin.yaml
-git commit -m "Release 1.8.0: Dashboard and consolidated alert configuration"
+git commit -m "Release 1.8.1: Dashboard and consolidated alert configuration"
 python scripts/release.py --publish
 ```
 
-On Windows with this repository's virtual environment, use `.venv/Scripts/python.exe` instead of `python`. The helper checks the package version, tests, and build, then atomically pushes `main` and `v1.8.0`. It does not force or overwrite a published tag.
+On Windows with this repository's virtual environment, use `.venv/Scripts/python.exe` instead of `python`. The helper checks the package version, tests, and build, then atomically pushes `main` and `v1.8.1`. It does not force or overwrite a published tag.
 
 ```bash
 gh run list --workflow release.yml
 gh run watch RUN_ID --exit-status
-gh release view v1.8.0
+gh release view v1.8.1
 ```
 
-Use the actual run ID returned by the first command. Check that the PyPI job completed before installing `netbox-certificates-plugin==1.8.0` on the VM. See [Releasing](RELEASING.md) for the helper behavior and [Upgrade](../UPGRADE.md) for Linux installation commands.
+Use the actual run ID returned by the first command. Check that the PyPI job completed before installing `netbox-certificates-plugin==1.8.1` on the VM. See [Releasing](RELEASING.md) for the helper behavior and [Upgrade](../UPGRADE.md) for Linux installation commands.

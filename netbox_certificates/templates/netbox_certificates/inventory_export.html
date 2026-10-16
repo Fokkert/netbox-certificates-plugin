@@ -4,7 +4,7 @@
 {% block head %}{{ block.super }}<link rel="stylesheet" href="{% static 'netbox_certificates/editors.css' %}">{% endblock %}
 {% block content %}
 <div class="nbcert-settings">
-<p>Select the object types to include in one ZIP archive. Certificates, keys, CSRs, and Bundle material can be imported together. Groups and Services can be merged through <a href="{% url 'plugins:netbox_certificates:backup' %}">Backup and Restore</a>, which also provides a full backup of all plugin data. Other object types here are exported as reference metadata.</p>
+<p>Select the object types to include in one ZIP archive. Certificates, keys, CSRs, and Bundle material can be imported together. Restore Groups and Services using their list pages. Other object types here are exported as reference metadata.</p>
 <form method="post" data-bulk-select="input[name=types]">{% csrf_token %}{{ form.non_field_errors }}
 {% include "netbox_certificates/inc/bulk_selection.html" with select_label="Select all object types" %}
 <div class="card mb-3"><div class="card-body">

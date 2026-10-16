@@ -8,12 +8,12 @@ menu = PluginMenu(
             "Overview",
             (
                 PluginMenuItem(
-                    link="plugins:netbox_certificates:preferences",
-                    link_text="Preferences",
-                ),
-                PluginMenuItem(
                     link="plugins:netbox_certificates:dashboard",
                     link_text="Dashboard",
+                ),
+                PluginMenuItem(
+                    link="plugins:netbox_certificates:preferences",
+                    link_text="Preferences",
                 ),
             ),
         ),
@@ -52,12 +52,12 @@ menu = PluginMenu(
             "Operations",
             (
                 PluginMenuItem(
-                    link="plugins:netbox_certificates:import_objects",
-                    link_text="Import Objects",
-                ),
-                PluginMenuItem(
                     link="plugins:netbox_certificates:csr_generate",
                     link_text="Generate CSR",
+                ),
+                PluginMenuItem(
+                    link="plugins:netbox_certificates:import_objects",
+                    link_text="Import Objects",
                 ),
                 PluginMenuItem(
                     link="plugins:netbox_certificates:alert_settings",
