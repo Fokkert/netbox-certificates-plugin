@@ -6,7 +6,7 @@
 <div class="nbcert-settings">
 <div class="alert alert-warning">Matching names are updated. Missing related objects are skipped. Other inventory is retained.</div>
 <form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.non_field_errors }}
-<div class="mb-4 mb-3"><div class="py-2">{% render_field form.upload %}</div></div>
+<div class="mb-4"><div class="py-2">{% render_field form.upload %}</div></div>
 <div class="nbcert-actions"><button class="btn btn-primary">Restore {{ label }}</button><a class="btn btn-outline-secondary" href="{% url list_route %}">Cancel</a></div>
 </form></div>
 {% endblock %}

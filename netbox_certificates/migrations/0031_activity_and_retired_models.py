@@ -56,6 +56,12 @@ class Migration(migrations.Migration):
             model_name='expiryalertconfiguration',
             name='tags',
         ),
+        # Drop the composite constraint before its certificate column so the
+        # migration can also recreate the historical schema when reversed.
+        migrations.RemoveConstraint(
+            model_name='expiryalertevent',
+            name='netbox_certificates_unique_expiry_alert_event',
+        ),
         migrations.RemoveField(
             model_name='expiryalertevent',
             name='certificate',

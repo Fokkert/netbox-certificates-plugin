@@ -380,7 +380,9 @@ class HealthFindingListView(VaultInventoryMixin, LoginRequiredMixin, View):
             {"state": state, "count": count, "width": round(count * 100 / total, 2)}
             for state, count in counts.items()
         ]
-        return render(request, self.template_name, context)
+        response = render(request, self.template_name, context)
+        response["Cache-Control"] = "private, no-store"
+        return response
 
     def get_extra_context(self, request):
         active = action_queryset(HealthFinding, request.user, "view").filter(status__in=("active", "acknowledged"))

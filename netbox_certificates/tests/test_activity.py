@@ -13,7 +13,7 @@ from netbox_certificates.activity import PrivateKeyAccessRecord, ServiceCheckRec
 from netbox_certificates.api.activity import ActivityAPIView
 from netbox_certificates.dashboard_activity import activity_summary
 from netbox_certificates.middleware import KeyAccessAuditMiddleware
-from netbox_certificates.models import Certificate, Service
+from netbox_certificates.models import Certificate, PrivateKey, Service
 from netbox_certificates.models_v1 import AlertSettings
 from netbox_certificates.services.activity import capture_checks, record_check
 from netbox_certificates.services.encryption import decrypt_private_key, encrypt_private_key, PrivateKeyEncryptionError
@@ -110,3 +110,19 @@ class ActivityTests(TestCase):
         fetch.assert_not_called()
         self.client.force_login(self.reader)
         self.assertNotContains(self.client.get("/plugins/ssl-certificates/dashboard/"), "Recent private-key access")
+
+    def test_real_download_uses_audit_middleware(self):
+        PrivateKey.objects.bulk_create([PrivateKey(
+            name="Download key", encrypted_material=encrypt_private_key(b"test key material"),
+            public_key_fingerprint="b" * 64, material_sha256="c" * 64,
+        )])
+        key = PrivateKey.objects.get()
+        url = f"/plugins/ssl-certificates/download/privatekey/{key.pk}/"
+        self.client.force_login(self.admin)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        record = PrivateKeyAccessRecord.objects.get()
+        self.assertEqual((record.key_id, record.actor, record.response_status), (key.pk, self.admin.username, 200))
+        self.client.force_login(self.reader)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.assertEqual(PrivateKeyAccessRecord.objects.count(), 1)

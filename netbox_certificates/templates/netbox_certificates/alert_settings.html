@@ -6,7 +6,7 @@
 <div class="nbcert-settings">
 {% if other_rule_count %}<div class="alert alert-info">{{ other_rule_count }} additional enabled rules are preserved from existing configuration. <a href="{% url 'plugins:netbox_certificates:alertrule_list' %}">Review additional rules</a> to avoid duplicate notifications. The switch below controls this page's alerts.</div>{% endif %}
 <form method="post">{% csrf_token %}{{ form.non_field_errors }}
-{% for title,fields in sections %}<div class="mb-4 mb-3"><h2 class="h5 mb-3">{{ title }}</h2><div class="py-2">{% for field in fields %}{% render_field field %}{% endfor %}</div></div>{% endfor %}
+{% for title,fields in sections %}<div class="mb-4"><h2 class="h5 mb-3">{{ title }}</h2><div class="py-2">{% for field in fields %}{% render_field field %}{% endfor %}</div></div>{% endfor %}
 <div class="nbcert-actions mb-4">
 <button type="submit" name="_action" value="save" class="btn btn-primary">Save alert settings</button>
 <button type="submit" name="_action" value="test_email" class="btn btn-outline-secondary">Save and send test email</button>
