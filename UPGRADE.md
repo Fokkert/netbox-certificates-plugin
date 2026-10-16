@@ -98,13 +98,13 @@ sudo /opt/netbox/venv/bin/python manage.py showmigrations netbox_certificates
 sudo /opt/netbox/venv/bin/python manage.py makemigrations --check --dry-run netbox_certificates
 ```
 
-Every migration through `0030_retire_security_alert_option` must show `[X]`, and the dry run must report no changes.
+Every migration through `0031_activity_and_retired_models` must show `[X]`, and the dry run must report no changes.
 
 ## API and URL changes
 
-- `/dashboard/` is the canonical dashboard. `/vault/`, `/health/`, `/health/findings/`, and `/expiration-dashboard/` redirect with query parameters preserved.
+- `/dashboard/` is the canonical dashboard. `/vault/`, `/health/`, and `/expiration-dashboard/` are removed. The active finding-list return route `/health/findings/` still leads to Dashboard with filters preserved.
 - The legacy `/inventory/` and `/inventory/<pk>/` hierarchy routes are not current interfaces; use Groups.
-- `/backup/` has been removed from the UI. Services and Groups retain their own restore routes. Full-snapshot API endpoints remain available for existing clients.
+- `/backup/` and the full-snapshot API endpoints are removed. Services and Groups retain their own restore routes.
 - `service_checks_enabled` is read/written through `alert-settings/`. The Preferences API rejects updates to the moved field instead of silently ignoring them.
 - `object-links/` remains the API for links to NetBox objects. Automatic cryptographic links and derived fields remain protected from manual edits.
 - The standalone Certificate Authorities page is replaced by a filtered Certificates list; CA import/export APIs remain available.

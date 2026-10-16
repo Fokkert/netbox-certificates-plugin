@@ -140,7 +140,7 @@ All settings mutations/tests and finding state/scan actions require a write-enab
 
 ## 1.2.0 settings, CSR generation, and mixed inventory
 
-`certificate-policies/` is retired. Policy fields are absent from Service and Alert Rule serializers; policy GraphQL queries and relationships are removed. Old UI bookmarks redirect to settings.
+`certificate-policies/` is retired. Policy fields are absent from Service and Alert Rule serializers; policy GraphQL queries and relationships are removed. Old UI bookmarks are removed.
 
 `alert-settings/` additionally accepts `minimum_rsa_bits` (2048, 3072, 4096, 8192), `max_validity_days` (null or 1–365000), `require_san`, `allow_wildcards`, and `forbid_key_reuse`. The new finding category is `configuration`. Email addresses, SMTP host/port, webhook URL/headers, timing, and these check values are validated even when delivery is disabled. Ports must be 1–65535. Webhook URLs must be HTTP(S) without embedded credentials. Invalid inputs return field errors.
 
@@ -178,7 +178,7 @@ Supported intervals are 5, 15, 30, 60, 180, 360, 720, and 1440 minutes; the warn
 
 Existing Certificate/CSR/Private Key material cannot be replaced with different cryptographic identity. Import renewal/replacement material as a new object. Creating/importing artifacts still parses material automatically; CSR generation still accepts the requested subject and SANs before signing. Manual ObjectLinks cannot claim `key_match`, `csr_match`, `issuer`, `bundle_member`, or `supersedes` relationships. Automatic links remain excluded from manual updates/deletes.
 
-CA REST endpoints are retained. The removed UI page redirects to `certificates/?is_ca=true`; the Dashboard uses that filtered URL. All public model serializers are exported from the canonical module required by NetBox event serialization, including cascaded delete events with no HTTP request.
+CA REST endpoints are retained. The Dashboard opens `certificates/?is_ca=true`; the old CA landing-page redirect is removed. All public model serializers are exported from the canonical module required by NetBox event serialization, including cascaded delete events with no HTTP request.
 
 ## 1.3.1 notification changes
 

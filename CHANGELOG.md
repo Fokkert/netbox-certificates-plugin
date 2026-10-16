@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.9.0
+
+- Add permission-scoped live Service check graphs, recent outcomes, average duration, and an expiration distribution chart to Dashboard. Page loads never probe endpoints.
+- Record authenticated-request private-key decryption for exports and CSR signing, with superuser-only history and no secret material in records. Add a read-only activity API.
+- Simplify settings, CSR, Group, Service, export, and restore forms to plain native-style sections.
+- Remove retired landing-page redirects, policy objects, expiration-only alert models, unused rule thresholds, redundant import response fields, and full-snapshot backup APIs. Keep current inventory imports/exports and Groups/Services metadata restore.
+- Require migration 0031 for operational history and retired model cleanup. Preserve historical migration files and active chain/link internals. Service check history is retained for 90 days; key access history is retained without automatic deletion.
+
 ## 1.8.1
 
 - Remove stale links to the deleted Backup page from Import Objects and Export Inventory, fixing NoReverseMatch on GET.
