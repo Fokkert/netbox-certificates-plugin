@@ -1,6 +1,6 @@
 # Upgrade to 1.9.1
 
-Upgrade 1.5.0 (or an earlier version) in place; older migrations remain available. Supported NetBox versions remain 4.5.9 and 4.5.10 with Python 3.12+. Run the following on the Linux VM. These commands assume `/opt/netbox`, PostgreSQL database `netbox`, and systemd units `netbox` and `netbox-rq`. Adapt paths/service names if your installation differs. Container deployments should install the pinned package when rebuilding their image.
+Upgrade an earlier plugin version in place; all earlier migrations remain available. Supported NetBox versions remain 4.5.9 and 4.5.10 with Python 3.12+. Run the following on the Linux VM. These commands assume `/opt/netbox`, PostgreSQL database `netbox`, and systemd units `netbox` and `netbox-rq`. Adapt paths/service names if your installation differs. Container deployments should install the pinned package when rebuilding their image.
 
 ## Preserve existing data
 
@@ -17,7 +17,7 @@ Use your normal backup command if PostgreSQL is remote. Confirm the backup succe
 
 ## Install with pip
 
-Wait until GitHub Actions has successfully published 1.9.1 to PyPI. No source copying, cloning, or uninstall is needed:
+Version 1.9.1 is published on PyPI. No source copying, cloning, or uninstall is needed:
 
 ```bash
 sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.9.1'

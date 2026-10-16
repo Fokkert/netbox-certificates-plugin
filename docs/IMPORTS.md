@@ -29,7 +29,7 @@ Proxy and NetBox request limits may impose a lower upload limit. Split larger ba
 
 The cryptographic importer skips and reports known manifests, README files, operating-system metadata, and inventory `metadata/*.json` files inside archives. Unknown invalid files reject the request. Metadata-only archives contain no cryptographic objects and receive a validation message directing users to the appropriate operation.
 
-Services and Groups have Backup and Restore buttons on their respective lists. Restores merge matching names and resolve available relationships, skipping missing members. The standalone backup page is removed. Existing full-snapshot APIs remain available for compatibility. See [Metadata restore and backup APIs](BACKUPS.md).
+Services and Groups have Backup and Restore buttons on their respective lists. Restores merge matching names and resolve available relationships, skipping missing members. The standalone backup page and full-snapshot APIs have been removed. See [Groups and Services restore](BACKUPS.md).
 
 ## API results
 

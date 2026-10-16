@@ -1,6 +1,6 @@
 # Compatibility
 
-## 1.3.1
+## 1.9.1
 
 | Component | Supported |
 | --- | --- |
@@ -15,4 +15,4 @@ The plugin enforces `PluginConfig.min_version = "4.5.9"` and `max_version = "4.5
 
 NetBox 4.6 and later are not accepted by this release. A future compatibility release should validate migrations, generic views, GraphQL, background jobs, permission behavior and filter contracts against the target NetBox version before raising the maximum version.
 
-The 1.3.1 revision has standalone behavioral and template checks. Full NetBox runtime and migration checks have not been run in this Windows workspace; see VALIDATION.md.
+The v1.9.1 release passed GitHub Actions checks against NetBox 4.5.9 and 4.5.10, including PostgreSQL migrations, model/migration consistency, Django system checks, upgrade-data checks, and plugin integration tests. See [VALIDATION.md](VALIDATION.md) for coverage and limits.

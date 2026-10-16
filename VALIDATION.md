@@ -1,27 +1,28 @@
-# Validation for 1.8.1
+# Validation for 1.9.1
 
-The release gate runs standalone checks, real NetBox 4.5.9/4.5.10 model/migration comparisons, PostgreSQL migration application and upgrade-data preservation, and the plugin integration suite.
+The published v1.9.1 release passed the GitHub Actions release gate: standalone checks and package builds, plus real NetBox 4.5.9 and 4.5.10 integration checks with PostgreSQL and Redis. Publication depends on successful checks.
 
-New integration cases cover SAN-only/wildcard/IP naming, PFX naming, key-first imports, custom-name preservation, typed import assignment, group membership constraints in both directions, REST validation, type-aware UI submissions, configurable table relationships and permissions, repeat-day validation, and seven-day reminder suppression across daily scans. Notification delivery is mocked in tests; no real email or webhook is sent.
+## Release checks
 
-The disposable upgrade check seeds old mixed and single-type groups and generated/custom names at migration 0025, applies 0026/0027, and verifies memberships, hierarchy classification, key ciphertext, all certificate fields other than intended names, and custom names.
+- Python compilation, release metadata consistency, standalone behavioral tests, whitespace checks, wheel/source builds, and distribution metadata validation.
+- Real NetBox model/migration comparison, migration application, Django system checks, and checks for missing or unapplied migrations.
+- Upgrade checks for alert defaults, typed Groups and generated names, and removal of Service deployment metadata. The 0031-to-0032 check verifies that other Service values and certificate memberships survive removal of the JSON field.
+- NetBox form, view, API, permission, import/export, health, and alert integration tests.
 
-The migrations are required. All previous migration files remain unchanged. No test accesses the user's VM. Passing checks covers these scenarios, not every possible deployment or browser interaction.
+## Regression coverage
 
-Run local checks with `python scripts/release.py`; publish with `python scripts/release.py --publish` after a clean reviewed commit and successful CI. Run real NetBox tests with `python manage.py test netbox_certificates.tests` on a disposable database. The production upgrade requires migrate, never generating local migrations.
+Coverage includes content-detected imports; SAN-only, wildcard, and IP naming; PFX naming; key-first imports; custom-name preservation; typed membership validation; derived-field protection; individual/bulk deletion; configurable columns; empty exports; cleared filters; and alert repeat intervals.
 
-Backup coverage includes encrypted and unencrypted archives, re-encryption with a different destination key, remapped relationships, invalid-file/password/confirmation rejection, transaction rollback, missing metadata members, and UI/API access checks. No actual user VM is modified by these checks.
+Dashboard tests cover permissions, sections, pagination, expiration limits, activity history, and private-key access visibility. Import Objects and Export Inventory views are checked for references to the removed backup route. Native form heading markup and CSR form rendering are covered, as are removal of Service deployment metadata and tolerance of old metadata archives/table preferences.
 
-Version 1.6.0 adds required migration 0028. Dashboard tests cover the combined page, legacy redirects retaining filters, cleared filters, hidden sections/evidence, pagination and expiration limits, the warning window, API validation/partial updates, and restricted object visibility.
+Service-check tests use fake sockets for direct TLS, SNI, PostgreSQL/MySQL negotiation, and invalid or truncated responses. Integration tests cover both opt-in switches, disabled Services, matching/mismatching certificates, and connection failures. Notification delivery is mocked; tests send no real email/webhooks and contact no live Service endpoints.
 
-## 1.7.0 validation
+Groups/Services restore coverage includes metadata merging, missing relationships, validation, and authorization. Full-snapshot backup/restore is no longer a supported interface.
 
-Protocol tests use fake sockets for direct TLS, SNI, PostgreSQL and MySQL negotiation, unknown protocols, and truncated responses. NetBox integration tests cover both opt-in switches, disabled Services, certificate matches/mismatches, connection failures, scoped restore validation, UI controls, and restore authorization. Migration 0029 is compared against real model state on supported NetBox versions. No live endpoint is contacted by tests.
+## Running checks
 
-## 1.8.0 validation
+Run `python scripts/release.py` for local checks and package validation. Run `python manage.py test netbox_certificates.tests` with real NetBox on a disposable database. The complete PostgreSQL/Redis environment is defined in `.github/workflows/migrations.yml`.
 
-Integration coverage checks canonical Dashboard/legacy redirects, removal of the backup page, the moved setting's UI/API representation and persistence, rejection of its old Preferences API location, and migration 0030's behavior for mixed and security-only category selections. Existing import/export, permissions, protocol, and cryptographic tests remain in the release gate.
+Production upgrades apply the supplied migrations through `0032_remove_service_deployment_metadata`; do not generate migrations on the VM. See [UPGRADE.md](UPGRADE.md).
 
-## 1.8.1 regression coverage
-
-GET Import Objects, CA import, and Export Inventory through real NetBox views. Check that all Dashboard details render open by default, and reject template references to the retired backup route. Model/migration comparisons remain part of the release gate.
+No test accesses the user's VM. Passing checks verifies the covered scenarios; it does not guarantee every deployment, browser interaction, or possible input is error-free.

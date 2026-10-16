@@ -67,7 +67,7 @@ The Health engine compares these identities with linked Certificate SANs and rep
 
 Every section is visible: Service, Endpoints, Cryptographic artifacts, Organization, and Metadata. Certificates and private keys are adjacent, followed by CSRs and bundles. There is no collapsible Advanced section. Additional URLs use one URL per line, and empty hostname/SNI/port fields derive from the primary URL and protocol.
 
-Ports must be integers from 1 to 65535. Hostname/SNI and every endpoint URL are validated in the model, including API and bulk updates. Deployment metadata must be a JSON object. Certificate requirements are configured globally in Alerts Configuration; Services no longer have policy assignments.
+Ports must be integers from 1 to 65535. Hostname/SNI and every endpoint URL are validated in the model, including API and bulk updates. Deployment metadata was removed in 1.9.1. Certificate requirements are configured globally in Alerts Configuration; Services no longer have policy assignments.
 
 ## Live certificate comparison
 

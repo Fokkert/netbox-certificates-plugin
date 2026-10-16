@@ -13,11 +13,11 @@ Open **SSL Certificates → Overview → Preferences**. Only NetBox superusers c
 | Default RSA size for new CSR keys | 3072 bits | 2048, 3072, 4096, or 8192; existing keys are unchanged |
 | Findings per page | 50 | 25, 50, 100, or 200 |
 | Certificates in expiration list | 50 | 10, 25, 50, or 100; earliest expiration first |
-| Show certificate expiration | Enabled | Show expiration counts and the upcoming/expired certificate list in the vault |
+| Show certificate expiration | Enabled | Show expiration counts and the upcoming/expired certificate list in Dashboard |
 | Show service assignment summary | Enabled | Show counts of artifacts without a direct Service assignment |
-| Show finding evidence | Enabled | Show the Evidence column in the vault; finding detail pages remain available |
+| Show finding evidence | Enabled | Show the Evidence column in Dashboard; finding detail pages remain available |
 
-Dashboard now combines inventory, expiration, and health findings. The warning-days setting applies to both scanning and the vault expiration overview. Hiding a dashboard section does not disable scanning or alerts. All preferences are global. Migration **0028_vault_preferences** is required for the new dashboard options.
+Dashboard now combines inventory, expiration, and health findings. The warning-days setting applies to both scanning and the Dashboard expiration overview. Hiding a dashboard section does not disable scanning or alerts. All preferences are global. Migration **0028_vault_preferences** is required for the new dashboard options.
 
 The corresponding REST fields are `vault_findings_per_page`, `vault_expiration_limit`, `vault_show_expiration`, `vault_show_assignments`, and `vault_show_evidence`. Existing clients can omit these fields when updating other preferences; omitted values are preserved.
 

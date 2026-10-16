@@ -9,6 +9,8 @@ Store certificates, encrypted private keys, CSRs, and bundles in NetBox. Organiz
 | Python | 3.12+ |
 | cryptography | 42+ |
 
+The GitHub Releases page retains only the current release, **v1.9.1**. Older Git tags and the changelog remain as development history; previously published PyPI versions are unaffected. Install the version pinned below.
+
 ## Features
 
 - X.509 metadata and cryptographic relationships calculated from imported material.
@@ -137,7 +139,7 @@ sudo /opt/netbox/venv/bin/python manage.py check
 sudo systemctl restart netbox netbox-rq
 ```
 
-For an existing installation, back up the database and configuration, keep the existing encryption key, and follow [UPGRADE.md](UPGRADE.md). **Migration 0030 was introduced in 1.8.0 and remains required.** Do not generate or fake migrations on the VM.
+For an existing installation, back up the database and configuration, keep the existing encryption key, and follow [UPGRADE.md](UPGRADE.md). **Apply all pending migrations through `0032_remove_service_deployment_metadata`.** Do not generate or fake migrations on the VM.
 
 ## Security
 

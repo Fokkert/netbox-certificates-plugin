@@ -1,6 +1,6 @@
 # Dashboard health findings
 
-Open **Overview → Dashboard** for inventory, expiration, and health findings. The old Vault and Health URLs redirect here.
+Open **Overview → Dashboard** at `/plugins/ssl-certificates/dashboard/` for inventory, expiration, and health findings. The old Vault and Health landing-page URLs have been removed.
 
 HealthFinding stores certificate-management problems as persistent NetBox objects.
 

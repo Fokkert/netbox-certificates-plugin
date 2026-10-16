@@ -1,8 +1,8 @@
 # Permissions
 
-## Backup and Restore (1.5.0)
+## Groups and Services restore
 
-Full backup, replacement restore, and Groups/Services metadata merge require an active superuser. API calls also require a write-enabled NetBox API token. There is no assignable permission that grants partial access to a complete secret-bearing backup. Existing per-object import/export APIs retain their existing scoped permissions. Restore additionally requires the exact confirmation `REPLACE ALL PLUGIN DATA`. No new permission model or migration is introduced. See [Backup and Restore](BACKUPS.md).
+Groups/Services metadata merge requires an active superuser. API calls also require a write-enabled NetBox API token. Restores merge matching names and available relationships without deleting unrelated inventory. Existing per-object import/export APIs retain their scoped permissions. The full-snapshot backup and replacement-restore interfaces have been removed. See [Groups and Services restore](BACKUPS.md).
 
 The plugin uses NetBox ObjectPermissions and standard model permissions.
 
@@ -70,7 +70,7 @@ Alert settings and settings test endpoints are superuser-only. API writes, healt
 
 ## Changes in 1.2.0
 
-CertificatePolicy is private and inactive. Migration 0022 removes its permission objects; REST, GraphQL, search, and public policy editors no longer expose it. Global certificate checks use the existing superuser-only Alert Configuration UI/API.
+CertificatePolicy is retired. Migration 0022 removes its permission objects, and migration 0031 deletes its model and relationships; REST, GraphQL, search, and public policy editors no longer expose it. Global certificate checks use the existing superuser-only Alert Configuration UI/API.
 
 Grant `netbox_certificates.use_privatekey` (Additional action `use` on Private Key) to permit signing CSRs using a stored key. Both use and view constraints apply before decryption. This permission does not permit downloading a key. CSR generation also requires CSR add permission, Private Key add permission only when creating a key, and add/change permission for the matching Bundle. Generated objects are checked against add constraints within the transaction.
 
