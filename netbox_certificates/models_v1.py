@@ -60,11 +60,6 @@ class Service(PrimaryModel):
         default="Generic TLS Endpoint",
         help_text="Deployment technology or pattern. Common values are suggested by the UI; custom values are allowed.",
     )
-    deployment_metadata = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text="Optional deployment-specific metadata such as namespace, secret name, virtual host, ingress, or configuration reference.",
-    )
     environment = models.CharField(
         max_length=32,
         choices=ServiceEnvironmentChoices,
@@ -117,7 +112,6 @@ class Service(PrimaryModel):
         "service_type",
         "other_type",
         "deployment",
-        "deployment_metadata",
         "environment",
         "protocol",
         "port",
@@ -152,8 +146,6 @@ class Service(PrimaryModel):
                 raise ValidationError({"primary_url": str(exc)}) from exc
         if not isinstance(self.additional_urls, list):
             raise ValidationError({"additional_urls": "Additional URLS must be a JSON list."})
-        if not isinstance(self.deployment_metadata, dict):
-            raise ValidationError({"deployment_metadata": "Deployment metadata must be a JSON object."})
         for field in ("hostname", "sni_name"):
             try:
                 validate_hostname(getattr(self, field))

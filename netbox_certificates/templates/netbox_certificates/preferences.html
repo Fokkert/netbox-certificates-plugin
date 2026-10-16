@@ -7,7 +7,7 @@
 
 <form method="post">{% csrf_token %}{{ form.non_field_errors }}
 {% for title,fields in sections %}
-<section class="mb-4"><h2 class="h5 mb-3">{{ title }}</h2><div class="py-2">
+<section class="field-group mb-5"><div class="row"><h2 class="col-9 offset-3">{{ title }}</h2></div><div>
 {% for field in fields %}{% render_field field %}{% endfor %}
 </div></section>
 {% endfor %}

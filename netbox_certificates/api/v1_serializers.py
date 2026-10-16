@@ -32,7 +32,7 @@ class ServiceSerializer(VisibleRelationshipsMixin, PrimaryModelSerializer):
         model = Service
         fields = (
             "id", "url", "display_url", "display", "name", "status", "service_type", "other_type",
-            "deployment", "deployment_metadata", "environment", "protocol", "primary_url", "additional_urls",
+            "deployment", "environment", "protocol", "primary_url", "additional_urls",
             "hostname", "port", "sni_name", "criticality", "external_reference", "contact",
             "enabled", "certificate_check_enabled", "groups", "certificates", "private_keys", "csrs", "bundles",
             "owner", "description", "comments", "tags", "custom_fields",

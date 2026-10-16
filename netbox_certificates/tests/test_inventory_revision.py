@@ -65,6 +65,11 @@ class InventoryRevisionTests(TestCase):
     def test_existing_key_csr_generation_does_not_create_another_key(self):
         self.import_batch()
         key = PrivateKey.objects.get()
+        url = reverse("plugins:netbox_certificates:csr_generate")
+        self.assertContains(self.client.get(url), 'id="id_ku_digital_signature"')
+        invalid = self.client.post(url, {})
+        self.assertEqual(invalid.status_code, 200)
+        self.assertTrue(invalid.context["form"].errors)
         response = self.client.post(reverse("plugins:netbox_certificates:csr_generate"), {
             "common_name": "renewed.example.test", "existing_private_key": key.pk,
             "key_algorithm": "rsa", "rsa_bits": "2048", "ec_curve": "secp256r1",

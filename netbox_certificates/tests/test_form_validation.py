@@ -42,8 +42,7 @@ class ModelFormValidationTests(TestCase):
 
     def test_service_invalid_and_custom_values(self):
         for values, field in (({"port": 65536}, "port"), ({"deployment": "custom"}, "custom_deployment"),
-                              ({"primary_url": "https://example.test:99999"}, "primary_url"),
-                              ({"deployment_metadata": "[]"}, "deployment_metadata")):
+                              ({"primary_url": "https://example.test:99999"}, "primary_url")):
             with self.subTest(values=values):
                 form = ServiceForm(self.service_data(**values))
                 self.assertFalse(form.is_valid())
@@ -52,6 +51,41 @@ class ModelFormValidationTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.cleaned_data["deployment"], "Custom server")
         self.assertEqual(form.cleaned_data["port"], 443)
+
+    def test_service_metadata_removed_from_current_interfaces(self):
+        import json
+        from django.core.serializers.json import DjangoJSONEncoder
+        from netbox_certificates.api.v1_serializers import ServiceSerializer
+        from netbox_certificates.export_v1 import serialize_object
+        from netbox_certificates.filtersets_v1 import ServiceFilterSet
+        from netbox_certificates.forms_v1 import ServiceBulkEditForm, ServiceFilterForm
+        from netbox_certificates.services.metadata_import import import_metadata
+        from netbox_certificates.tables_v1 import ServiceTable
+
+        service = Service.objects.create(name="Metadata removal", deployment="Nginx", hostname="example.test")
+        self.assertNotIn("deployment_metadata", ServiceSerializer().fields)
+        self.assertNotIn("deployment_metadata", ServiceTable.base_columns)
+        self.assertNotIn("deployment_metadata", ServiceFilterSet.base_filters)
+        for form in (ServiceForm, ServiceBulkEditForm, ServiceFilterForm):
+            self.assertNotIn("deployment_metadata", form().fields)
+        self.client.force_login(self.user)
+        table_name = ServiceTable([]).name
+        self.user.config.set(f"tables.{table_name}.columns", ["name", "deployment_metadata"], commit=True)
+        self.user.config.set(f"tables.{table_name}.ordering", ["deployment_metadata"], commit=True)
+        for path in ("/plugins/ssl-certificates/services/", f"/plugins/ssl-certificates/services/{service.pk}/",
+                     f"/plugins/ssl-certificates/services/{service.pk}/edit/", "/api/plugins/ssl-certificates/services/"):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200)
+            self.assertNotContains(response, "deployment_metadata")
+        row = serialize_object(service, self.user)
+        self.assertNotIn("deployment_metadata", row["attributes"])
+        # Older metadata exports still restore the current Service fields.
+        row["attributes"]["deployment_metadata"] = {"namespace": "retired"}
+        service.delete()
+        result = import_metadata(json.dumps([row], cls=DjangoJSONEncoder).encode(), self.user)
+        self.assertEqual(result["imported"], 1)
+        restored = Service.objects.get(name="Metadata removal")
+        self.assertEqual((restored.deployment, restored.hostname), ("Nginx", "example.test"))
 
     def test_object_links_validate_visibility_and_missing_objects(self):
         content_type = ContentType.objects.get_for_model(ArtifactGroup).pk

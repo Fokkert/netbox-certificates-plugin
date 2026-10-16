@@ -4,7 +4,7 @@ Store certificates, encrypted private keys, CSRs, and bundles in NetBox. Organiz
 
 | Component | Supported |
 | --- | --- |
-| Release | 1.9.0 |
+| Release | 1.9.1 |
 | NetBox | 4.5.9 and 4.5.10 |
 | Python | 3.12+ |
 | cryptography | 42+ |
@@ -55,6 +55,8 @@ The live-check graph shows actual TLS attempts, matching fingerprints, mismatche
 ## Services
 
 A Service describes a certificate-consuming endpoint. Choose its protocol and deployment, enter a primary URL or hostname/port, and link its expected certificates or bundles. Certificates, private keys, CSRs, and bundles are selected together under Cryptographic artifacts.
+
+Form group headings use NetBox's native size, spacing, and input-column alignment. The Deployment metadata field was removed in 1.9.1; use description, comments, or custom fields for additional Service details. Migration 0032 removes the field's saved values.
 
 To check the certificate actually presented by a Service:
 
@@ -109,7 +111,7 @@ Global settings use `alert-settings/` and `preferences/`. **`service_checks_enab
 
 ## Installation
 
-For a new installation, add `netbox-certificates-plugin==1.9.0` to `/opt/netbox/local_requirements.txt`, enable the plugin in NetBox configuration, and provide a persistent Fernet key:
+For a new installation, add `netbox-certificates-plugin==1.9.1` to `/opt/netbox/local_requirements.txt`, enable the plugin in NetBox configuration, and provide a persistent Fernet key:
 
 ```python
 PLUGINS = ["netbox_certificates"]  # Include your other plugins too.
@@ -127,7 +129,7 @@ Generate a key only for a new installation:
 Install using pip, then migrate and collect assets:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install 'netbox-certificates-plugin==1.9.0'
+sudo /opt/netbox/venv/bin/python -m pip install 'netbox-certificates-plugin==1.9.1'
 cd /opt/netbox/netbox
 sudo /opt/netbox/venv/bin/python manage.py migrate
 sudo /opt/netbox/venv/bin/python manage.py collectstatic --no-input

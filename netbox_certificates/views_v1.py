@@ -290,7 +290,7 @@ class ServiceListView(EmptyListExportMixin, generic.ObjectListView):
 class ServiceView(V1ObjectView):
     queryset = Service.objects.all()
     detail_fields = (
-        "name", "status", "service_type", "other_type", "deployment", "deployment_metadata", "environment",
+        "name", "status", "service_type", "other_type", "deployment", "environment",
         "protocol", "primary_url", "additional_urls", "hostname", "port", "sni_name",
         "criticality", "external_reference", "contact", "enabled", "certificate_check_enabled", "groups",
         "certificates", "private_keys", "csrs", "bundles", "owner", "description", "comments",

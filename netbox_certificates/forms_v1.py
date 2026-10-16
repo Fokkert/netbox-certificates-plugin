@@ -101,7 +101,6 @@ class ServiceForm(AcronymFormMixin, PrimaryModelForm):
     custom_deployment = forms.CharField(required=False, max_length=120, label="Custom deployment name")
     protocol = forms.ChoiceField(choices=[(p, p.upper()) for p in ("https", "tls", "ldaps", "smtps", "imaps", "pop3s", "mqtts", "postgresql", "mysql")])
     port = forms.IntegerField(required=False, min_value=1, max_value=65535, help_text="Leave blank to use the URL port or the protocol default.")
-    deployment_metadata = OptionalObjectJSONField(required=False)
     groups = DynamicModelMultipleChoiceField(queryset=ArtifactGroup.objects.all(), required=False)
     certificates = DynamicModelMultipleChoiceField(queryset=Certificate.objects.all(), required=False)
     private_keys = DynamicModelMultipleChoiceField(queryset=PrivateKey.objects.all(), required=False)
@@ -110,19 +109,18 @@ class ServiceForm(AcronymFormMixin, PrimaryModelForm):
     additional_urls = LineListField(required=False, help_text="One URL per line.", widget=forms.Textarea(attrs={"rows": 3}))
 
     fieldsets = (
-        FieldSet("name", "status", "service_type", "environment", "criticality", name="Service"),
+        FieldSet("name", "status", "service_type", "other_type", "environment", "criticality", name="Service"),
         FieldSet("deployment", "custom_deployment", name="Deployment"),
         FieldSet("protocol", "primary_url", "additional_urls", "hostname", "port", "sni_name", "certificate_check_enabled", name="Endpoints"),
         FieldSet("external_reference", "contact", "enabled", name="Management"),
         FieldSet("groups", "certificates", "private_keys", "csrs", "bundles", name="Relationships"),
         FieldSet("owner", "description", "comments", "tags", name="NetBox"),
-        FieldSet("other_type", "deployment_metadata", name="Deployment metadata"),
     )
 
     class Meta:
         model = Service
         fields = (
-            "name", "status", "service_type", "other_type", "deployment", "deployment_metadata", "environment",
+            "name", "status", "service_type", "other_type", "deployment", "environment",
             "protocol", "primary_url", "additional_urls", "hostname", "port", "sni_name",
             "criticality", "external_reference", "contact", "enabled", "certificate_check_enabled",
             "groups", "certificates", "private_keys", "csrs", "bundles",
@@ -148,7 +146,6 @@ class ServiceForm(AcronymFormMixin, PrimaryModelForm):
             if not cleaned.get("custom_deployment"):
                 self.add_error("custom_deployment", "Enter a deployment name.")
             cleaned["deployment"] = cleaned.get("custom_deployment") or "Generic TLS Endpoint"
-        cleaned["deployment_metadata"] = cleaned.get("deployment_metadata") or {}
         parsed = urlsplit(cleaned.get("primary_url") or "")
         if not cleaned.get("hostname"):
             cleaned["hostname"] = parsed.hostname or ""
@@ -170,7 +167,6 @@ class ServiceBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
     service_type = forms.ChoiceField(choices=add_blank_choice(ServiceTypeChoices), required=False)
     other_type = forms.CharField(required=False)
     deployment = forms.CharField(required=False, widget=DeploymentTextInput())
-    deployment_metadata = OptionalObjectJSONField(required=False)
     environment = forms.ChoiceField(choices=add_blank_choice(ServiceEnvironmentChoices), required=False)
     protocol = forms.CharField(required=False)
     primary_url = forms.URLField(required=False)
@@ -190,7 +186,7 @@ class ServiceBulkEditForm(AcronymFormMixin, PrimaryModelBulkEditForm):
 
     model = Service
     fieldsets = (
-        FieldSet("status", "service_type", "other_type", "deployment", "deployment_metadata", "environment", "criticality"),
+        FieldSet("status", "service_type", "other_type", "deployment", "environment", "criticality"),
         FieldSet("protocol", "primary_url", "additional_urls", "hostname", "port", "sni_name", "certificate_check_enabled", name="Endpoints"),
         FieldSet("external_reference", "contact", "enabled", name="Management"),
         FieldSet("groups", "certificates", "private_keys", "csrs", "bundles", name="Relationships"),
@@ -209,7 +205,6 @@ class ServiceFilterForm(AcronymFormMixin, PrimaryModelFilterSetForm):
     status = forms.MultipleChoiceField(choices=ServiceStatusChoices, required=False)
     service_type = forms.MultipleChoiceField(choices=ServiceTypeChoices, required=False)
     deployment = forms.CharField(required=False)
-    deployment_metadata = forms.CharField(required=False, help_text="JSON object containment filter")
     environment = forms.MultipleChoiceField(choices=ServiceEnvironmentChoices, required=False)
     criticality = forms.MultipleChoiceField(choices=ServiceCriticalityChoices, required=False)
     protocol = forms.CharField(required=False)
@@ -229,7 +224,7 @@ class ServiceFilterForm(AcronymFormMixin, PrimaryModelFilterSetForm):
 
     fieldsets = (
         FieldSet("q"),
-        FieldSet("status", "service_type", "deployment", "deployment_metadata", "environment", "criticality", "enabled", "certificate_check_enabled"),
+        FieldSet("status", "service_type", "deployment", "environment", "criticality", "enabled", "certificate_check_enabled"),
         FieldSet("protocol", "primary_url", "additional_url", "hostname", "port", "sni_name", name="Endpoints"),
         FieldSet("external_reference", "contact", name="Management"),
         FieldSet("groups_id", "certificate_id", "private_key_id", "csr_id", "bundle_id", name="Relationships"),

@@ -37,7 +37,6 @@ class ServiceFilterSet(PrimaryModelFilterSet):
     status = django_filters.MultipleChoiceFilter(choices=Service._meta.get_field("status").choices)
     service_type = django_filters.MultipleChoiceFilter(choices=Service._meta.get_field("service_type").choices)
     deployment = django_filters.CharFilter(field_name="deployment", lookup_expr="icontains")
-    deployment_metadata = django_filters.CharFilter(method="filter_deployment_metadata")
     environment = django_filters.MultipleChoiceFilter(choices=Service._meta.get_field("environment").choices)
     criticality = django_filters.MultipleChoiceFilter(choices=Service._meta.get_field("criticality").choices)
     groups_id = django_filters.ModelMultipleChoiceFilter(field_name="groups", queryset=ArtifactGroup.objects.all())
@@ -56,7 +55,6 @@ class ServiceFilterSet(PrimaryModelFilterSet):
             "service_type",
             "other_type",
             "deployment",
-            "deployment_metadata",
             "environment",
             "protocol",
             "primary_url",
@@ -88,19 +86,6 @@ class ServiceFilterSet(PrimaryModelFilterSet):
 
     def filter_additional_url(self, queryset, name, value):
         return _json_value_filter(queryset, "additional_urls", value)
-
-    def filter_deployment_metadata(self, queryset, name, value):
-        value = str(value or "").strip()
-        if not value:
-            return queryset
-        try:
-            parsed = json.loads(value)
-        except json.JSONDecodeError:
-            return queryset.none()
-        if not isinstance(parsed, dict):
-            return queryset.none()
-        return queryset.filter(deployment_metadata__contains=parsed)
-
 
 @register_filterset
 class HealthFindingFilterSet(PrimaryModelFilterSet):

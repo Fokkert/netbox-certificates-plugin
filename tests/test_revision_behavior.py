@@ -151,7 +151,7 @@ class ServiceBehavior(unittest.TestCase):
             "deployment": forms.CharField(), "custom_deployment": forms.CharField(required=False),
             "primary_url": forms.CharField(required=False), "hostname": forms.CharField(required=False),
             "sni_name": forms.CharField(required=False), "port": forms.IntegerField(required=False),
-            "protocol": forms.CharField(), "deployment_metadata": forms.JSONField(required=False),
+            "protocol": forms.CharField(),
         })
         cls = ast.ClassDef(name="ServiceForm", bases=[ast.Name(id="EndpointForm", ctx=ast.Load())], keywords=[], body=[clean], decorator_list=[])
         tree = ast.fix_missing_locations(ast.Module(body=[cls], type_ignores=[]))

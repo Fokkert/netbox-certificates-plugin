@@ -32,7 +32,7 @@ Service fields include:
 - description
 - comments
 
-`deployment` provides a dropdown of common technologies and a custom-name option. `deployment_metadata` is a JSON object for deployment-specific details such as namespace, secret name, ingress, virtual host, configuration reference, or other platform metadata.
+`deployment` provides a dropdown of common technologies and a custom-name option. Deployment metadata was removed in 1.9.1. Use the Service description, comments, or NetBox custom fields for additional information.
 
 ## Relationships
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.1
+
+- Align custom form headings with NetBox's native field groups, using its heading size, input-column offset, and spacing throughout settings, CSR generation, Services, Groups, and exports.
+- Render CSR key-usage fields with NetBox's form helper and align the SAN editor with its heading.
+- Remove Service Deployment metadata from the model, forms, filters, table columns, detail views, exports, and REST API. Required migration 0032 drops its saved values while preserving other Service data and relationships.
+- Add database-backed coverage for Service surfaces, metadata restore, and the 0031-to-0032 upgrade.
+
 ## 1.9.0
 
 - Add permission-scoped live Service check graphs, recent outcomes, average duration, and an expiration distribution chart to Dashboard. Page loads never probe endpoints.

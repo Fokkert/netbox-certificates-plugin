@@ -18,7 +18,7 @@ class ServiceTable(AcronymTableMixin, PrimaryModelTable):
     class Meta(PrimaryModelTable.Meta):
         model = Service
         fields = (
-            "pk", "id", "name", "status", "service_type", "deployment", "deployment_metadata", "environment",
+            "pk", "id", "name", "status", "service_type", "deployment", "environment",
             "primary_url", "hostname", "port", "sni_name", "criticality",
             "groups", "enabled", "certificate_check_enabled", "description", "owner", "tags", "last_updated",
         )

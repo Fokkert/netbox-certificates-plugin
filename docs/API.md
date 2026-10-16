@@ -203,3 +203,7 @@ Service create/update, detail, filtering, and export support `certificate_check_
 ## Activity history (1.9.0)
 
 `GET activity/` returns the last 14 calendar days of TLS check counts, outcome totals, average duration, and the latest eight attempts. Service view permissions scope the response. `key_access` contains the latest ten authenticated request decryption events for superusers and is null for other users. This endpoint is read-only and sends `Cache-Control: private, no-store`. It never probes endpoints.
+
+## Service field removal (1.9.1)
+
+`deployment_metadata` is removed from Service responses, schema, table columns, exports, and filters. Remove this field from API clients. `deployment` remains available. Older Service metadata exports can still restore supported properties and relationships; their removed deployment metadata is not restored.

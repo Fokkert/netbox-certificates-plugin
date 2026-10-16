@@ -13,10 +13,10 @@ class ReleaseContractTests(unittest.TestCase):
         pyproject = self.read("pyproject.toml")
         plugin = self.read("netbox-plugin.yaml")
         config = self.read("netbox_certificates/__init__.py")
-        self.assertIn('version = "1.9.0"', pyproject)
-        self.assertIn("version: 1.9.0", plugin)
+        self.assertIn('version = "1.9.1"', pyproject)
+        self.assertIn("version: 1.9.1", plugin)
         self.assertIn('version = __version__', config)
-        self.assertIn('__version__ = "1.9.0"', (ROOT / 'netbox_certificates/version.py').read_text())
+        self.assertIn('__version__ = "1.9.1"', (ROOT / 'netbox_certificates/version.py').read_text())
         self.assertIn('min_version = "4.5.9"', config)
         self.assertIn('max_version = "4.5.10"', config)
 
@@ -112,7 +112,7 @@ class ReleaseContractTests(unittest.TestCase):
         ):
             self.assertIn(heading, readme)
         self.assertIn("NetBox Certificates Plugin", readme)
-        self.assertIn("netbox-certificates-plugin==1.9.0", readme)
+        self.assertIn("netbox-certificates-plugin==1.9.1", readme)
 
 
 
