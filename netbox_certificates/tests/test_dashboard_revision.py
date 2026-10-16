@@ -23,7 +23,7 @@ class DashboardRevisionTests(TestCase):
         return view.as_view()(request)
 
     def test_switch_moved_without_resetting_value(self):
-        AlertSettings.objects.create(service_checks_enabled=True)
+        AlertSettings.objects.update_or_create(pk=1, defaults={"service_checks_enabled": True})
         self.assertNotContains(self.client.get(reverse("plugins:netbox_certificates:preferences")), 'name="service_checks_enabled"')
         response = self.client.get(reverse("plugins:netbox_certificates:alert_settings"))
         self.assertContains(response, 'name="service_checks_enabled"', count=1)
@@ -44,7 +44,7 @@ class DashboardRevisionTests(TestCase):
 
     def test_retired_category_migration_preserves_other_choices_and_live_switch(self):
         rule = AlertRule.objects.create(name="Managed", categories=["security", "service"], enabled=True)
-        AlertSettings.objects.create(rule=rule, service_checks_enabled=True)
+        AlertSettings.objects.update_or_create(pk=1, defaults={"rule": rule, "service_checks_enabled": True})
         migration = importlib.import_module("netbox_certificates.migrations.0030_retire_security_alert_option")
         editor = SimpleNamespace(connection=SimpleNamespace(alias="default"))
         migration.retire_option(apps, editor)
