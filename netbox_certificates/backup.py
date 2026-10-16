@@ -1,5 +1,4 @@
-"""Administrator UI for portable backups and metadata merge imports."""
-import io
+"""Administrator UI for Groups and Services metadata imports."""
 
 from django import forms
 from django.contrib import messages
@@ -7,7 +6,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, render
 from django.views import View
 
-from .bulk_export import _secure_file_response
 from .constants import MAX_UPLOAD_BYTES
 from .services.backup import BackupError, require_backup_user
 from .services.metadata_import import import_metadata
@@ -24,11 +22,6 @@ def read_upload(upload):
     return data
 
 
-def backup_response(data, password):
-    response = _secure_file_response(io.BytesIO(data), "netbox-certificates-backup." + ("nbcbak" if password else "zip"))
-    if password:
-        response["Content-Type"] = "application/octet-stream"
-    return response
 
 
 class ObjectRestoreView(LoginRequiredMixin, View):

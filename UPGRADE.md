@@ -1,4 +1,4 @@
-# Upgrade to 1.8.1
+# Upgrade to 1.9.0
 
 Upgrade 1.5.0 (or an earlier version) in place; older migrations remain available. Supported NetBox versions remain 4.5.9 and 4.5.10 with Python 3.12+. Run the following on the Linux VM. These commands assume `/opt/netbox`, PostgreSQL database `netbox`, and systemd units `netbox` and `netbox-rq`. Adapt paths/service names if your installation differs. Container deployments should install the pinned package when rebuilding their image.
 
@@ -9,24 +9,24 @@ Keep the existing plugin Fernet encryption key unchanged. Back up the database, 
 ```bash
 sudo systemctl stop netbox netbox-rq
 umask 077
-sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.8.1.dump"
-sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.8.1
+sudo -u postgres pg_dump -Fc netbox > "$HOME/netbox-before-certificates-1.9.0.dump"
+sudo cp -a /opt/netbox/local_requirements.txt /opt/netbox/local_requirements.txt.before-certificates-1.9.0
 ```
 
 Use your normal backup command if PostgreSQL is remote. Confirm the backup succeeded before continuing.
 
 ## Install with pip
 
-Wait until GitHub Actions has successfully published 1.8.1 to PyPI. No source copying, cloning, or uninstall is needed:
+Wait until GitHub Actions has successfully published 1.9.0 to PyPI. No source copying, cloning, or uninstall is needed:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.8.1'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'netbox-certificates-plugin==1.9.0'
 ```
 
 If the tag has been pushed but PyPI publication is pending, pip can instead install the tagged source archive:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.8.1.zip'
+sudo /opt/netbox/venv/bin/python -m pip install --upgrade 'https://github.com/Fokkert/netbox-certificates-plugin/archive/refs/tags/v1.9.0.zip'
 ```
 
 Update the persistent package pin automatically so NetBox's upgrade script keeps this version:
@@ -39,7 +39,7 @@ path = Path('/opt/netbox/local_requirements.txt')
 lines = path.read_text().splitlines() if path.exists() else []
 pattern = re.compile(r'^\s*netbox[-_]certificates[-_]plugin(?:\[.*?\])?(?:\s|[=<>!~@]|$)', re.I)
 lines = [line for line in lines if not pattern.match(line)]
-lines.append('netbox-certificates-plugin==1.8.1')
+lines.append('netbox-certificates-plugin==1.9.0')
 path.write_text('\n'.join(lines) + '\n')
 PY
 ```
@@ -60,11 +60,13 @@ sudo systemctl start netbox netbox-rq
 sudo systemctl status netbox netbox-rq --no-pager
 ```
 
-The installed version must be `1.8.1`. Hard-refresh your browser after static files are collected.
+The installed version must be `1.9.0`. Hard-refresh your browser after static files are collected.
 
-## Changes in 1.8.1
+## Changes in 1.9.0
 
-Fix stale links on Import Objects and Export Inventory, expand Dashboard sections by default, and reorder Dashboard/Preferences and Generate CSR/Import Objects in the menu. No new migration is added by 1.8.1; run `migrate` to apply any outstanding migrations, including 0030 when upgrading from a version older than 1.8.0. Run `collectstatic` and hard-refresh your browser.
+**Migration `0031_activity_and_retired_models` is required.** It creates Service check and private-key access history, and deletes retired CertificatePolicy, ExpiryAlertConfiguration, and ExpiryAlertEvent tables plus obsolete policy relationships and AlertRule.expiration_days. Current certificates, keys, CSRs, bundles, groups, services, findings, alert channels, rules, and settings are preserved. Back up the database before upgrading: removed legacy data cannot be recovered by reversing the migration.
+
+Retired page redirects and the full-snapshot backup APIs are removed. Use Dashboard, the filtered Certificates list for CAs, and the existing inventory import/export controls. History starts at this upgrade. Run `collectstatic`, restart both services, and hard-refresh your browser.
 
 ## Changes retained from 1.8.0
 
@@ -72,7 +74,7 @@ Fix stale links on Import Objects and Export Inventory, expand Dashboard section
 
 The global Service check is now in **Alerts Configuration → Check live Service certificates for mismatches**. Per-Service opt-in and scan schedules are unchanged. API clients must send `service_checks_enabled` to `alert-settings/`, not `preferences/`.
 
-Open **Overview → Dashboard** at `/plugins/ssl-certificates/dashboard/`. `/vault/` and old health URLs redirect with filters preserved. The standalone Backup and Restore page is removed. Use the Services/Groups list controls and artifact import/export actions; full-snapshot APIs remain for compatibility.
+Open **Overview → Dashboard** at `/plugins/ssl-certificates/dashboard/`. The old `/vault/` and health landing-page redirects were subsequently removed in 1.9.0. The standalone Backup and Restore page is removed. Use the Services/Groups list controls and artifact import/export actions; full-snapshot APIs were subsequently removed in 1.9.0.
 
 The following sections describe earlier upgrade changes; current configuration locations are given above.
 

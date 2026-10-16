@@ -32,11 +32,10 @@ from .forms import (
     ArtifactGroupBulkEditForm, ArtifactGroupFilterForm, ArtifactGroupForm, ArtifactLinkForm, ArtifactLinkTypeForm,
     BundleArtifactFilterForm, BundleBulkEditForm, BundleExportForm, BundleForm,
     CertificateArtifactFilterForm, CertificateBulkEditForm, CertificateForm, CSRArtifactFilterForm, CSRBulkEditForm, CSRForm, CSRGenerateForm,
-    ExpiryAlertConfigurationForm, PrivateKeyArtifactFilterForm, PrivateKeyBulkEditForm, PrivateKeyForm, UnifiedImportForm,
+    PrivateKeyArtifactFilterForm, PrivateKeyBulkEditForm, PrivateKeyForm, UnifiedImportForm,
 )
-from .models import ArtifactGroup, ArtifactLink, Bundle, Certificate, CSR, ExpiryAlertConfiguration, ExpiryAlertEvent, PrivateKey
+from .models import ArtifactGroup, ArtifactLink, Bundle, Certificate, CSR, PrivateKey
 from .permissions import action_queryset as _action_queryset, object_allowed as _object_allowed
-from .services.alerts import ExpiryAlertError, send_email, send_webhook
 from .services.chain import ordered_chain, validate_chain
 from .services.csr import CSRGenerationError
 from .services.encryption import PrivateKeyEncryptionError, decrypt_private_key
@@ -406,7 +405,7 @@ class UnifiedImportView(LoginRequiredMixin, View):
     template_name = "netbox_certificates/import_objects.html"
     def _context(self, request, form=None):
         return {"form": form or UnifiedImportForm(user=request.user), "ca_only": self.ca_only,
-                "return_url": reverse("plugins:netbox_certificates:certificateauthority_list" if self.ca_only else "plugins:netbox_certificates:dashboard")}
+                "return_url": (reverse("plugins:netbox_certificates:certificate_list") + "?is_ca=true") if self.ca_only else reverse("plugins:netbox_certificates:dashboard")}
     def get(self, request):
         return render(request, self.template_name, self._context(request))
     def post(self, request):
@@ -455,7 +454,7 @@ class UnifiedImportView(LoginRequiredMixin, View):
         reused = result.get("reused", [])
         messages.success(request, f"Imported {len(created)} new object(s) and reused {len(reused)} existing object(s).")
         if self.ca_only:
-            return redirect("plugins:netbox_certificates:certificateauthority_list")
+            return redirect(reverse("plugins:netbox_certificates:certificate_list") + "?is_ca=true")
         kinds = {obj.__class__ for obj in created}
         if kinds == {Certificate}: return redirect("plugins:netbox_certificates:certificate_list")
         if kinds == {PrivateKey}: return redirect("plugins:netbox_certificates:privatekey_list")
@@ -537,7 +536,7 @@ class DownloadArtifactView(LoginRequiredMixin, View):
         try: obj = _action_queryset(model, request.user, "download").get(pk=pk)
         except model.DoesNotExist: raise Http404("Object not found.")
         try:
-            if kind == "privatekey": data, filename, content_type = decrypt_private_key(obj.encrypted_material), _artifact_download_filename(obj, ".key"), "application/x-pem-file"
+            if kind == "privatekey": data, filename, content_type = decrypt_private_key(obj.encrypted_material, private_key=obj), _artifact_download_filename(obj, ".key"), "application/x-pem-file"
             elif kind == "certificate": data, filename, content_type = obj.material.encode("ascii"), _artifact_download_filename(obj, ".crt"), "application/x-pem-file"
             else: data, filename, content_type = obj.material.encode("ascii"), _artifact_download_filename(obj, ".csr"), "application/pkcs10"
         except PrivateKeyEncryptionError:
@@ -579,7 +578,7 @@ class BundleExportView(LoginRequiredMixin, View):
             else:
                 files = []
                 if bundle.certificate: files.append((_artifact_download_filename(bundle.certificate, ".crt"), bundle.certificate.material.encode("ascii")))
-                if bundle.private_key: files.append((_artifact_download_filename(bundle.private_key, ".key"), decrypt_private_key(bundle.private_key.encrypted_material)))
+                if bundle.private_key: files.append((_artifact_download_filename(bundle.private_key, ".key"), decrypt_private_key(bundle.private_key.encrypted_material, private_key=bundle.private_key)))
                 if bundle.csr: files.append((_artifact_download_filename(bundle.csr, ".csr"), bundle.csr.material.encode("ascii")))
                 if d.get("include_chain"):
                     chain = ordered_chain(bundle.certificate) if bundle.certificate else []; seen = {c.pk for c in chain}; chain.extend(c for c in bundle.chain_certificates.all() if c.pk not in seen)
@@ -596,15 +595,6 @@ class BundleExportView(LoginRequiredMixin, View):
         return response
 
 
-class ExpirationDashboardView(CertificateStatusRefreshMixin, PermissionRequiredMixin, View):
-    permission_required = "netbox_certificates.view_certificate"
-    template_name = "netbox_certificates/expiration_dashboard.html"
-    def get(self, request):
-        qs = _action_queryset(Certificate, request.user, "view").order_by("valid_to")
-        states = [(cert, expiry_state(cert)) for cert in qs]
-        counts = {key: sum(1 for _, state in states if state["level"] == key) for key in ("healthy", "warning", "critical", "expired", "unknown")}
-        upcoming = [(cert, state) for cert, state in states if state["level"] in {"warning", "critical"}][:50]
-        return render(request, self.template_name, {"counts": counts, "upcoming": upcoming})
 
 
 class InventoryView(CertificateStatusRefreshMixin, LoginRequiredMixin, View):
@@ -614,47 +604,6 @@ class InventoryView(CertificateStatusRefreshMixin, LoginRequiredMixin, View):
         return render(request, self.template_name, {"bundle_groups": inventory["groups"], "unbundled": inventory["unbundled"], "counts": inventory["counts"]})
 
 
-class ExpirationAlertsView(LoginRequiredMixin, View):
-    template_name = "netbox_certificates/expiration_alerts.html"
-    def _allowed(self, user):
-        return getattr(user, "is_superuser", False) or user.has_perm("netbox_certificates.change_expiryalertconfiguration") or user.has_perm("netbox_certificates.add_expiryalertconfiguration")
-    def _test_allowed(self, user): return self._allowed(user) or user.has_perm("netbox_certificates.test_expiryalertconfiguration")
-    def _context(self, request, form=None):
-        config = ExpiryAlertConfiguration.objects.first(); instance = config or ExpiryAlertConfiguration()
-        if form is None: form = ExpiryAlertConfigurationForm(instance=instance)
-        visible_certs = _action_queryset(Certificate, request.user, "view")
-        recent_events = ExpiryAlertEvent.objects.filter(certificate__in=visible_certs).select_related("certificate").order_by("-last_attempt_at", "-created")[:50]
-        return {"form": form, "config": config, "recent_events": recent_events, "return_url": reverse("plugins:netbox_certificates:expiration_dashboard")}
-    def get(self, request):
-        if not self._allowed(request.user): raise PermissionDenied("You do not have permission to manage expiration alerts.")
-        return render(request, self.template_name, self._context(request))
-    def post(self, request):
-        if not self._allowed(request.user): raise PermissionDenied("You do not have permission to manage expiration alerts.")
-        action = request.POST.get("_action", "save"); config = ExpiryAlertConfiguration.objects.first() or ExpiryAlertConfiguration()
-        form = ExpiryAlertConfigurationForm(request.POST, instance=config, require_email=action == "test_email", require_webhook=action == "test_webhook")
-        if not form.is_valid(): return render(request, self.template_name, self._context(request, form=form))
-        config = form.save()
-        if action == "save": messages.success(request, "Expiration alert configuration saved."); return redirect("plugins:netbox_certificates:alertrule_list")
-        if not self._test_allowed(request.user): raise PermissionDenied("You do not have permission to test expiration alerts.")
-        now = timezone.now()
-        try:
-            if action == "test_email":
-                result = send_email(config, test=True); config.email_last_test_at = now; config.email_last_test_success = True; config.email_last_test_message = result[:500]
-                config.save(update_fields=("email_last_test_at", "email_last_test_success", "email_last_test_message", "last_updated")); messages.success(request, "Email test succeeded: " + result)
-            elif action == "test_webhook":
-                status, result = send_webhook(config, test=True); config.webhook_last_test_at = now; config.webhook_last_test_success = True; config.webhook_last_test_message = result[:500]
-                config.save(update_fields=("webhook_last_test_at", "webhook_last_test_success", "webhook_last_test_message", "last_updated")); messages.success(request, f"Webhook test succeeded (HTTP {status}).")
-            else: messages.error(request, "Unknown expiration-alert action.")
-        except Exception as exc:
-            message = str(exc) if isinstance(exc, ExpiryAlertError) else f"{action.replace('_', ' ').title()} failed: {exc}"
-            if action == "test_email":
-                config.email_last_test_at = now; config.email_last_test_success = False; config.email_last_test_message = message[:500]
-                config.save(update_fields=("email_last_test_at", "email_last_test_success", "email_last_test_message", "last_updated"))
-            elif action == "test_webhook":
-                config.webhook_last_test_at = now; config.webhook_last_test_success = False; config.webhook_last_test_message = message[:500]
-                config.save(update_fields=("webhook_last_test_at", "webhook_last_test_success", "webhook_last_test_message", "last_updated"))
-            messages.error(request, message)
-        return redirect("plugins:netbox_certificates:alertrule_list")
 
 
 class ArtifactLinkCreateView(LoginRequiredMixin, View):

@@ -6,7 +6,7 @@ model must have its ModelNameSerializer available from this module.
 from .base_serializers import (
     ArtifactGroupSerializer, ArtifactLinkSerializer, BundleSerializer,
     CertificateAuthoritySerializer, CertificateSerializer, CSRSerializer,
-    ExpiryAlertConfigurationSerializer, ExpiryAlertEventSerializer,
+
     PrivateKeySerializer, VisibleRelationshipsMixin,
 )
 from .v1_serializers import (
@@ -18,7 +18,6 @@ from .v1_serializers import (
 __all__ = (
     "ArtifactGroupSerializer", "ArtifactLinkSerializer", "BundleSerializer",
     "CertificateAuthoritySerializer", "CertificateSerializer", "CSRSerializer",
-    "ExpiryAlertConfigurationSerializer", "ExpiryAlertEventSerializer",
     "PrivateKeySerializer", "VisibleRelationshipsMixin", "AlertChannelSerializer",
     "AlertEventSerializer", "AlertRuleSerializer", "CACertificateSerializer",
     "HealthFindingSerializer", "ObjectLinkSerializer", "ServiceSerializer",

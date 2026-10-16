@@ -21,7 +21,7 @@ from .choices import (
     SourceFormatChoices,
 )
 from .constants import ALERT_CHECK_INTERVAL_CHOICES
-from .models import ArtifactGroup, Bundle, Certificate, CertificateAuthority, CSR, ExpiryAlertConfiguration, PrivateKey
+from .models import ArtifactGroup, Bundle, Certificate, CertificateAuthority, CSR, PrivateKey
 from .services.csr import CSRGenerationError
 from .services.encryption import encrypt_secret
 from .services.importing import ArtifactImportError, choose_leaf, create_or_reuse_chain
@@ -736,75 +736,6 @@ class CSRGenerateForm(AcronymFormMixin, forms.Form):
         return "\n".join(entries)
 
 
-class ExpiryAlertConfigurationForm(AcronymFormMixin, forms.ModelForm):
-    smtp_password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "new-password"}), label="SMTP password")
-    webhook_url = forms.URLField(required=False, label="Webhook URL")
-    webhook_bearer_token = forms.CharField(required=False, widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "new-password"}), label="Webhook bearer token")
-    check_interval_minutes = forms.TypedChoiceField(choices=ALERT_CHECK_INTERVAL_CHOICES, coerce=int, label="Check interval")
-    alert_repeat_mode = forms.ChoiceField(choices=AlertRepeatModeChoices, label="Repeat behavior")
-    class Meta:
-        model = ExpiryAlertConfiguration
-        fields = (
-            "check_interval_minutes", "alert_on_expired_certificates", "alert_repeat_mode",
-            "email_enabled", "smtp_host", "smtp_port", "smtp_username", "smtp_use_tls", "smtp_use_ssl",
-            "email_from_address", "email_recipients", "include_superusers",
-            "webhook_enabled", "webhook_allow_http", "webhook_ignore_tls_verification",
-        )
-        labels = {
-            "email_enabled": "Enable email",
-            "smtp_host": "SMTP host",
-            "smtp_port": "SMTP port",
-            "smtp_username": "SMTP username",
-            "smtp_use_tls": "Use STARTTLS",
-            "smtp_use_ssl": "Use implicit SSL/TLS",
-            "email_from_address": "From address",
-            "email_recipients": "Recipients",
-            "include_superusers": "Include active NetBox superusers",
-            "webhook_enabled": "Enable webhook",
-            "webhook_allow_http": "Allow insecure HTTP webhook",
-            "webhook_ignore_tls_verification": "Ignore TLS certificate verification",
-        }
-        widgets = {"email_recipients": forms.Textarea(attrs={"rows": 3, "placeholder": "admin@example.com\nops@example.com"})}
-    def __init__(self, *args, require_email=False, require_webhook=False, **kwargs):
-        self.require_email = require_email
-        self.require_webhook = require_webhook
-        super().__init__(*args, **kwargs)
-        if getattr(self.instance, "smtp_password_encrypted", None):
-            self.fields["smtp_password"].widget.attrs["placeholder"] = "Configured — leave blank to keep"
-        if getattr(self.instance, "webhook_url_encrypted", None):
-            self.fields["webhook_url"].widget.attrs["placeholder"] = "Configured — enter a new URL to replace"
-        if getattr(self.instance, "webhook_bearer_token_encrypted", None):
-            self.fields["webhook_bearer_token"].widget.attrs["placeholder"] = "Configured — leave blank to keep"
-    def clean(self):
-        cleaned = super().clean()
-        email_needed = cleaned.get("email_enabled") or self.require_email
-        webhook_needed = cleaned.get("webhook_enabled") or self.require_webhook
-        if cleaned.get("smtp_use_tls") and cleaned.get("smtp_use_ssl"):
-            self.add_error("smtp_use_ssl", "STARTTLS and implicit SSL/TLS cannot both be enabled.")
-        if email_needed:
-            if not cleaned.get("smtp_host"): self.add_error("smtp_host", "SMTP host is required.")
-            if not cleaned.get("smtp_port"): self.add_error("smtp_port", "SMTP port is required.")
-            if not cleaned.get("email_from_address"): self.add_error("email_from_address", "From address is required.")
-            if not cleaned.get("include_superusers") and not cleaned.get("email_recipients", "").strip():
-                self.add_error("email_recipients", "Add at least one recipient or enable NetBox superuser recipients.")
-        existing_url = bool(getattr(self.instance, "webhook_url_encrypted", None))
-        if webhook_needed and not cleaned.get("webhook_url") and not existing_url:
-            self.add_error("webhook_url", "Webhook URL is required.")
-        url = cleaned.get("webhook_url")
-        if url and url.lower().startswith("http://") and not cleaned.get("webhook_allow_http"):
-            self.add_error("webhook_url", "HTTP webhooks require 'Allow insecure HTTP webhook'.")
-        return cleaned
-    def save(self, commit=True):
-        obj = super().save(commit=False)
-        if self.cleaned_data.get("smtp_password"):
-            obj.smtp_password_encrypted = encrypt_secret(self.cleaned_data["smtp_password"])
-        if self.cleaned_data.get("webhook_url"):
-            obj.webhook_url_encrypted = encrypt_secret(self.cleaned_data["webhook_url"])
-        if self.cleaned_data.get("webhook_bearer_token"):
-            obj.webhook_bearer_token_encrypted = encrypt_secret(self.cleaned_data["webhook_bearer_token"])
-        if commit:
-            obj.save()
-        return obj
 
 
 class ArtifactLinkTypeForm(AcronymFormMixin, forms.Form):

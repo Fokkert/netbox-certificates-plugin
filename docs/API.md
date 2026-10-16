@@ -152,7 +152,7 @@ All settings mutations/tests and finding state/scan actions require a write-enab
 
 The response contains CSR/key metadata, never private material. Signing with an existing key requires its scoped `use` and view permissions, CSR add permission, and permission to create/change the matching Bundle. A new key requires Private Key add permission instead of `use`. Both modes require a write-enabled token. The same form validation applies to UI and API: SAN types/values, email, country, key algorithm settings, and usages are validated. SAN input can be newline-separated text, strings in an array, or `{ "type": "DNS", "value": "example.com" }` objects.
 
-`POST import-objects/` accepts mixed multipart uploads as described in [Imports](IMPORTS.md). It returns `created`, `reused`, `bundle_ids`, and `ignored_files`; `reused_ca_ids` remains for compatibility. Related IDs and input types are validated.
+`POST import-objects/` accepts mixed multipart uploads as described in [Imports](IMPORTS.md). It returns `created`, `reused`, `bundle_ids`, and `ignored_files`; the redundant `reused_ca_ids` field has been removed. Related IDs and input types are validated.
 
 `POST export-inventory/` accepts a non-empty `types` array:
 
@@ -198,4 +198,8 @@ Service create/update, detail, filtering, and export support `certificate_check_
 
 ## 1.8.0 changes
 
-`service_checks_enabled` moved from `preferences/` to `alert-settings/`. It retains its existing saved value and remains superuser-only. Preferences rejects writes to that moved field with HTTP 400. The managed alert settings category choices no longer include `security`; migration 0030 removes it from the managed rule without broadening security-only rules. Inventory and legacy full-backup API endpoints remain available. The standalone backup UI is removed; Dashboard's canonical UI URL is `/plugins/ssl-certificates/dashboard/`, with `/vault/` retained as a filtered redirect.
+`service_checks_enabled` moved from `preferences/` to `alert-settings/`. It retains its existing saved value and remains superuser-only. Preferences rejects writes to that moved field with HTTP 400. The managed alert settings category choices no longer include `security`; migration 0030 removes it from the managed rule without broadening security-only rules. Inventory endpoints remain available; retired full-backup endpoints were removed in 1.9.0. The standalone backup UI is removed; Dashboard's canonical UI URL is `/plugins/ssl-certificates/dashboard/`, and the retired `/vault/` redirect is removed in 1.9.0.
+
+## Activity history (1.9.0)
+
+`GET activity/` returns the last 14 calendar days of TLS check counts, outcome totals, average duration, and the latest eight attempts. Service view permissions scope the response. `key_access` contains the latest ten authenticated request decryption events for superusers and is null for other users. This endpoint is read-only and sends `Cache-Control: private, no-store`. It never probes endpoints.

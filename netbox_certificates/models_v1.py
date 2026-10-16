@@ -40,66 +40,6 @@ def validate_list_fields(instance, names):
         raise ValidationError(errors)
 
 
-class CertificatePolicy(PrimaryModel):
-    """Retained privately for upgrade compatibility; global checks live in AlertSettings."""
-    _netbox_private = True
-    name = models.CharField(max_length=120, unique=True)
-    enabled = models.BooleanField(default=True)
-    minimum_rsa_bits = models.PositiveIntegerField(default=2048)
-    allowed_key_types = models.JSONField(default=list, blank=True)
-    allowed_signature_algorithms = models.JSONField(default=list, blank=True)
-    allowed_curves = models.JSONField(default=list, blank=True)
-    max_validity_days = models.PositiveIntegerField(blank=True, null=True)
-    require_san = models.BooleanField(default=True)
-    allow_wildcards = models.BooleanField(default=True)
-    allow_ca = models.BooleanField(default=False)
-    allowed_issuers = models.JSONField(default=list, blank=True)
-    forbid_key_reuse = models.BooleanField(default=False)
-
-    certificates = models.ManyToManyField(
-        "netbox_certificates.Certificate",
-        related_name="certificate_policies",
-        blank=True,
-    )
-    csrs = models.ManyToManyField(
-        "netbox_certificates.CSR",
-        related_name="certificate_policies",
-        blank=True,
-    )
-    bundles = models.ManyToManyField(
-        "netbox_certificates.Bundle",
-        related_name="certificate_policies",
-        blank=True,
-    )
-
-    clone_fields = (
-        "enabled",
-        "minimum_rsa_bits",
-        "allowed_key_types",
-        "allowed_signature_algorithms",
-        "allowed_curves",
-        "max_validity_days",
-        "require_san",
-        "allow_wildcards",
-        "allow_ca",
-        "allowed_issuers",
-        "forbid_key_reuse",
-    )
-
-    class Meta:
-        ordering = ("name",)
-        default_permissions = ()
-        permissions = ()
-
-    def __str__(self):
-        return self.name
-
-    def get_absolute_url(self):
-        return reverse("plugins:netbox_certificates:alert_settings")
-
-    def clean(self):
-        super().clean()
-        validate_list_fields(self, ("allowed_key_types", "allowed_signature_algorithms", "allowed_curves", "allowed_issuers"))
 
 
 class Service(PrimaryModel):
@@ -146,13 +86,6 @@ class Service(PrimaryModel):
     contact = models.CharField(max_length=200, blank=True)
     enabled = models.BooleanField(default=True)
 
-    policy = models.ForeignKey(
-        CertificatePolicy,
-        on_delete=models.PROTECT,
-        related_name="services",
-        blank=True,
-        null=True,
-    )
     groups = models.ManyToManyField(
         "netbox_certificates.ArtifactGroup",
         related_name="services",
@@ -469,14 +402,12 @@ class AlertRule(PrimaryModel):
     object_types = models.JSONField(default=list, blank=True)
     tag_names = models.JSONField(default=list, blank=True)
     owner_ids = models.JSONField(default=list, blank=True)
-    expiration_days = models.PositiveIntegerField(blank=True, null=True)
     cooldown_minutes = models.PositiveIntegerField(default=60)
     repeat_minutes = models.PositiveIntegerField(default=1440)
     notify_on_recovery = models.BooleanField(default=False)
 
     channels = models.ManyToManyField(AlertChannel, related_name="rules", blank=True)
     services = models.ManyToManyField(Service, related_name="alert_rules", blank=True)
-    policies = models.ManyToManyField(CertificatePolicy, related_name="alert_rules", blank=True)
     groups = models.ManyToManyField(
         "netbox_certificates.ArtifactGroup",
         related_name="alert_rules",
@@ -591,14 +522,12 @@ class AlertEvent(PrimaryModel):
 # relationship tries to resolve its URL, send the user to the real CA
 # certificate inventory instead of leaving a broken reverse().
 def _internal_certificate_authority_absolute_url(self):
-    return reverse("plugins:netbox_certificates:certificateauthority_list")
+    return reverse("plugins:netbox_certificates:certificate_list") + "?is_ca=true"
 
 
 from .models import (
     ArtifactLink as _LegacyArtifactLink,
     CertificateAuthority as _InternalCertificateAuthority,
-    ExpiryAlertConfiguration as _LegacyExpiryAlertConfiguration,
-    ExpiryAlertEvent as _LegacyExpiryAlertEvent,
 )
 
 _InternalCertificateAuthority.get_absolute_url = _internal_certificate_authority_absolute_url
@@ -608,8 +537,6 @@ _InternalCertificateAuthority.get_absolute_url = _internal_certificate_authority
 # NetBox object types in 1.0.
 _InternalCertificateAuthority._netbox_private = True
 _LegacyArtifactLink._netbox_private = True
-_LegacyExpiryAlertConfiguration._netbox_private = True
-_LegacyExpiryAlertEvent._netbox_private = True
 
 # Prevent Django's post_migrate permission creator from reintroducing public CRUD
 # permissions for the retained pre-1.0 implementation models. The database
@@ -618,8 +545,6 @@ _LegacyExpiryAlertEvent._netbox_private = True
 for _legacy_private_model in (
     _InternalCertificateAuthority,
     _LegacyArtifactLink,
-    _LegacyExpiryAlertConfiguration,
-    _LegacyExpiryAlertEvent,
 ):
     _legacy_private_model._meta.default_permissions = ()
     _legacy_private_model._meta.permissions = ()

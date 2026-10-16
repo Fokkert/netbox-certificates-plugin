@@ -80,8 +80,7 @@ class InventoryRevisionTests(TestCase):
         response = self.client.get(reverse("plugins:netbox_certificates:certificateauthority_material_export"))
         self.assertContains(response, "There are no objects available to export")
         self.assertNotIn("Content-Disposition", response)
-        self.assertRedirects(self.client.get(reverse("plugins:netbox_certificates:certificatepolicy_list")),
-                             reverse("plugins:netbox_certificates:alert_settings"))
+        self.assertEqual(self.client.get("/plugins/ssl-certificates/health/policies/").status_code, 404)
 
     def test_all_public_serializers_support_netbox_lookup(self):
         from utilities.api import get_serializer_for_model
@@ -146,5 +145,4 @@ class InventoryRevisionTests(TestCase):
         self.assertEqual(self.client.get(url).status_code, 403)
 
     def test_ca_bookmark_uses_filtered_certificates(self):
-        self.assertRedirects(self.client.get(reverse("plugins:netbox_certificates:certificateauthority_list")),
-                             reverse("plugins:netbox_certificates:certificate_list") + "?is_ca=true")
+        self.assertEqual(self.client.get("/plugins/ssl-certificates/certificate-authorities/").status_code, 404)

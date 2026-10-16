@@ -372,7 +372,14 @@ class HealthFindingListView(VaultInventoryMixin, LoginRequiredMixin, View):
             counts[state["level"]] += 1
             if state["level"] in {"warning", "critical", "expired"} and len(upcoming) < preferences.vault_expiration_limit:
                 upcoming.append((cert, state))
+        from .dashboard_activity import activity_summary
+        context.update(activity_summary(request.user))
         context.update(counts=counts, upcoming=upcoming)
+        total = sum(counts.values()) or 1
+        context["expiration_chart"] = [
+            {"state": state, "count": count, "width": round(count * 100 / total, 2)}
+            for state, count in counts.items()
+        ]
         return render(request, self.template_name, context)
 
     def get_extra_context(self, request):

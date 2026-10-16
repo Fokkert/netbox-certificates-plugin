@@ -87,7 +87,7 @@ def _material_for_object(kind, obj):
     if kind == "certificate":
         return _artifact_filename(obj, ".crt"), obj.material.encode("ascii")
     if kind == "privatekey":
-        return _artifact_filename(obj, ".key"), decrypt_private_key(obj.encrypted_material)
+        return _artifact_filename(obj, ".key"), decrypt_private_key(obj.encrypted_material, private_key=obj)
     if kind == "csr":
         return _artifact_filename(obj, ".csr"), obj.material.encode("ascii")
     raise ValueError(f"Unsupported artifact kind: {kind}")
@@ -107,7 +107,7 @@ def _bundle_members(bundle, *, include_chain=True, export_pfx=False, password=""
         )
     if bundle.private_key is not None and not export_pfx:
         members.append(
-            (f"{prefix}/{_artifact_filename(bundle.private_key, '.key')}", decrypt_private_key(bundle.private_key.encrypted_material), bundle.private_key)
+            (f"{prefix}/{_artifact_filename(bundle.private_key, '.key')}", decrypt_private_key(bundle.private_key.encrypted_material, private_key=bundle.private_key), bundle.private_key)
         )
     if bundle.csr is not None:
         members.append(

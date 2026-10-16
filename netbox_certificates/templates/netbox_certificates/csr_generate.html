@@ -8,18 +8,18 @@
   {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
   {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
 
-  <section class="card mb-3">
-    <h2 class="card-header">NetBox metadata</h2>
-    <div class="card-body">
+  <section class="mb-4 mb-3">
+    <h2 class="h5 mb-3">NetBox metadata</h2>
+    <div class="py-2">
     {% render_field form.name %}
     {% render_field form.owner %}
     {% render_field form.groups %}
     </div>
   </section>
 
-  <section class="card mb-3">
-    <h2 class="card-header">Subject</h2>
-    <div class="card-body">
+  <section class="mb-4 mb-3">
+    <h2 class="h5 mb-3">Subject</h2>
+    <div class="py-2">
     {% render_field form.common_name %}
     {% render_field form.organization %}
     {% render_field form.organizational_unit %}
@@ -33,9 +33,9 @@
     </div>
   </section>
 
-  <section class="card mb-3" aria-labelledby="san-title">
-    <h2 class="card-header" id="san-title">Subject Alternative Names (SANs)</h2>
-    <div class="card-body">
+  <section class="mb-4 mb-3" aria-labelledby="san-title">
+    <h2 class="h5 mb-3" id="san-title">Subject Alternative Names (SANs)</h2>
+    <div class="py-2">
       <p class="text-muted">Add the DNS names, IP addresses, email addresses, or URIs this CSR should cover.</p>
       <div id="san-fallback">{% render_field form.sans %}</div>
       <div id="san-editor" class="san-editor" hidden></div>
@@ -47,9 +47,9 @@
     </div>
   </section>
 
-  <section class="card mb-3">
-    <h2 class="card-header">Private key and signature</h2>
-    <div class="card-body">
+  <section class="mb-4 mb-3">
+    <h2 class="h5 mb-3">Private key and signature</h2>
+    <div class="py-2">
     {% render_field form.existing_private_key %}
     <div id="key-algorithm-row">{% render_field form.key_algorithm %}</div>
     <div id="rsa-bits-row">{% render_field form.rsa_bits %}</div>
@@ -59,9 +59,9 @@
     </div>
   </section>
 
-  <section class="card mb-3">
-    <h2 class="card-header">Requested X.509 extensions</h2>
-    <div class="card-body">
+  <section class="mb-4 mb-3">
+    <h2 class="h5 mb-3">Requested X.509 extensions</h2>
+    <div class="py-2">
     <div class="row g-4">
       <div class="col-lg-6">
           <h3 class="h5 mb-3">Key usage</h3>

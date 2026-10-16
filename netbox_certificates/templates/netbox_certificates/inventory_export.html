@@ -7,7 +7,7 @@
 <p>Select the object types to include in one ZIP archive. Certificates, keys, CSRs, and Bundle material can be imported together. Restore Groups and Services using their list pages. Other object types here are exported as reference metadata.</p>
 <form method="post" data-bulk-select="input[name=types]">{% csrf_token %}{{ form.non_field_errors }}
 {% include "netbox_certificates/inc/bulk_selection.html" with select_label="Select all object types" %}
-<div class="card mb-3"><div class="card-body">
+<div class="mb-4 mb-3"><div class="py-2">
 {% include 'netbox_certificates/inc/inventory_types.html' %}
 </div></div>
 <div class="nbcert-actions">

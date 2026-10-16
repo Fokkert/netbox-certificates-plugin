@@ -22,9 +22,9 @@
 .nbcert-search .btn { min-width: 5.5rem; }
 .nbcert-export-types { min-width: 0; margin: 0; padding: 0; border: 0; }
 .nbcert-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
-.nbcert-choice { display: flex; align-items: center; gap: .75rem; padding: .85rem 1rem; margin: 0; border: 1px solid var(--bs-border-color, #cbd5e1); border-radius: .4rem; cursor: pointer; overflow-wrap: anywhere; }
+.nbcert-choice { display: flex; align-items: center; gap: .75rem; padding: .65rem 0; margin: 0; border: 0; cursor: pointer; overflow-wrap: anywhere; }
 .nbcert-choice .form-check-input { flex: 0 0 auto; width: 1.2rem; height: 1.2rem; margin: 0; }
-.nbcert-choice:has(input:checked) { border-color: var(--bs-primary, #2563eb); background: var(--bs-primary-bg-subtle, rgba(37, 99, 235, .1)); }
+.nbcert-choice:has(input:checked) { color: var(--bs-primary-text-emphasis, var(--bs-primary)); }
 .nbcert-choice:focus-within { outline: 2px solid var(--bs-primary, #2563eb); outline-offset: 2px; }
 @media (max-width: 575px) {
   .nbcert-choice-grid, .nbcert-search { grid-template-columns: minmax(0, 1fr); }

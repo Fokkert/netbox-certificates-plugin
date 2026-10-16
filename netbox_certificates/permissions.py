@@ -16,7 +16,6 @@ def permission_name(model, action):
         ("csr", "download"): "download_csr",
         ("bundle", "export"): "export_bundle",
         ("bundle", "export_pfx"): "export_pfx_bundle",
-        ("expiryalertconfiguration", "test"): "test_expiryalertconfiguration",
     }
     codename = custom.get((model_name, action), f"{action}_{model_name}")
     return f"{model._meta.app_label}.{codename}"

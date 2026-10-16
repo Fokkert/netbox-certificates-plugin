@@ -17,7 +17,7 @@
 <div class="nbcert-actions"><button type="submit" class="btn btn-outline-primary">Search</button><a class="btn btn-outline-secondary" href="{% url 'plugins:netbox_certificates:artifactgroup_list' %}">Clear</a></div>
 </form>
 {% if filter_errors %}<div class="alert alert-danger">{{ filter_errors }}</div>{% endif %}
-<div class="card"><h2 class="card-header">Group hierarchy</h2><div class="card-body">
+<div class="my-4"><h2 class="h5 mb-3">Group hierarchy</h2><div class="py-2">
 <p class="text-muted">Expand groups to browse subgroups and their objects. Open a group to manage membership.</p>
 <form method="post" data-bulk-select>{% csrf_token %}
 {% if perms.netbox_certificates.change_artifactgroup or perms.netbox_certificates.delete_artifactgroup %}{% include "netbox_certificates/inc/bulk_selection.html" with select_label="Select all groups" %}{% endif %}

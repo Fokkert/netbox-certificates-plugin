@@ -7,3 +7,5 @@ Migration `0022_global_certificate_checks` copies these five values when exactly
 Legacy rows and assignments remain in the database for audit and rollback, but are inactive. Algorithm/curve/issuer allowlists and CA eligibility are not migrated into new settings. Policy REST/GraphQL/search interfaces and permissions are retired. Existing UI policy bookmarks redirect to Alerts Configuration; policy POST operations are unavailable. The page remains superuser-only.
 
 Alert category `policy` becomes `configuration`; explicit old policy finding codes become `CERTIFICATE_SETTINGS_VIOLATION`. Old findings resolve on the next scan if no longer detected. Existing policy-specific rule scopes are inactive: review additional alert rules because their other scopes continue to apply.
+
+Migration 0031 deletes the retired policy model and its relationships. The global settings migrated previously are preserved.

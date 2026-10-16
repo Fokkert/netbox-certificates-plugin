@@ -1,4 +1,6 @@
 import hashlib
+import time
+from .activity import capture_checks, record_check
 import ipaddress
 import json
 from collections import defaultdict
@@ -738,8 +740,11 @@ def _live_service_findings(service, settings):
     expected = {normalize_fingerprint(cert.fingerprint_sha256) for cert in certificates if cert.fingerprint_sha256}
     if not expected:
         return  # The local SERVICE_WITHOUT_CERTIFICATE check explains this case.
+    started = time.monotonic()
+    actual, result = "", "failed"
     try:
         actual = certificate_fingerprint(service)
+        result = "match" if actual in expected else "mismatch"
     except (OSError, ValueError) as exc:
         # An unreachable endpoint is not evidence that a previous mismatch was fixed.
         HealthFinding.objects.filter(
@@ -749,12 +754,16 @@ def _live_service_findings(service, settings):
                  service, "Could not read the Service's live certificate.",
                  evidence={"reason": str(exc)})
         return
+    finally:
+        record_check(service_id=service.pk, service_name=service.name, result=result,
+                     duration_ms=max(0, round((time.monotonic() - started) * 1000)), fingerprint=actual)
     if actual not in expected:
         _finding("SERVICE_CERTIFICATE_MISMATCH", "service", FindingSeverityChoices.CRITICAL,
                  service, "The live Service certificate differs from its linked certificates in NetBox.",
                  evidence={"observed_sha256": actual, "expected_sha256": sorted(expected)})
 
 
+@capture_checks
 @transaction.atomic
 def refresh_health_findings():
     started = timezone.now()

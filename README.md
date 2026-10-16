@@ -4,7 +4,7 @@ Store certificates, encrypted private keys, CSRs, and bundles in NetBox. Organiz
 
 | Component | Supported |
 | --- | --- |
-| Release | 1.8.1 |
+| Release | 1.9.0 |
 | NetBox | 4.5.9 and 4.5.10 |
 | Python | 3.12+ |
 | cryptography | 42+ |
@@ -15,7 +15,8 @@ Store certificates, encrypted private keys, CSRs, and bundles in NetBox. Organiz
 - CSR generation with a new or existing private key.
 - Typed, hierarchical Groups and Services with linked certificates, keys, CSRs, and bundles.
 - Dashboard combining inventory, expiration, health findings, filters, and bulk actions.
-- Optional live Service certificate comparison, disabled by default.
+- Optional live Service certificate comparison, disabled by default, with a 14-day results graph and 90-day check history.
+- Superuser-only private-key access history for material exports and CSR signing.
 - HTML email and webhook alerts with per-certificate expiration triggers and configurable repeat timing.
 - Content-detected material import, certificate chains, PFX export, and metadata backup/restore for Groups and Services.
 - NetBox permissions, REST API, tags, custom fields, ownership, and configurable table columns.
@@ -47,7 +48,9 @@ The standalone Backup and Restore page has been removed. Use the controls on the
 
 Inventory tiles link to each object list. Certificate Authorities opens Certificates filtered to `IS CA = true`. Expiration, assignment details, and finding filters are expanded by default and can be collapsed when needed. Run health scans, export findings, and use permission-controlled bulk actions from the same page.
 
-Dashboard is at `/plugins/ssl-certificates/dashboard/`. Old Vault, Health, and Expiration Dashboard URLs redirect here with filters preserved. Preferences controls list limits and optional sections. The layout follows NetBox's light or dark theme.
+Dashboard is at `/plugins/ssl-certificates/dashboard/`. Retired Vault, Health, Expiration Dashboard, CA-list, and policy URLs have been removed. Preferences controls list limits and optional sections. The layout follows NetBox's light or dark theme.
+
+The live-check graph shows actual TLS attempts, matching fingerprints, mismatches, and failed connections. Page loads never initiate checks. Counts respect Service view permissions; superusers also see history for deleted Services. History begins after upgrading, with no invented historical data. Recent private-key access records show decryption during authenticated UI/API requests, including failures and response status, without storing key material. Only superusers can read this audit history.
 
 ## Services
 
@@ -90,7 +93,7 @@ Email uses HTML plus a plain-text alternative. Webhooks support POST, GET, PUT, 
 
 Import material first when restoring to another NetBox, then restore Groups and Services. Missing relationships are skipped with warnings. These restores update matching names without deleting unrelated inventory. Export filters are honored; empty exports show a warning. Ordinary metadata exports exclude private keys and alert credentials. Other exported object metadata is reference-only, not a replacement backup.
 
-Private-key material export and Groups/Services restores require a superuser. Existing full-snapshot API endpoints remain available for compatibility; there is no full-backup UI. See [Imports](docs/IMPORTS.md), [Exports](docs/EXPORTS.md), and [Metadata restore and backup APIs](docs/BACKUPS.md).
+Private-key material export and Groups/Services restores require a superuser. The retired full-snapshot APIs have been removed. See [Imports](docs/IMPORTS.md), [Exports](docs/EXPORTS.md), and [Groups and Services restore](docs/BACKUPS.md).
 
 ## Cryptographic information
 
@@ -106,7 +109,7 @@ Global settings use `alert-settings/` and `preferences/`. **`service_checks_enab
 
 ## Installation
 
-For a new installation, add `netbox-certificates-plugin==1.8.1` to `/opt/netbox/local_requirements.txt`, enable the plugin in NetBox configuration, and provide a persistent Fernet key:
+For a new installation, add `netbox-certificates-plugin==1.9.0` to `/opt/netbox/local_requirements.txt`, enable the plugin in NetBox configuration, and provide a persistent Fernet key:
 
 ```python
 PLUGINS = ["netbox_certificates"]  # Include your other plugins too.
@@ -124,7 +127,7 @@ Generate a key only for a new installation:
 Install using pip, then migrate and collect assets:
 
 ```bash
-sudo /opt/netbox/venv/bin/python -m pip install 'netbox-certificates-plugin==1.8.1'
+sudo /opt/netbox/venv/bin/python -m pip install 'netbox-certificates-plugin==1.9.0'
 cd /opt/netbox/netbox
 sudo /opt/netbox/venv/bin/python manage.py migrate
 sudo /opt/netbox/venv/bin/python manage.py collectstatic --no-input

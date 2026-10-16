@@ -15,7 +15,7 @@ def build_pfx(bundle, password: str, chain_certificates=None, *, allow_unencrypt
         raise PFXExportError("PFX export requires both a certificate and a private key.")
     try:
         cert = x509.load_pem_x509_certificate(bundle.certificate.material.encode("ascii"))
-        key = serialization.load_pem_private_key(decrypt_private_key(bundle.private_key.encrypted_material), password=None)
+        key = serialization.load_pem_private_key(decrypt_private_key(bundle.private_key.encrypted_material, private_key=bundle.private_key), password=None)
     except Exception as exc:
         raise PFXExportError(f"Unable to load bundle certificate/private key: {exc}") from exc
     cert_pub = cert.public_key().public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)

@@ -37,7 +37,7 @@ class RevisionUIIntegrationTests(TestCase):
             self.assertContains(response, f'href="{self.child.get_absolute_url()}"')
             self.assertContains(response, "Days remaining")
         self.assertEqual(self.client.get(self.url("healthfinding_edit", pk=self.finding.pk)).status_code, 200)
-        self.assertRedirects(self.client.get(self.url("expiration_dashboard")), self.url("dashboard"))
+        self.assertEqual(self.client.get("/plugins/ssl-certificates/expiration-dashboard/").status_code, 404)
 
     def test_folders_and_services_render(self):
         response = self.client.get(self.url("artifactgroup_list"))

@@ -5,7 +5,9 @@
 {% block content %}
 <div class="nbcert-dashboard">
 {% include "netbox_certificates/inc/vault_inventory.html" %}
+{% include "netbox_certificates/inc/dashboard_activity.html" %}
 {% if vault_preferences.vault_show_expiration %}
+<div class="expiration-chart mb-3" role="img" aria-label="Certificate expiration distribution; counts are listed below.">{% for segment in expiration_chart %}{% if segment.count %}<span class="expiration-{{ segment.state }}" style="width: {{ segment.width|floatformat:'2u' }}%" title="{{ segment.state|title }}: {{ segment.count }}"></span>{% endif %}{% endfor %}</div>
 <details class="card dashboard-expiration mb-4" open>
 <summary class="card-header"><span class="fw-semibold">Certificate expiration</span><span class="d-inline-flex flex-wrap gap-3 ms-3 small">{% for label,value in counts.items %}<span class="dashboard-stat dashboard-stat-{{ label }}">{{ label|title }} <strong>{{ value }}</strong></span>{% endfor %}</span></summary>
 <div><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Certificate</th><th>Expires</th><th>Days remaining</th><th>State</th></tr></thead><tbody>{% for cert,state in upcoming %}<tr><td><a href="{{ cert.get_absolute_url }}">{{ cert }}</a></td><td>{{ cert.valid_to }}</td><td>{{ state.days }}</td><td>{{ state.label }}</td></tr>{% empty %}<tr><td colspan="4">No expired or upcoming certificates.</td></tr>{% endfor %}</tbody></table></div><div class="card-footer">Showing up to {{ vault_preferences.vault_expiration_limit }} certificates, earliest expiration first. <a href="{% url 'plugins:netbox_certificates:certificate_list' %}">All certificates</a></div></div></details>

@@ -67,7 +67,7 @@ class ExportBehavior(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.scope = definitions("netbox_certificates/services/pkcs12_export.py", ["PFXExportError", "build_pfx"],
-                                x509=x509, serialization=serialization, pkcs12=pkcs12, decrypt_private_key=lambda v: v)
+                                x509=x509, serialization=serialization, pkcs12=pkcs12, decrypt_private_key=lambda v, **kwargs: v)
         cls.form = definitions("netbox_certificates/forms.py", ["BundleExportForm"], forms=forms)["BundleExportForm"]
         cls.key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
         cls.other_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)

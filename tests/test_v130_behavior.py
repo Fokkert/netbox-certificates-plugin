@@ -213,11 +213,6 @@ class EditorRendering(unittest.TestCase):
         self.assertNotIn("membership-panel", source)
         self.assertNotIn("Hold Ctrl", source)
 
-    def test_ca_bookmark_preserves_filters_and_forces_ca_filter(self):
-        from django.http import QueryDict
-        from django.views import View
-        view = definitions("netbox_certificates/retired.py", ["CertificateAuthoritiesRedirectView"],
-                           LoginRequiredMixin=type("Login", (), {}), View=View, redirect=lambda value: value)["CertificateAuthoritiesRedirectView"]()
-        with patch("django.urls.reverse", return_value="/plugins/ssl-certificates/certificates/"):
-            result = view.get(SimpleNamespace(GET=QueryDict("q=Root&is_ca=false")))
-        self.assertEqual(result, "/plugins/ssl-certificates/certificates/?q=Root&is_ca=true")
+    def test_retired_ca_bookmark_is_removed(self):
+        urls = (ROOT / "netbox_certificates/urls.py").read_text()
+        self.assertNotIn('path("certificate-authorities/",', urls)

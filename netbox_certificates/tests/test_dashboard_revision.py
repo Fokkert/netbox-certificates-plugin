@@ -66,8 +66,8 @@ class DashboardRevisionTests(TestCase):
     def test_dashboard_redirect_and_removed_page(self):
         dashboard = reverse("plugins:netbox_certificates:dashboard")
         self.assertContains(self.client.get(dashboard), "Dashboard")
-        for name in ("vault", "health", "expiration_dashboard"):
-            self.assertRedirects(self.client.get(reverse(f"plugins:netbox_certificates:{name}") + "?severity=warning"), dashboard + "?severity=warning")
+        for name in ("vault", "health", "expiration-dashboard", "health/policies", "certificate-authorities"):
+            self.assertEqual(self.client.get(f"/plugins/ssl-certificates/{name}/").status_code, 404)
         self.assertEqual(self.client.get("/plugins/ssl-certificates/backup/").status_code, 404)
 
     def test_retired_category_migration_preserves_other_choices_and_live_switch(self):

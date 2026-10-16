@@ -11,6 +11,7 @@ class NetBoxCertificatesConfig(PluginConfig):
     min_version = "4.5.9"
     max_version = "4.5.10"
     required_settings = ["encryption_key"]
+    middleware = ["netbox_certificates.middleware.KeyAccessAuditMiddleware"]
 
     def ready(self):
         super().ready()

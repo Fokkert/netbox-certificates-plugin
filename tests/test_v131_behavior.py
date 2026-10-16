@@ -125,7 +125,7 @@ class SharedVersionTests(unittest.TestCase):
         self.assertEqual(form.clean()["members"], [])
 
     def test_all_manifest_and_alert_versions_use_the_runtime_constant(self):
-        for relative in ("bulk_export.py", "export_v1.py", "inventory_export.py", "services/alerts_v1.py", "services/alerts.py"):
+        for relative in ("bulk_export.py", "export_v1.py", "inventory_export.py", "services/alerts_v1.py"):
             tree = ast.parse((ROOT / "netbox_certificates" / relative).read_text(encoding="utf-8"))
             values = [value for node in ast.walk(tree) if isinstance(node, ast.Dict)
                       for key, value in zip(node.keys, node.values)

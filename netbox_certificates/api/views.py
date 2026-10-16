@@ -22,9 +22,8 @@ from netbox.api.viewsets import NetBoxModelViewSet
 from netbox_certificates.constants import MAX_UPLOAD_BYTES
 from netbox_certificates.export_names import bundle_export_name, pfx_export_name
 from netbox_certificates.filtersets import ArtifactGroupFilterSet, BundleFilterSet, CertificateAuthorityFilterSet, CertificateFilterSet, CSRFilterSet, PrivateKeyFilterSet
-from netbox_certificates.models import ArtifactGroup, ArtifactLink, Bundle, Certificate, CertificateAuthority, CSR, ExpiryAlertConfiguration, ExpiryAlertEvent, PrivateKey
+from netbox_certificates.models import ArtifactGroup, ArtifactLink, Bundle, Certificate, CertificateAuthority, CSR, PrivateKey
 from netbox_certificates.permissions import action_queryset, object_allowed
-from netbox_certificates.services.alerts import ExpiryAlertError, run_expiry_alert_scan, send_email, send_webhook
 from netbox_certificates.services.chain import ordered_chain
 from netbox_certificates.services.csr import CSRGenerationError
 from netbox_certificates.services.encryption import PrivateKeyEncryptionError, decrypt_private_key
@@ -34,7 +33,7 @@ from netbox_certificates.services.parser import ArtifactParseError
 from netbox_certificates.services.pkcs12_export import PFXExportError, build_pfx
 from netbox_certificates.services.unified_import import UnifiedImportError, UploadItem, import_objects
 
-from .serializers import ArtifactGroupSerializer, ArtifactLinkSerializer, BundleSerializer, CertificateAuthoritySerializer, CertificateSerializer, CSRSerializer, ExpiryAlertConfigurationSerializer, ExpiryAlertEventSerializer, PrivateKeySerializer
+from .serializers import ArtifactGroupSerializer, ArtifactLinkSerializer, BundleSerializer, CertificateAuthoritySerializer, CertificateSerializer, CSRSerializer, PrivateKeySerializer
 
 
 def _require_sensitive_token(request):
@@ -156,7 +155,7 @@ class PrivateKeyViewSet(NetBoxModelViewSet):
         _require_superuser_token(request)
         try: obj = action_queryset(PrivateKey, request.user, "download").get(pk=pk)
         except PrivateKey.DoesNotExist: raise PermissionDenied("Private-key download permission denied.")
-        try: data = decrypt_private_key(obj.encrypted_material)
+        try: data = decrypt_private_key(obj.encrypted_material, private_key=obj)
         except PrivateKeyEncryptionError as exc: raise APIException("Stored private key could not be decrypted.") from exc
         return _secure_response(data, _artifact_filename(obj, ".key"), "application/x-pem-file")
 
@@ -211,7 +210,7 @@ class BundleViewSet(NetBoxModelViewSet):
             files = []
             if bundle.certificate: files.append((_artifact_filename(bundle.certificate, ".crt"), bundle.certificate.material.encode("ascii")))
             if bundle.private_key:
-                try: key_data = decrypt_private_key(bundle.private_key.encrypted_material)
+                try: key_data = decrypt_private_key(bundle.private_key.encrypted_material, private_key=bundle.private_key)
                 except PrivateKeyEncryptionError as exc: raise APIException("Stored private key could not be decrypted.") from exc
                 files.append((_artifact_filename(bundle.private_key, ".key"), key_data))
             if bundle.csr: files.append((_artifact_filename(bundle.csr, ".csr"), bundle.csr.material.encode("ascii")))
@@ -232,41 +231,8 @@ class ArtifactGroupViewSet(NetBoxModelViewSet):
     filterset_class = ArtifactGroupFilterSet
 
 
-class ExpiryAlertConfigurationViewSet(NetBoxModelViewSet):
-    queryset = ExpiryAlertConfiguration.objects.order_by("pk")
-    serializer_class = ExpiryAlertConfigurationSerializer
-    def destroy(self, request, *args, **kwargs): raise MethodNotAllowed("DELETE", detail="Expiration alert configuration is a singleton; disable its methods instead.")
-    @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated], url_path="run-scan")
-    def run_scan(self, request):
-        _require_sensitive_token(request)
-        if not getattr(request.user, "is_superuser", False) and not request.user.has_perm("netbox_certificates.change_expiryalertconfiguration"): raise PermissionDenied("Running the expiration-alert scan requires expiration-alert configuration permission.")
-        return Response(run_expiry_alert_scan(force=_bool_value(request.data.get("force"), False)))
-    def _test_allowed(self, request, obj): return getattr(request.user, "is_superuser", False) or object_allowed(request.user, obj, "test") or object_allowed(request.user, obj, "change")
-    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
-    def test_email(self, request, pk=None):
-        _require_sensitive_token(request); obj = self.get_object()
-        if not self._test_allowed(request, obj): raise PermissionDenied("Expiration alert test permission denied.")
-        now = timezone.now()
-        try:
-            result = send_email(obj, test=True); obj.email_last_test_at = now; obj.email_last_test_success = True; obj.email_last_test_message = result[:500]; obj.save(update_fields=("email_last_test_at", "email_last_test_success", "email_last_test_message", "last_updated")); return Response({"success": True, "message": result})
-        except Exception as exc:
-            message = str(exc) if isinstance(exc, ExpiryAlertError) else f"Email test failed: {exc}"; obj.email_last_test_at = now; obj.email_last_test_success = False; obj.email_last_test_message = message[:500]; obj.save(update_fields=("email_last_test_at", "email_last_test_success", "email_last_test_message", "last_updated")); raise APIException(message) from exc
-    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
-    def test_webhook(self, request, pk=None):
-        _require_sensitive_token(request); obj = self.get_object()
-        if not self._test_allowed(request, obj): raise PermissionDenied("Expiration alert test permission denied.")
-        now = timezone.now()
-        try:
-            code, result = send_webhook(obj, test=True); obj.webhook_last_test_at = now; obj.webhook_last_test_success = True; obj.webhook_last_test_message = result[:500]; obj.save(update_fields=("webhook_last_test_at", "webhook_last_test_success", "webhook_last_test_message", "last_updated")); return Response({"success": True, "status_code": code, "message": result})
-        except Exception as exc:
-            message = str(exc) if isinstance(exc, ExpiryAlertError) else f"Webhook test failed: {exc}"; obj.webhook_last_test_at = now; obj.webhook_last_test_success = False; obj.webhook_last_test_message = message[:500]; obj.save(update_fields=("webhook_last_test_at", "webhook_last_test_success", "webhook_last_test_message", "last_updated")); raise APIException(message) from exc
 
 
-class ExpiryAlertEventViewSet(NetBoxModelViewSet):
-    queryset = ExpiryAlertEvent.objects.select_related("certificate"); serializer_class = ExpiryAlertEventSerializer
-    def create(self, request, *args, **kwargs): raise MethodNotAllowed("POST", detail="Expiration alert events are generated by the worker.")
-    def update(self, request, *args, **kwargs): raise MethodNotAllowed("PUT", detail="Expiration alert events are read-only records.")
-    def partial_update(self, request, *args, **kwargs): raise MethodNotAllowed("PATCH", detail="Expiration alert events are read-only records.")
 
 
 class ArtifactLinkViewSet(NetBoxModelViewSet):
@@ -322,4 +288,4 @@ class UnifiedImportAPIView(APIView):
             elif isinstance(obj, Bundle): data = BundleSerializer(obj, context={"request": request}).data
             else: data = CSRSerializer(obj, context={"request": request}).data
             created.append({"type": obj._meta.model_name, "object": data})
-        return Response({"mode": "objects", "created": created, "reused_ca_ids": [obj.pk for obj in result.get("reused", []) if isinstance(obj, Certificate) and obj.is_ca], "reused": [{"type": obj._meta.model_name, "id": obj.pk} for obj in result.get("reused", [])], "ignored_files": result.get("ignored_files", []), "bundle_ids": [obj.pk for obj in result.get("bundles", [])]}, status=status.HTTP_201_CREATED)
+        return Response({"mode": "objects", "created": created, "reused": [{"type": obj._meta.model_name, "id": obj.pk} for obj in result.get("reused", [])], "ignored_files": result.get("ignored_files", []), "bundle_ids": [obj.pk for obj in result.get("bundles", [])]}, status=status.HTTP_201_CREATED)

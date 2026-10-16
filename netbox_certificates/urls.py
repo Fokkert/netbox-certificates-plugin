@@ -1,4 +1,3 @@
-from .retired import RetiredPolicyView, CertificateAuthoritiesRedirectView
 from .preferences import PreferencesView
 from .backup import ObjectRestoreView
 from .inventory_export import InventoryExportView
@@ -15,13 +14,9 @@ urlpatterns = (
     path("groups/restore/", ObjectRestoreView.as_view(), {"kind": "artifactgroup"}, name="artifactgroup_restore"),
     # OVERVIEW
     path("preferences/", PreferencesView.as_view(), name="preferences"),
-    path("expiration-dashboard/", RedirectView.as_view(pattern_name="plugins:netbox_certificates:dashboard", query_string=True), name="expiration_dashboard"),
-    path("certificate-authorities/", CertificateAuthoritiesRedirectView.as_view(), name="certificateauthority_list"),
     path("certificate-authorities/import/", views.CACertificateImportView.as_view(), name="certificateauthority_import"),
     path("certificate-authorities/export-material/", bulk_export.CertificateAuthorityMaterialExportView.as_view(), name="certificateauthority_material_export"),
     path("dashboard/", views_v1.DashboardView.as_view(), name="dashboard"),
-    path("vault/", RedirectView.as_view(pattern_name="plugins:netbox_certificates:dashboard", query_string=True), name="vault"),
-    path("health/", RedirectView.as_view(pattern_name="plugins:netbox_certificates:dashboard", query_string=True), name="health"),
     path("health/refresh/", views_v1.HealthRefreshView.as_view(), name="health_refresh"),
     path("health/<int:pk>/", views_v1.HealthFindingView.as_view(), name="healthfinding"),
     path("health/findings/", RedirectView.as_view(pattern_name="plugins:netbox_certificates:dashboard", query_string=True), name="healthfinding_list"),
@@ -31,16 +26,6 @@ urlpatterns = (
     path("health/delete/", views_v1.HealthFindingBulkDeleteView.as_view(), name="healthfinding_bulk_delete"),
     path("health/export-archive/", export_v1.MetadataArchiveExportView.as_view(), {"kind": "healthfinding"}, name="healthfinding_archive_export"),
 
-    # Legacy policy bookmarks lead to the global certificate check settings.
-    path("health/policies/", RetiredPolicyView.as_view(), name="certificatepolicy_list"),
-    path("health/policies/add/", RetiredPolicyView.as_view(), name="certificatepolicy_add"),
-    path("health/policies/edit/", RetiredPolicyView.as_view(), name="certificatepolicy_bulk_edit"),
-    path("health/policies/rename/", RetiredPolicyView.as_view(), name="certificatepolicy_bulk_rename"),
-    path("health/policies/delete/", RetiredPolicyView.as_view(), name="certificatepolicy_bulk_delete"),
-    path("health/policies/export-archive/", RetiredPolicyView.as_view(), name="certificatepolicy_archive_export"),
-    path("health/policies/<int:pk>/", RetiredPolicyView.as_view(), name="certificatepolicy"),
-    path("health/policies/<int:pk>/edit/", RetiredPolicyView.as_view(), name="certificatepolicy_edit"),
-    path("health/policies/<int:pk>/delete/", RetiredPolicyView.as_view(), name="certificatepolicy_delete"),
 
     # INVENTORY: Groups
     path("groups/", views_v1.ArtifactGroupTreeListView.as_view(), name="artifactgroup_list"),

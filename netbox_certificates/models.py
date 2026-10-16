@@ -292,103 +292,8 @@ class ArtifactLink(NetBoxModel):
         )
 
 
-class ExpiryAlertConfiguration(NetBoxModel):
-    """Singleton configuration for certificate-expiry notifications."""
-
-    check_interval_minutes = models.PositiveIntegerField(default=60)
-    alert_on_expired_certificates = models.BooleanField(
-        default=True,
-        verbose_name="Alert on already expired certificates",
-        help_text=(
-            "When enabled, certificates that are already expired remain eligible for an alert "
-            "if their configured trigger is due."
-        ),
-    )
-    alert_repeat_mode = models.CharField(
-        max_length=16,
-        choices=AlertRepeatModeChoices,
-        default=AlertRepeatModeChoices.ONCE,
-        verbose_name="Alert repeat behavior",
-        help_text=(
-            "Send once per certificate validity/trigger/method, or repeat on every configured check "
-            "while the certificate remains due."
-        ),
-    )
-
-    email_enabled = models.BooleanField(default=False)
-    smtp_host = models.CharField(max_length=255, blank=True, verbose_name="SMTP host")
-    smtp_port = models.PositiveIntegerField(default=587, verbose_name="SMTP port")
-    smtp_username = models.CharField(max_length=255, blank=True, verbose_name="SMTP username")
-    smtp_password_encrypted = models.BinaryField(blank=True, null=True, editable=False)
-    smtp_use_tls = models.BooleanField(default=True, verbose_name="Use STARTTLS")
-    smtp_use_ssl = models.BooleanField(default=False, verbose_name="Use implicit SSL/TLS")
-    email_from_address = models.EmailField(blank=True, verbose_name="From address")
-    email_recipients = models.TextField(blank=True, verbose_name="Recipients")
-    include_superusers = models.BooleanField(default=True, verbose_name="Include active NetBox superusers")
-
-    webhook_enabled = models.BooleanField(default=False, verbose_name="Enable webhook")
-    webhook_url_encrypted = models.BinaryField(blank=True, null=True, editable=False)
-    webhook_bearer_token_encrypted = models.BinaryField(blank=True, null=True, editable=False)
-    webhook_allow_http = models.BooleanField(default=False, verbose_name="Allow insecure HTTP webhook")
-    webhook_ignore_tls_verification = models.BooleanField(
-        default=False,
-        verbose_name="Ignore TLS certificate verification",
-        help_text="Disable HTTPS certificate and hostname verification for webhook connections. Use only for trusted internal endpoints.",
-    )
-
-    last_check_at = models.DateTimeField(blank=True, null=True, editable=False)
-    last_check_success = models.BooleanField(blank=True, null=True, editable=False)
-    last_check_message = models.CharField(max_length=500, blank=True, editable=False)
-    email_last_test_at = models.DateTimeField(blank=True, null=True, editable=False)
-    email_last_test_success = models.BooleanField(blank=True, null=True, editable=False)
-    email_last_test_message = models.CharField(max_length=500, blank=True, editable=False)
-    webhook_last_test_at = models.DateTimeField(blank=True, null=True, editable=False)
-    webhook_last_test_success = models.BooleanField(blank=True, null=True, editable=False)
-    webhook_last_test_message = models.CharField(max_length=500, blank=True, editable=False)
-
-    class Meta:
-        verbose_name = "expiration alert configuration"
-        verbose_name_plural = "expiration alert configuration"
-        default_permissions = ("add", "change", "view")
-        permissions = (("test_expiryalertconfiguration", "Can test expiration alert configuration"),)
-
-    def __str__(self):
-        return "Expiration Alerts"
-
-    def save(self, *args, **kwargs):
-        if self.pk is None and self.__class__.objects.exists():
-            raise ValidationError("Only one expiration alert configuration can exist.")
-        return super().save(*args, **kwargs)
 
 
-class ExpiryAlertEvent(NetBoxModel):
-    certificate = models.ForeignKey(Certificate, on_delete=models.CASCADE, related_name="expiry_alert_events")
-    method = models.CharField(max_length=16, choices=AlertMethodChoices)
-    certificate_valid_to = models.DateTimeField()
-    trigger_unit = models.CharField(max_length=16, choices=AlertTriggerUnitChoices)
-    alert_trigger = models.PositiveIntegerField()
-    trigger_at = models.DateTimeField()
-    last_attempt_at = models.DateTimeField(blank=True, null=True, editable=False)
-    delivered_at = models.DateTimeField(blank=True, null=True, editable=False)
-    success = models.BooleanField(default=False, editable=False)
-    attempt_count = models.PositiveIntegerField(default=0, editable=False)
-    status_code = models.PositiveIntegerField(blank=True, null=True, editable=False)
-    message = models.CharField(max_length=500, blank=True, editable=False)
-
-    class Meta:
-        ordering = ("-last_attempt_at", "-created")
-        verbose_name = "expiration alert event"
-        verbose_name_plural = "expiration alert events"
-        default_permissions = ("view", "delete")
-        constraints = (
-            models.UniqueConstraint(
-                fields=("certificate", "method", "certificate_valid_to", "trigger_unit", "alert_trigger"),
-                name="netbox_certificates_unique_expiry_alert_event",
-            ),
-        )
-
-    def __str__(self):
-        return f"{self.certificate} / {self.get_method_display()} / {self.certificate_valid_to}"
 
 
 def delete_empty_bundles():
@@ -411,13 +316,15 @@ def delete_empty_bundles():
 def cleanup_empty_bundles_after_member_delete(sender, instance, **kwargs):
     delete_empty_bundles()
 
+from .activity import PrivateKeyAccessRecord, ServiceCheckRecord
+
 # Public 1.0 management models. Imported after the established cryptographic
 # model classes to preserve their implementation and avoid circular initialization.
 from .models_v1 import (
     AlertChannel,
     AlertEvent,
     AlertRule,
-    CertificatePolicy,
+
     HealthFinding,
     ObjectLink,
     Service,

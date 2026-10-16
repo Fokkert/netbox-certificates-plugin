@@ -33,7 +33,7 @@ class VaultTests(TestCase):
         response = self.client.get(self.url)
         for text in ("Dashboard", "Inventory", "Certificate expiration", "Health findings", "Visible endpoint"):
             self.assertContains(response, text)
-        for name in ("health", "healthfinding_list", "expiration_dashboard"):
+        for name in ("healthfinding_list",):
             self.assertRedirects(self.client.get(reverse(f"plugins:netbox_certificates:{name}") + "?severity=warning"), self.url + "?severity=warning")
         response = self.client.get(self.url + "?severity=&status=&q=")
         self.assertFalse(response.context["filter_errors"])

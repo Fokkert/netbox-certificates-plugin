@@ -142,7 +142,6 @@ class AlertSettingsForm(AcronymFormMixin, forms.Form):
         webhook = config.webhook_channel or AlertChannel(name=f"Settings webhook {uuid.uuid4().hex[:8]}", channel_type="webhook")
         for field in ("enabled", "categories", "severities", "cooldown_minutes", "repeat_minutes", "notify_on_recovery"):
             setattr(rule, field, data[field])
-        rule.expiration_days = None  # Deprecated; each certificate supplies its own lead time.
         rule.full_clean()
         rule.save()
         email.enabled = data["email_enabled"]

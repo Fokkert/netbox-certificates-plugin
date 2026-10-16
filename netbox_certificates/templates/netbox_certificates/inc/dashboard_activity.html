@@ -1,0 +1,16 @@
+<section class="dashboard-activity my-4" aria-labelledby="activity-title">
+  <div class="dashboard-section-heading"><h2 id="activity-title">Live certificate checks</h2><span class="text-muted">Last 14 days · {{ check_total }} attempts · {{ check_average_ms }} ms average</span></div>
+  <div class="check-legend">{% for result,total in check_totals.items %}<span><i class="check-swatch check-{{ result }}" aria-hidden="true"></i>{{ result|title }}: {{ total }}</span>{% endfor %}</div>
+  {% if check_total %}
+  <div class="check-chart" role="img" aria-label="Daily TLS certificate check results for the last 14 days. Detailed values follow.">
+    {% for day in check_days %}<div class="check-day"><div class="check-stack" title="{{ day.date }}: {{ day.match }} match, {{ day.mismatch }} mismatch, {{ day.failed }} failed">{% for segment in day.segments %}<span class="check-{{ segment.result }}" style="height: {{ segment.height|floatformat:"2u" }}%"></span>{% endfor %}</div><span class="small text-muted">{{ day.date|date:'d M' }}</span></div>{% endfor %}
+  </div>
+  <table class="visually-hidden"><caption>Daily TLS check results</caption><thead><tr><th>Date</th><th>Match</th><th>Mismatch</th><th>Failed</th></tr></thead><tbody>{% for day in check_days %}<tr><th>{{ day.date }}</th><td>{{ day.match }}</td><td>{{ day.mismatch }}</td><td>{{ day.failed }}</td></tr>{% endfor %}</tbody></table>
+  {% else %}<p class="text-muted my-4">No checks recorded yet. Live checks require both Alert Configuration and the Service's check option to be enabled.</p>{% endif %}
+  {% if recent_checks %}<div class="table-responsive"><table class="table"><thead><tr><th>Latest checks</th><th>Service</th><th>Result</th><th>Duration</th></tr></thead><tbody>{% for check in recent_checks %}<tr><td>{{ check.created }}</td><td>{{ check.service_name }}</td><td>{{ check.result|title }}</td><td>{{ check.duration_ms }} ms</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+</section>
+{% if key_access != None %}
+<section class="my-4" aria-labelledby="key-access-title"><h2 class="h5" id="key-access-title">Recent private-key access</h2>
+<div class="table-responsive"><table class="table"><thead><tr><th>Time</th><th>Private key</th><th>User</th><th>Operation</th><th>Result</th><th>HTTP status</th></tr></thead><tbody>{% for access in key_access %}<tr><td>{{ access.created }}</td><td>{{ access.key_name }}</td><td>{{ access.actor }}</td><td>{% if access.operation == 'csr_signing' %}CSR signing{% else %}Material export{% endif %}</td><td>{{ access.result|title }}</td><td>{{ access.response_status }}</td></tr>{% empty %}<tr><td colspan="6">No private-key reads recorded yet.</td></tr>{% endfor %}</tbody></table></div>
+<p class="small text-muted">Superusers only. Records show key decryption during requests, not confirmation of a completed download.</p></section>
+{% endif %}

@@ -27,7 +27,7 @@ def read_metadata(data):
         rows = [row for document in documents for row in (document if isinstance(document, list) else [document])
                 if isinstance(row, dict) and row.get("type") in {"netbox_certificates.artifactgroup", "netbox_certificates.service"}]
         if not rows:
-            raise BackupError("No exported Groups or Services were found. Use Restore for full backups.")
+            raise BackupError("No exported Groups or Services were found.")
         for row in rows:
             if not isinstance(row.get("attributes"), dict) or not isinstance(row.get("relationships", {}), dict) or type(row.get("id")) is not int:
                 raise BackupError("Invalid metadata object record.")
@@ -103,7 +103,7 @@ def _merge(rows):
         relationships = row.get("relationships", {})
         if not relationships:
             warnings.add("Older export has no portable relationship identities; unresolved relationships were left blank.")
-        allowed = {"parent", "certificates", "private_keys", "csrs", "bundles", "services", "owner", "tags"} if isinstance(obj, ArtifactGroup) else {"groups", "certificates", "private_keys", "csrs", "bundles", "owner", "policy", "tags"}
+        allowed = {"parent", "certificates", "private_keys", "csrs", "bundles", "services", "owner", "tags"} if isinstance(obj, ArtifactGroup) else {"groups", "certificates", "private_keys", "csrs", "bundles", "owner", "tags"}
         for name, refs in relationships.items():
             if name not in allowed:
                 raise BackupError("Unsupported metadata relationship.")

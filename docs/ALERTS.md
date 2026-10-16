@@ -56,7 +56,7 @@ Set **Alert Trigger = 1** and **Trigger Unit = Month** for a one-calendar-month 
 
 For an alert 120 days before expiry, set that certificate's trigger to `120` and unit to `day`. For seven days, use `7` and `day`. Clear both fields to disable expiration and expired-certificate alerts for that certificate; other health problems can still alert. One month uses calendar arithmetic with month-end clamping, not a fixed 30-day approximation.
 
-Health continues to show the normal 90-day expiration overview and creates earlier findings when a certificate's own trigger is due. Delivery checks the current certificate fields at the exact timestamp, independently of the rule's category/severity filters and repeat timing. Existing `AlertRule.expiration_days` values remain stored for compatibility but are ignored and removed from forms, table columns, filters, and the REST serializer.
+Health continues to show the normal 90-day expiration overview and creates earlier findings when a certificate's own trigger is due. Delivery checks the current certificate fields at the exact timestamp, independently of the rule's category/severity filters and repeat timing. The unused `AlertRule.expiration_days` column was removed in migration 0031.
 
 ## Security
 

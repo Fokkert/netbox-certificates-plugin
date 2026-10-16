@@ -22,7 +22,7 @@ def save_generated_csr(data, user):
     if key is not None:
         if not object_allowed(user, key, "use"):
             raise PermissionDenied("You do not have permission to sign with this private key.")
-        key_pem = decrypt_private_key(key.encrypted_material)
+        key_pem = decrypt_private_key(key.encrypted_material, private_key=key)
     else:
         require_action_permission(PrivateKey, user, "add")
         key_pem = None

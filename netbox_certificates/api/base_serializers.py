@@ -4,7 +4,7 @@ from rest_framework.exceptions import PermissionDenied
 from netbox.api.serializers import NetBoxModelSerializer
 
 from netbox_certificates.choices import LinkOriginChoices
-from netbox_certificates.models import ArtifactGroup, ArtifactLink, Bundle, Certificate, CertificateAuthority, CSR, ExpiryAlertConfiguration, ExpiryAlertEvent, PrivateKey
+from netbox_certificates.models import ArtifactGroup, ArtifactLink, Bundle, Certificate, CertificateAuthority, CSR, PrivateKey
 from netbox_certificates.models_v1 import Service
 from netbox_certificates.permissions import object_allowed
 from netbox_certificates.services.duplicates import find_duplicate
@@ -374,61 +374,3 @@ class ArtifactLinkSerializer(NetBoxModelSerializer):
     def update(self, instance, validated_data):
         if instance.origin != LinkOriginChoices.MANUAL: raise serializers.ValidationError("Automatically generated links cannot be modified through the API.")
         validated_data["origin"] = LinkOriginChoices.MANUAL; return super().update(instance, validated_data)
-
-
-class ExpiryAlertConfigurationSerializer(NetBoxModelSerializer):
-    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:netbox_certificates-api:expiration-alert-configuration-detail")
-    smtp_password = serializers.CharField(write_only=True, required=False, allow_blank=True, trim_whitespace=False)
-    webhook_url = serializers.URLField(write_only=True, required=False, allow_blank=True)
-    webhook_bearer_token = serializers.CharField(write_only=True, required=False, allow_blank=True, trim_whitespace=False)
-    smtp_password_configured = serializers.SerializerMethodField(); webhook_url_configured = serializers.SerializerMethodField(); webhook_bearer_token_configured = serializers.SerializerMethodField()
-    class Meta:
-        model = ExpiryAlertConfiguration
-        fields = (
-            "id", "url", "display", "check_interval_minutes", "alert_on_expired_certificates", "alert_repeat_mode",
-            "email_enabled", "smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_password_configured", "smtp_use_tls", "smtp_use_ssl", "email_from_address", "email_recipients", "include_superusers",
-            "webhook_enabled", "webhook_url", "webhook_url_configured", "webhook_bearer_token", "webhook_bearer_token_configured", "webhook_allow_http", "webhook_ignore_tls_verification",
-            "last_check_at", "last_check_success", "last_check_message", "email_last_test_at", "email_last_test_success", "email_last_test_message", "webhook_last_test_at", "webhook_last_test_success", "webhook_last_test_message", "custom_fields", "created", "last_updated",
-        )
-        brief_fields = ("id", "url", "display", "alert_on_expired_certificates", "alert_repeat_mode", "email_enabled", "webhook_enabled", "last_check_at", "last_check_success")
-        read_only_fields = ("last_check_at", "last_check_success", "last_check_message", "email_last_test_at", "email_last_test_success", "email_last_test_message", "webhook_last_test_at", "webhook_last_test_success", "webhook_last_test_message")
-    def get_smtp_password_configured(self, obj): return bool(obj.smtp_password_encrypted)
-    def get_webhook_url_configured(self, obj): return bool(obj.webhook_url_encrypted)
-    def get_webhook_bearer_token_configured(self, obj): return bool(obj.webhook_bearer_token_encrypted)
-    def validate(self, attrs):
-        smtp_password = attrs.pop("smtp_password", None); webhook_url = attrs.pop("webhook_url", None); webhook_token = attrs.pop("webhook_bearer_token", None)
-        if smtp_password or webhook_token: _require_superuser_write_token(self.context.get("request"), "Alert secret API access")
-        attrs = super().validate(attrs)
-        tls = attrs.get("smtp_use_tls", getattr(self.instance, "smtp_use_tls", True)); ssl = attrs.get("smtp_use_ssl", getattr(self.instance, "smtp_use_ssl", False))
-        if tls and ssl: raise serializers.ValidationError({"smtp_use_ssl": "TLS and implicit SSL cannot both be enabled."})
-        email_enabled = attrs.get("email_enabled", getattr(self.instance, "email_enabled", False))
-        if email_enabled:
-            host = attrs.get("smtp_host", getattr(self.instance, "smtp_host", "")); port = attrs.get("smtp_port", getattr(self.instance, "smtp_port", None)); sender = attrs.get("email_from_address", getattr(self.instance, "email_from_address", "")); include_superusers = attrs.get("include_superusers", getattr(self.instance, "include_superusers", True)); recipients = attrs.get("email_recipients", getattr(self.instance, "email_recipients", "")); errors = {}
-            if not host: errors["smtp_host"] = "SMTP host is required when email alerts are enabled."
-            if not port: errors["smtp_port"] = "SMTP port is required when email alerts are enabled."
-            if not sender: errors["email_from_address"] = "From address is required when email alerts are enabled."
-            if not include_superusers and not str(recipients).strip(): errors["email_recipients"] = "Configure a recipient or enable NetBox superuser recipients."
-            if errors: raise serializers.ValidationError(errors)
-        webhook_enabled = attrs.get("webhook_enabled", getattr(self.instance, "webhook_enabled", False)); existing_webhook = bool(getattr(self.instance, "webhook_url_encrypted", None)); allow_http = attrs.get("webhook_allow_http", getattr(self.instance, "webhook_allow_http", False))
-        if webhook_enabled and not webhook_url and not existing_webhook: raise serializers.ValidationError({"webhook_url": "Webhook URL is required when webhook alerts are enabled."})
-        if webhook_url and webhook_url.lower().startswith("http://") and not allow_http: raise serializers.ValidationError({"webhook_url": "HTTP webhooks require webhook_allow_http=true."})
-        self._smtp_password, self._webhook_url, self._webhook_token = smtp_password, webhook_url, webhook_token
-        return attrs
-    def _apply_secrets(self, data):
-        if getattr(self, "_smtp_password", None): data["smtp_password_encrypted"] = encrypt_secret(self._smtp_password)
-        if getattr(self, "_webhook_url", None): data["webhook_url_encrypted"] = encrypt_secret(self._webhook_url)
-        if getattr(self, "_webhook_token", None): data["webhook_bearer_token_encrypted"] = encrypt_secret(self._webhook_token)
-        return data
-    def create(self, validated_data):
-        if ExpiryAlertConfiguration.objects.exists(): raise serializers.ValidationError("Only one expiration alert configuration can exist.")
-        return super().create(self._apply_secrets(validated_data))
-    def update(self, instance, validated_data): return super().update(instance, self._apply_secrets(validated_data))
-
-
-class ExpiryAlertEventSerializer(NetBoxModelSerializer):
-    url = serializers.HyperlinkedIdentityField(view_name="plugins-api:netbox_certificates-api:expiration-alert-event-detail")
-    class Meta:
-        model = ExpiryAlertEvent
-        fields = ("id", "url", "display", "certificate", "method", "certificate_valid_to", "trigger_unit", "alert_trigger", "trigger_at", "last_attempt_at", "delivered_at", "success", "attempt_count", "status_code", "message", "custom_fields", "created", "last_updated")
-        brief_fields = ("id", "url", "display", "certificate", "method", "success", "last_attempt_at", "attempt_count")
-        read_only_fields = fields

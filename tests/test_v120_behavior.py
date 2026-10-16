@@ -230,7 +230,7 @@ class MixedImportParsing(unittest.TestCase):
         export = definitions("netbox_certificates/bulk_export.py", ["_artifact_token", "_artifact_filename", "_write_member",
                               "_material_for_object", "_object_manifest", "_secure_file_response"],
                              Certificate=certificate, PrivateKey=private_key, CSR=csr,
-                             decrypt_private_key=lambda data: data, zipfile=zipfile, hashlib=hashlib, FileResponse=FileResponse)
+                             decrypt_private_key=lambda data, **kwargs: data, zipfile=zipfile, hashlib=hashlib, FileResponse=FileResponse)
         permission = Mock()
         inventory = definitions("netbox_certificates/inventory_export.py", ["export_inventory"], **export,
                                 EXPORT_CONFIG={kind: {"model": model, "action": "download"} for kind, model in
@@ -264,7 +264,7 @@ class NewReleaseContracts(unittest.TestCase):
         models = (ROOT / "netbox_certificates/models.py").read_text(encoding="utf-8")
         self.assertIn('"use_privatekey"', models)
         urls = (ROOT / "netbox_certificates/urls.py").read_text(encoding="utf-8")
-        self.assertIn('RetiredPolicyView.as_view()', urls)
+        self.assertNotIn('RetiredPolicyView.as_view()', urls)
         self.assertIn('name="inventory_export"', urls)
 
     def test_ui_empty_export_is_a_warning_page_without_redirect(self):

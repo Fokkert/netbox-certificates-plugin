@@ -2,7 +2,7 @@
 
 ## Portable backups and Groups/Services imports
 
-Services and Groups have Backup and Restore buttons on their respective lists. Restores merge matching names and resolve available relationships, skipping missing members. The standalone backup page is removed. Existing full-snapshot APIs remain available for compatibility. See [Metadata restore and backup APIs](BACKUPS.md).
+Services and Groups have Backup and Restore buttons on their respective lists. Restores merge matching names and resolve available relationships, skipping missing members. The standalone backup page is removed. Retired full-snapshot APIs were removed in 1.9.0. See [Groups and Services restore](BACKUPS.md).
 
 ## Native metadata export
 

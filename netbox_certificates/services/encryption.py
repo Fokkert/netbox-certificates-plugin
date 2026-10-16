@@ -22,10 +22,17 @@ def encrypt_private_key(data: bytes) -> bytes:
     return _fernet().encrypt(data)
 
 
-def decrypt_private_key(token: bytes) -> bytes:
+def decrypt_private_key(token: bytes, *, private_key=None) -> bytes:
     try:
-        return _fernet().decrypt(bytes(token))
-    except InvalidToken as exc:
+        data = _fernet().decrypt(bytes(token))
+        if private_key is not None:
+            from ..middleware import record_key_access
+            record_key_access(private_key, "success")
+        return data
+    except (InvalidToken, PrivateKeyEncryptionError) as exc:
+        if private_key is not None:
+            from ..middleware import record_key_access
+            record_key_access(private_key, "failed")
         raise PrivateKeyEncryptionError(
             "Unable to decrypt private key. The plugin encryption key may have changed."
         ) from exc
